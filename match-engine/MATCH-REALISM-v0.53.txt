@@ -1,0 +1,11 @@
+Football Legacy Match Realism v0.53
+
+Crowd celebration cutscene rebuild:
+- Celebration 2 now runs as a full sequence: sprint to the barrier, jump into the stand, then get surrounded by supporters.
+- Replaced the tiny placeholder crowd mob with 25 adult-sized supporters.
+- Added a small terrace section, barrier and railing for the cutscene.
+- The scorer can leave the pitch during this celebration and land inside the stand.
+- Added a dedicated jump animation and longer crowd-mob ending.
+- Added dedicated camera shots for the run, jump and mob.
+- Match time slows heavily during goal celebrations instead of racing through the cutscene.
+- Face, hair, player body, gameplay controls and all non-celebration systems remain unchanged.

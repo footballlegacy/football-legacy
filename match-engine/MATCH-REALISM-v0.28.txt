@@ -1,0 +1,24 @@
+Football Legacy — Match Realism v0.28
+
+Changes in this build:
+- Corrected both goal nets so they extend behind the goal line rather than into the pitch.
+- Made held passes substantially stronger; a full bar can now hit proper long diagonals and cross-field switches.
+- Reduced full pass-charge time from 920 ms to 760 ms.
+- Added visibly different jogging and sprinting speeds, body lean, stride length and arm movement.
+- Sprinting now costs more stamina; jogging is slower and more economical.
+- Kept set-piece setup delays, but removed the visible set-piece countdown.
+- Added a low-driven shot: double-tap S while in possession.
+- Normal quick-tap S remains a standard shot; hold S to charge a stronger normal shot.
+- Added cleaner contact shadows, a brighter selected-player ring, a slightly improved ball and finer goal-net mesh.
+
+Controls:
+Arrows — jog
+Shift — sprint
+A — pass (hold for distance)
+S — shoot
+S twice — low-driven shot
+D — tackle
+Q + direction — skill
+Q twice — roulette
+W — switch player
+Esc — pause

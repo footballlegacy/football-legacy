@@ -1,0 +1,14 @@
+Football Legacy Match Realism v0.64
+
+P — EVERY HUMAN CELEBRATION
+
+After the user's team scores, press P to launch the special three-scene celebration:
+
+1. Every active humanoid in the ground is sent toward the goalscorer: both teams, both goalkeepers, referee, assistant referees, managers and all individually modelled supporters. Static crowd point layers are hidden during the sequence so no crowd remains frozen in the stands.
+2. Hard cut outside the stadium. Spectators run through entrances while the camera slowly pulls out, creating a human pile that rises above the stadium roof.
+3. Immediate hard cut to a stylised rotating Earth. A new human pile visibly grows from one point on the globe.
+
+The sequence ends by restoring the stadium and crowd, then returning to the normal kickoff.
+P remains the normal pause key at every other time.
+
+No normal celebration, player model, gameplay, AI, ball physics, camera, stadium, pitch, lighting, crowd setup, sound, UI, controls or set-piece mechanics were intentionally changed.

@@ -1,0 +1,12 @@
+Football Legacy Match Graphics v0.44
+
+Connected limb/joint pass:
+- Pulled the arms inward so they sit under the rounded shoulders instead of hanging outside them.
+- Added rounded shoulder sockets that stay overlapped with the shirt while the arms swing.
+- Added rounded elbow and wrist joints, with longer overlapping upper/lower arm sections.
+- Replaced the hand cylinders with clearer rounded hands.
+- Pulled the legs slightly inward and added overlapping hip, knee and ankle joints.
+- Extended limb sections into the joints so animation does not expose open gaps.
+- Enabled smooth shading on shorts, socks and boots to reduce segmented edges.
+
+Head/face, gameplay, camera, kits, controls and match systems are otherwise unchanged.

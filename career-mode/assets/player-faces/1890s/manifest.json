@@ -1,0 +1,790 @@
+{
+  "pack": "Football Legacy 1890s Heads \u2014 Game Edition",
+  "count": 78,
+  "format": "WebP",
+  "dimensions": "384x576",
+  "quality": 82,
+  "transparent": true,
+  "files": [
+    {
+      "id": "1890_001",
+      "file": "faces/1890s/1890_001.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 18222
+    },
+    {
+      "id": "1890_002",
+      "file": "faces/1890s/1890_002.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 24702
+    },
+    {
+      "id": "1890_003",
+      "file": "faces/1890s/1890_003.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 20650
+    },
+    {
+      "id": "1890_004",
+      "file": "faces/1890s/1890_004.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 28868
+    },
+    {
+      "id": "1890_005",
+      "file": "faces/1890s/1890_005.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 14556
+    },
+    {
+      "id": "1890_006",
+      "file": "faces/1890s/1890_006.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 23704
+    },
+    {
+      "id": "1890_007",
+      "file": "faces/1890s/1890_007.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 26358
+    },
+    {
+      "id": "1890_008",
+      "file": "faces/1890s/1890_008.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 14170
+    },
+    {
+      "id": "1890_009",
+      "file": "faces/1890s/1890_009.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 26508
+    },
+    {
+      "id": "1890_010",
+      "file": "faces/1890s/1890_010.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 18322
+    },
+    {
+      "id": "1890_011",
+      "file": "faces/1890s/1890_011.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 32332
+    },
+    {
+      "id": "1890_012",
+      "file": "faces/1890s/1890_012.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 25972
+    },
+    {
+      "id": "1890_013",
+      "file": "faces/1890s/1890_013.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 23360
+    },
+    {
+      "id": "1890_014",
+      "file": "faces/1890s/1890_014.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 15008
+    },
+    {
+      "id": "1890_015",
+      "file": "faces/1890s/1890_015.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 30228
+    },
+    {
+      "id": "1890_016",
+      "file": "faces/1890s/1890_016.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 26708
+    },
+    {
+      "id": "1890_017",
+      "file": "faces/1890s/1890_017.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 15958
+    },
+    {
+      "id": "1890_018",
+      "file": "faces/1890s/1890_018.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 17206
+    },
+    {
+      "id": "1890_019",
+      "file": "faces/1890s/1890_019.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 17944
+    },
+    {
+      "id": "1890_020",
+      "file": "faces/1890s/1890_020.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 42658
+    },
+    {
+      "id": "1890_021",
+      "file": "faces/1890s/1890_021.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 13900
+    },
+    {
+      "id": "1890_022",
+      "file": "faces/1890s/1890_022.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 23382
+    },
+    {
+      "id": "1890_023",
+      "file": "faces/1890s/1890_023.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 16508
+    },
+    {
+      "id": "1890_024",
+      "file": "faces/1890s/1890_024.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 25118
+    },
+    {
+      "id": "1890_025",
+      "file": "faces/1890s/1890_025.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 30570
+    },
+    {
+      "id": "1890_026",
+      "file": "faces/1890s/1890_026.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 34066
+    },
+    {
+      "id": "1890_027",
+      "file": "faces/1890s/1890_027.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 29760
+    },
+    {
+      "id": "1890_028",
+      "file": "faces/1890s/1890_028.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 21110
+    },
+    {
+      "id": "1890_029",
+      "file": "faces/1890s/1890_029.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 29798
+    },
+    {
+      "id": "1890_030",
+      "file": "faces/1890s/1890_030.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 27424
+    },
+    {
+      "id": "1890_031",
+      "file": "faces/1890s/1890_031.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 27586
+    },
+    {
+      "id": "1890_032",
+      "file": "faces/1890s/1890_032.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 28700
+    },
+    {
+      "id": "1890_033",
+      "file": "faces/1890s/1890_033.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 20932
+    },
+    {
+      "id": "1890_034",
+      "file": "faces/1890s/1890_034.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 16972
+    },
+    {
+      "id": "1890_035",
+      "file": "faces/1890s/1890_035.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 20492
+    },
+    {
+      "id": "1890_036",
+      "file": "faces/1890s/1890_036.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 27942
+    },
+    {
+      "id": "1890_037",
+      "file": "faces/1890s/1890_037.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 23606
+    },
+    {
+      "id": "1890_038",
+      "file": "faces/1890s/1890_038.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 29992
+    },
+    {
+      "id": "1890_039",
+      "file": "faces/1890s/1890_039.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 20968
+    },
+    {
+      "id": "1890_040",
+      "file": "faces/1890s/1890_040.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 20084
+    },
+    {
+      "id": "1890_041",
+      "file": "faces/1890s/1890_041.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 30272
+    },
+    {
+      "id": "1890_042",
+      "file": "faces/1890s/1890_042.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 21556
+    },
+    {
+      "id": "1890_043",
+      "file": "faces/1890s/1890_043.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 13668
+    },
+    {
+      "id": "1890_044",
+      "file": "faces/1890s/1890_044.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 27780
+    },
+    {
+      "id": "1890_045",
+      "file": "faces/1890s/1890_045.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 19156
+    },
+    {
+      "id": "1890_046",
+      "file": "faces/1890s/1890_046.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 29126
+    },
+    {
+      "id": "1890_047",
+      "file": "faces/1890s/1890_047.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 24142
+    },
+    {
+      "id": "1890_048",
+      "file": "faces/1890s/1890_048.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 13066
+    },
+    {
+      "id": "1890_049",
+      "file": "faces/1890s/1890_049.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 26298
+    },
+    {
+      "id": "1890_050",
+      "file": "faces/1890s/1890_050.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 20798
+    },
+    {
+      "id": "1890_051",
+      "file": "faces/1890s/1890_051.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 27638
+    },
+    {
+      "id": "1890_052",
+      "file": "faces/1890s/1890_052.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 32954
+    },
+    {
+      "id": "1890_053",
+      "file": "faces/1890s/1890_053.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 16208
+    },
+    {
+      "id": "1890_054",
+      "file": "faces/1890s/1890_054.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 36266
+    },
+    {
+      "id": "1890_055",
+      "file": "faces/1890s/1890_055.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 31240
+    },
+    {
+      "id": "1890_056",
+      "file": "faces/1890s/1890_056.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 26874
+    },
+    {
+      "id": "1890_057",
+      "file": "faces/1890s/1890_057.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 16714
+    },
+    {
+      "id": "1890_058",
+      "file": "faces/1890s/1890_058.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 11758
+    },
+    {
+      "id": "1890_059",
+      "file": "faces/1890s/1890_059.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 12890
+    },
+    {
+      "id": "1890_060",
+      "file": "faces/1890s/1890_060.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 11760
+    },
+    {
+      "id": "1890_061",
+      "file": "faces/1890s/1890_061.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 35306
+    },
+    {
+      "id": "1890_062",
+      "file": "faces/1890s/1890_062.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 19076
+    },
+    {
+      "id": "1890_063",
+      "file": "faces/1890s/1890_063.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 16096
+    },
+    {
+      "id": "1890_064",
+      "file": "faces/1890s/1890_064.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 30470
+    },
+    {
+      "id": "1890_065",
+      "file": "faces/1890s/1890_065.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 21690
+    },
+    {
+      "id": "1890_066",
+      "file": "faces/1890s/1890_066.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 19228
+    },
+    {
+      "id": "1890_067",
+      "file": "faces/1890s/1890_067.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 29784
+    },
+    {
+      "id": "1890_068",
+      "file": "faces/1890s/1890_068.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 28842
+    },
+    {
+      "id": "1890_069",
+      "file": "faces/1890s/1890_069.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 17502
+    },
+    {
+      "id": "1890_070",
+      "file": "faces/1890s/1890_070.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 33914
+    },
+    {
+      "id": "1890_071",
+      "file": "faces/1890s/1890_071.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 27364
+    },
+    {
+      "id": "1890_072",
+      "file": "faces/1890s/1890_072.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 16484
+    },
+    {
+      "id": "1890_073",
+      "file": "faces/1890s/1890_073.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 30642
+    },
+    {
+      "id": "1890_074",
+      "file": "faces/1890s/1890_074.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 15118
+    },
+    {
+      "id": "1890_075",
+      "file": "faces/1890s/1890_075.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 19202
+    },
+    {
+      "id": "1890_076",
+      "file": "faces/1890s/1890_076.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 8496
+    },
+    {
+      "id": "1890_077",
+      "file": "faces/1890s/1890_077.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 33920
+    },
+    {
+      "id": "1890_078",
+      "file": "faces/1890s/1890_078.webp",
+      "era": "1890s",
+      "width": 384,
+      "height": 576,
+      "format": "webp",
+      "transparent": true,
+      "bytes": 12530
+    }
+  ]
+}

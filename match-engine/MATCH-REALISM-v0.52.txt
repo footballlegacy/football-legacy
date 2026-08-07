@@ -1,0 +1,16 @@
+Football Legacy Match Realism v0.52
+
+Goal celebration choices
+
+After a Ribble End goal, press a number within roughly three seconds:
+
+1 — Run to the nearest corner flag and celebrate with the team.
+2 — Run to the touchline crowd and get mobbed by supporters and teammates.
+3 — Perform a backflip while teammates gather around.
+4 — Retrieve the ball from the net and carry it back to the centre spot.
+5 — Sprint away with both hands raised while teammates chase behind.
+
+If no number is pressed, celebration 1 is selected automatically.
+Opposition goals continue with an automatic corner celebration.
+
+The existing face, hair, player models, kits, gameplay, camera, controls, minimap and sound are unchanged apart from these goal-celebration behaviours and the celebration-choice overlay.

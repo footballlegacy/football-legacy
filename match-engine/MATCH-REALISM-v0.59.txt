@@ -1,0 +1,12 @@
+Football Legacy Match Realism v0.59
+
+Celebrations and kickoff update:
+- Crowd celebration extended substantially so the full run, jump and mob sequence plays out.
+- Every player model on the scoring team, including the goalkeeper, runs over, enters the stand and mobs the scorer.
+- Kickoff positioning corrected so every player begins in their own half; both kickoff players now remain on the correct side of halfway.
+- Celebration 6: run-up and knee slide.
+- Celebration 7: scorer lies down and teammates pile on in a team bundle.
+- Celebration 8: scorer acts like a fish while a teammate reels him in; the scorer rolls toward the teammate.
+- Celebration 9: two-player shoe-shine celebration.
+- Existing celebrations 1-5 retained.
+- Existing Football Intelligence AI overhaul and shooting fix retained.

@@ -1,0 +1,11 @@
+Football Legacy Match Realism v0.45
+
+Focused fixes:
+- Kickoffs now begin with a compulsory pass from the taker to a second player positioned beside the centre spot.
+- The shoot button cannot be used to start a kickoff; the game prompts the user to pass.
+- AI kickoffs also use the designated second player.
+- Goal celebrations now assign fixed corner targets and explicitly use the sprint gait.
+- The scorer runs to the corner rather than being moved there with a sliding-looking motion.
+- Teammates follow in a staggered group, then switch to the existing cheering animation on arrival.
+
+No other gameplay or graphics systems were intentionally changed.

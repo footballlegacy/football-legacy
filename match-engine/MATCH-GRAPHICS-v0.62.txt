@@ -1,0 +1,17 @@
+Football Legacy Match Graphics v0.62 — Player Body Refinement
+
+BODY-ONLY CHANGES
+- Replaced the rectangular torso and pelvis silhouette with shared low-poly rounded/tapered geometry.
+- Improved athletic proportions through the shoulders, waist, hips, thighs, calves, arms and forearms.
+- Rounded the shoulder, sleeve, elbow, knee, ankle and limb transitions while preserving the stylised art direction.
+- Reshaped the shirt and shorts so the kit follows the body rather than reading as flat stacked panels.
+- Rebuilt boots with a rounded upper, shaped toe, instep, heel, sole, tongue and laces.
+- Refined hands with a shaped palm and thumb while keeping mesh cost modest.
+- Improved running posture with restrained forward lean, torso/hip counter-rotation, natural opposite arm swing and more believable knee flex.
+- Added stance-foot compensation and ankle rotation so planted boots remain steadier against the pitch during locomotion.
+- Added a quieter, slightly asymmetric idle stance instead of rigid vertical posing.
+- Reused shared body geometries across all players to limit memory and geometry cost.
+
+UNCHANGED
+- Head, sculpted face geometry, facial materials, hair and neck code.
+- Gameplay, AI, ball physics, camera, stadium, pitch, crowd, lighting, sound, UI, controls, celebrations and set pieces.

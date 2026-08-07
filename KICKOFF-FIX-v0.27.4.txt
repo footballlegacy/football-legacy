@@ -1,0 +1,18 @@
+Football Legacy v0.27.4 — Actual post-goal restart fix
+
+Root cause repaired
+- The goal replay left the internal `celebrate` flag set to 1.
+- The main match loop therefore re-entered the celebration branch forever after the replay and never allowed the kick-off pass to continue.
+- The flag and scorer state are now cleared before the conceding team is placed at the centre spot.
+
+Quick Play / interactive single-player match
+- The replay ends.
+- The team that conceded is placed at the centre spot.
+- Its centre pass is executed immediately.
+- The normal match loop then continues.
+
+Career detailed match viewer
+- The viewer now finds the next kick-off by the team that conceded, searching the full remaining frame list rather than only a narrow window.
+- Playback resumes from that centre pass immediately after the goal sequence.
+
+No other gameplay, database, menu, creation, physics, ratings, officiating or Career systems were changed.

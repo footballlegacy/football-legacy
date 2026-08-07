@@ -1,0 +1,7 @@
+Football Legacy Match Realism v0.55
+
+Changes:
+- Fixed celebration 2 stand placement so the terrace stays behind the touchline instead of sliding onto the pitch.
+- Rebuilt the crowd-mob terrace so the front barrier sits at the edge and the rows step back into the stand.
+- Crowd surge now moves forward from the stand rows rather than standing on a pitch-side platform.
+- Celebration mob target moved slightly farther outside the pitch to match the new stand placement.

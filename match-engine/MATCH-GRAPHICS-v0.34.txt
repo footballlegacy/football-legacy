@@ -1,0 +1,10 @@
+Football Legacy Match Graphics v0.34
+
+Player-model refinement:
+- Heads changed from boxy blocks toward a six-sided polygon/prism shape
+- Facial block features kept but softened into the new head silhouette
+- Hands enlarged so they read at match distance
+- Boots enlarged and given clearer toe/sole definition
+- Running animation slowed and toned down so legs no longer blur/whirl
+
+Gameplay and set-piece systems otherwise unchanged.

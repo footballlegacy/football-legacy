@@ -1,0 +1,10 @@
+Football Legacy Match Graphics v0.33
+
+Tweaks on top of the first 2.5D replacement:
+- More polygonal head shape with forehead, jaw and cheek planes
+- Added simple brow / nose / mouth facial geometry
+- Adjusted hair blocks and profile silhouette
+- Slimmer, longer arms and legs with looser spacing
+- Kept existing joint names and animation hooks intact
+
+This is a refinement pass on the player model only.

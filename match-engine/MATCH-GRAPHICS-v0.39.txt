@@ -1,0 +1,10 @@
+Football Legacy Match Graphics v0.39
+
+Face rebuild, based directly on the latest v0.38 build:
+- Removed every separate 3D brow, eye, cheek, nose and mouth block from the face
+- Replaced the head with one softened, bevelled 2.5D head mesh
+- Added one flush face layer containing the eyes, brows, nose shading, nostrils and a clearly drawn mouth
+- Kept hair as a shallow cap rather than large blocks around the face
+- No gameplay or set-piece changes
+
+The aim of this pass is specifically to stop facial parts sticking out of the head while making the mouth and eyes readable.

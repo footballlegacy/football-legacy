@@ -1,0 +1,82 @@
+FOOTBALL LEGACY v0.27.5.1 — GAMEPLAY & HISTORY INTEGRITY
+
+SCOPE
+This pass changes only the items requested after v0.27.4: Quick Play/Career officiating, modern Quick Play counterpart profiles, historical promotion/relegation placement, historical player mobility and career records, player-honours presentation, Quick Play team-management handoff, and the inbox family-link routing fault. The working v0.27.4 post-goal kick-off functions are deliberately unchanged.
+
+PROMOTION / RELEGATION HISTORY
+- Historical fast-forward tables and recorded league movements are now authoritative.
+- The old historical-start snapshot override is disabled; it can no longer force a club back to a database tier after the simulation has placed it elsewhere.
+- On load/start, the selected club's current tier is reconciled from the latest archived tier plus the exact recorded movement row.
+- A third-place First Division finish with no recorded movement remains First Division and is not counted as either promotion or relegation.
+- The 1957–58 regional reorganisation has a separate safeguard rather than being treated as ordinary promotion/relegation.
+
+HISTORICAL PLAYER MOBILITY
+- Movement rates vary by era rather than using one modern transfer rate throughout football history.
+- Strong club control and locality matter most before 1963; movement rises after the 1963 reforms, rises again after the late 1970s, and is substantially freer in the post-Bosman period.
+- Age, contract status, appearances, squad role, loyalty, ambition, ability/tier fit, positional need, geography, tenure and previous club count influence moves.
+- Transfers close the old club spell, open a new club spell, add a transfer-history row and preserve the full club history when the player retires.
+- Unattached players continue ageing and cannot reappear decades later as active signings.
+
+QUICK PLAY PLAYER PROFILES
+- 92 fictional Football Legacy clubs across four current English professional divisions.
+- 2,116 fictional players, 23 per club.
+- Every player has one unique counterpart identity for position, age, role, overall and attribute distribution; no counterpart is duplicated within two fictional players.
+- Fictional display names, faces, club names, badges and kits remain unchanged.
+- 2,068 profiles use player-level FC 26 records. 48 lower-league/youth profiles use individual current-squad-derived profiles where a complete public rating record was unavailable.
+- The core rating snapshot is dated 19 September 2025, with targeted 2026/27 roster corrections dated 6 August 2026. This is a fixed calibration dataset, not a live transfer feed.
+
+QUICK PLAY TEAM MANAGEMENT
+- Formation, starting XI and seven-player bench.
+- Existing engine-supported instructions exposed: mentality, width, support runs, pressing, tempo, defensive line and passing directness.
+- The selected lineup, bench, tactics, kit and squad are all passed to the existing Quick Play match engine.
+
+DIVING / SHIRT PULLING / OFFICIATING
+- Contexts represented: baseless, reasonable, reasonable+, reasonable++, reasonable+++.
+- Marginal reasonable+ contact produces a defender foul exactly 10% of the time.
+- Inside that called-foul branch, defender dissent produces a yellow exactly 20% of the time.
+- Three consecutive shirt pulls are recorded as a distinct persistent-pulling incident.
+- A called three-pull incident carries the requested 30% yellow-card chance.
+- Interactive action states include pull, stumble, dive, appeal and recovery.
+- Rare forceful referee-card gesture included.
+- Referee perception, reputation, match temperature and era tolerance affect decisions.
+
+POST-CARD CONFRONTATION
+- During the five-second prompt after a yellow or red card, press F to trigger a confrontation.
+- Three visible outcomes: small push and breakup; mass gathering; full brawl.
+- Full brawls can very rarely bring supporters onto the pitch before stewards intervene.
+- The carded player remains an anchor participant after a red card rather than disappearing before the confrontation begins.
+- The same three-level incident logic is represented in Career detailed-match records.
+
+VAR
+- VAR is unavailable before 2020 and active from 2020 onward.
+- Silent checks, earpiece behaviour, replay-angle count, obstruction/evidence quality, monitor review, final decision and inconclusive evidence are represented.
+- Inconclusive evidence can leave the original decision in place.
+
+PERSISTENT REPUTATION
+- Diver, hard-man, dissent, supporter-hostility and targeting values persist.
+- Feuds and reputations influence later suspicion, confrontation likelihood, targeting and atmosphere.
+
+PLAYER HONOURS
+- The player page now uses the same cabinet hierarchy as the club trophy page: HONOUR / WON / WINNING SEASONS.
+- Team trophies and individual awards are separated.
+- Repeated wins are grouped by competition with a total count and all recorded winning seasons.
+
+INBOX ROUTING
+- Family buttons now require whole family-related words. A footballer's surname such as Jackson no longer matches the letters “son” and therefore no longer produces an OPEN FAMILY button in a match report.
+
+VALIDATION COMPLETED
+- All project JavaScript files passed node --check.
+- All 14 inline JavaScript blocks passed syntax checking.
+- Quick Play: 92 teams, 2,116 players, 23 per team, zero missing profiles, zero duplicate player IDs, zero duplicate counterpart IDs, fictional display names only.
+- 1888–1970 generated history: 59 stable adjacent-season structures checked, zero movement contradictions and zero current-placement errors.
+- The screenshot-type corruption test (third in tier 1, no movement, incorrectly stored in tier 2) repaired tier 2 back to tier 1.
+- 1,661 historical career players checked by 1970: 555 multi-club careers, 95 with three or more clubs, maximum four clubs and zero long unattached gaps.
+- Separate 20-season mobility tests produced era-sensitive averages: 1.32 club spells from 1890, 2.08 from 1950, 3.41 from 1980 and 4.39 from 2005.
+- VAR timeline test: 80 matches in 1919 produced zero VAR; all 80 matches in 2026 had VAR enabled.
+- Static assertions verified every requested probability, control, presentation state, reputation field and management handoff.
+- The v0.27.4 completeGoalSequenceToPlay, finishGoalReplay, skipGoalReplayToPlay and kickoff function bodies are byte-for-byte unchanged.
+
+NOT CLAIMED
+- No hands-on Safari or Chrome test was performed on the user's physical Mac.
+- The existing online Three.js fallback remains; this pass did not replace it with a local library.
+- The fixed Quick Play rating dataset does not automatically follow transfers made after 6 August 2026.

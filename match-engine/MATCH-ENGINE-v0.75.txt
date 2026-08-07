@@ -1,0 +1,9 @@
+Football Legacy Match Engine v0.75 — Goal Replay
+
+Celebration/cutscene-only addition:
+- Continuously records the last 6.5 seconds of ball and all 22 player positions during live play.
+- After a goal, plays the recorded build-up and finish back over approximately five seconds.
+- Uses three cinematic camera phases: scorer tracking, side orbit, and goal-line finish view.
+- Existing celebration begins only after the replay finishes.
+- SPACEBAR skips the replay and returns directly to kickoff, matching the existing cutscene skip behaviour.
+- No gameplay, AI, physics, controls, player models, stadium, pitch, crowd, lighting, sound, set pieces or difficulty changes.

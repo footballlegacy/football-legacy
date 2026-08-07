@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Begin Grassroots to Glory | Football Legacy</title>
+  <style>
+    :root{--navy:#06182c;--deep:#03101f;--orange:#e87824;--orange2:#f19342;--cream:#f4ead8;--muted:#aab7c5;--line:rgba(232,120,36,.28);--green:#89b85f}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;color:var(--cream)}body{background:radial-gradient(circle at 50% 0%,rgba(68,107,48,.34),transparent 38%),linear-gradient(145deg,var(--navy),var(--deep) 78%);display:grid;place-items:center;padding:24px}.page{width:min(1040px,100%)}
+    .brand{display:flex;justify-content:center;align-items:center;gap:12px;margin-bottom:22px}.mark{width:48px;height:48px;display:grid;place-items:center;background:var(--orange);color:var(--deep);font:700 18px Georgia,serif}.brand strong{font:700 19px Georgia,serif;text-transform:uppercase;letter-spacing:.09em}.brand span{display:block;color:var(--muted);font-size:10px;letter-spacing:.17em;text-transform:uppercase;margin-top:4px}
+    .panel{border:1px solid var(--line);background:rgba(8,31,54,.94);box-shadow:0 25px 70px rgba(0,0,0,.34);overflow:hidden}.heading{padding:30px;text-align:center;border-bottom:1px solid rgba(255,255,255,.08);border-top:5px solid var(--green)}.tag{color:var(--green);font-size:11px;text-transform:uppercase;letter-spacing:.18em}.heading h1{margin:9px 0 8px;font:700 clamp(2.2rem,6vw,4.4rem) Georgia,serif;text-transform:uppercase}.heading p{margin:0;color:var(--muted)}
+    .profiles{display:grid;grid-template-columns:1fr 1fr}.profile{padding:30px;text-align:center}.profile:first-child{border-right:1px solid rgba(255,255,255,.08)}.portrait{width:150px;height:188px;object-fit:contain;object-position:center top;border:2px solid var(--line);background:#a99d89;margin-bottom:14px}.crest{width:150px;height:168px;margin:0 auto 14px;display:grid;place-items:center;border:5px solid rgba(244,234,216,.85);border-radius:50% 50% 45% 45%;background:linear-gradient(135deg,var(--club-a),var(--club-b));font:700 32px Georgia,serif;color:#fff;text-shadow:0 3px 7px #000;box-shadow:inset 0 0 0 5px rgba(0,0,0,.22)}.profile h2{margin:0;font:700 27px Georgia,serif}.profile p{margin:7px 0 0;color:var(--orange);font-size:12px;text-transform:uppercase;letter-spacing:.11em}.facts{margin:18px auto 0;max-width:370px;text-align:left;border-top:1px solid rgba(255,255,255,.09)}.fact{display:flex;justify-content:space-between;gap:15px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}.fact span:first-child{color:var(--muted);text-transform:uppercase;font-size:10px;letter-spacing:.08em}.fact span:last-child{text-align:right;font-weight:700}
+    .actions{padding:24px 30px 30px;border-top:1px solid rgba(255,255,255,.08);display:grid;grid-template-columns:1fr 2fr;gap:12px}.actions a,.actions button,.enter{display:block;width:100%;text-align:center;padding:16px 18px;text-decoration:none;text-transform:uppercase;letter-spacing:.12em;font-weight:900;cursor:pointer}.back{border:1px solid rgba(255,255,255,.16);color:var(--cream);background:transparent}.start,.enter{border:0;background:var(--orange);color:var(--deep)}.start:hover,.enter:hover{background:var(--orange2)}
+    .loading{display:none;padding:34px 30px;text-align:center;border-top:1px solid rgba(255,255,255,.08)}.loading.active{display:block}.loading h2{margin:0;font:700 29px Georgia,serif}.bar{height:10px;background:rgba(255,255,255,.08);margin:20px auto;max-width:660px;overflow:hidden}.fill{height:100%;width:0;background:var(--green);transition:width .2s}.status{color:var(--muted);min-height:22px}.year-readout{font:700 38px Georgia,serif;color:var(--orange);margin-top:12px}.history-card{display:none;text-align:left;max-width:760px;margin:24px auto 0;padding:22px;border:1px solid var(--line);background:rgba(255,255,255,.035)}.history-card.active{display:block}.history-card h3{font:700 27px Georgia,serif;margin:0 0 12px}.history-card ul{margin:0 0 20px;padding-left:20px;color:var(--muted);line-height:1.55}.history-card li+li{margin-top:7px}.history-card .enter{margin-top:18px}.error{color:#ffb38a;margin-top:14px}
+    @media(max-width:700px){.profiles{grid-template-columns:1fr}.profile:first-child{border-right:0;border-bottom:1px solid rgba(255,255,255,.08)}.actions{grid-template-columns:1fr}.heading,.profile{padding:22px}}
+  </style>
+</head>
+<body>
+<main class="page">
+  <div class="brand"><span class="mark">FL</span><span><strong>Football Legacy</strong><span>Grassroots to Glory</span></span></div>
+  <section class="panel">
+    <header class="heading"><div class="tag">Tier 15 · Created Club · Modern Career</div><h1>Start at the Bottom</h1><p>The existing football world will be generated through 2026 before your new club enters its local community league.</p></header>
+    <div class="profiles" id="profiles">
+      <section class="profile"><img class="portrait" id="managerImage" alt="Selected manager"><h2 id="managerName">Manager</h2><p id="managerSubtitle">Volunteer manager</p><div class="facts"><div class="fact"><span>Football wage</span><span>£0</span></div><div class="fact"><span>Day job</span><span id="managerJob">—</span></div><div class="fact"><span>Role</span><span>Manager / organiser</span></div></div></section>
+      <section class="profile" id="clubProfile"><div class="crest" id="clubCrest">FL</div><h2 id="clubName">Created Club</h2><p id="clubLocation">Local football</p><div class="facts"><div class="fact"><span>League</span><span id="leagueName">Community League</span></div><div class="fact"><span>Starting tier</span><span>15</span></div><div class="fact"><span>Board</span><span>One unpaid volunteer</span></div><div class="fact"><span>Squad</span><span id="squadCount">Part-time</span></div></div></section>
+    </div>
+    <div class="actions" id="actions"><a class="back" href="grassroots-setup.html">← Back to Club</a><button class="start" id="startButton" type="button">Build the Football World →</button></div>
+    <div class="loading" id="loading"><h2 id="loadingTitle">Generating Football History</h2><div class="year-readout" id="yearReadout">1888</div><div class="bar"><div class="fill" id="fill"></div></div><div class="status" id="status">Preparing the world in 1888…</div><div class="history-card" id="historyCard"><h3 id="historyHeadline">The club is ready</h3><ul id="historyLines"></ul><div class="status" id="performanceLine"></div><button class="enter" id="enterGame" type="button">Enter the Club →</button></div><div class="error" id="error"></div></div>
+  </section>
+</main>
+<script>
+  const manager = JSON.parse(sessionStorage.getItem('footballLegacyManager') || 'null');
+  const createdClubId = sessionStorage.getItem('footballLegacyGrassrootsClubId');
+  const region = sessionStorage.getItem('footballLegacyGrassrootsRegion') || 'home-counties';
+  const readRows = key => { try { const rows = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(rows) ? rows : []; } catch { return []; } };
+  const createdClubs = readRows('footballLegacyCreatedClubsV1');
+  const createdPlayers = readRows('footballLegacyCreatedPlayersV1');
+  const createdStadiums = readRows('footballLegacyCreatedStadiumsV1');
+  const createdClub = createdClubs.find(row => row.id === createdClubId) || null;
+  const stadium = createdStadiums.find(row => row.id === createdClub?.stadiumId) || null;
+  if (!manager) location.href = 'manager.html';
+  if (!createdClub) location.href = 'grassroots-setup.html';
+  const $ = id => document.getElementById(id);
+  let readyGame = null;
+  const regionNames = {'north-west':'Lancashire & Cheshire','north-east':'North East',yorkshire:'Yorkshire','east-midlands':'East Midlands','west-midlands':'West Midlands',east:'Eastern Counties',london:'London','south-east':'Kent & Sussex','home-counties':'Home Counties','south-central':'Southern Counties','south-west':'Western Counties','wales-border':'Border Counties'};
+  if (manager && createdClub) {
+    $('managerImage').src = manager.portrait;
+    $('managerName').textContent = `${manager.firstName} ${manager.lastName}`;
+    $('managerSubtitle').textContent = `Age ${manager.age} · Volunteer manager`;
+    $('managerJob').textContent = manager.occupation || 'Day job';
+    $('clubProfile').style.setProperty('--club-a', createdClub.colours?.primary || '#7b1d2a');
+    $('clubProfile').style.setProperty('--club-b', createdClub.colours?.secondary || '#eeeade');
+    $('clubCrest').textContent = createdClub.abbreviation || createdClub.name?.slice(0,3) || 'FC';
+    $('clubName').textContent = createdClub.name;
+    $('clubLocation').textContent = [createdClub.location?.city, createdClub.location?.county].filter(Boolean).join(', ') || 'England';
+    $('leagueName').textContent = `${regionNames[region] || 'Home Counties'} Community League`;
+    $('squadCount').textContent = `${createdClub.squad?.playerIds?.length || 0} created · filled to 20 locally`;
+  }
+  const sources = [
+    'js/club-database.js?v=0.28.0','js/data.js?v=0.28.0','js/timeline-data.js?v=0.28.0','js/living-world-data.js?v=0.28.0','js/pyramid-data.js?v=0.28.0-grassroots',
+    'js/football-balance.js?v=0.28.0','js/club-history-data.js?v=0.28.0','js/world-football-data.js?v=0.28.0','js/economy.js?v=0.28.0','js/manager-contracts.js?v=0.28.0-grassroots',
+    'js/people.js?v=0.28.0','js/portrait-catalog.js?v=0.28.0','js/identity.js?v=0.28.0','js/voices.js?v=0.28.0','js/conversations.js?v=0.28.0','js/personal-life.js?v=0.28.0',
+    'js/club-trajectory.js?v=0.28.0','js/pyramid.js?v=0.28.0','js/world-football.js?v=0.28.0','js/timeline.js?v=0.28.0','js/living-world.js?v=0.28.0','js/legacy-systems.js?v=0.28.0',
+    'js/dressing-room.js?v=0.28.0','js/transfer-market.js?v=0.28.0','js/english-cup.js?v=0.28.0','js/career-systems.js?v=0.28.0','js/manager-legacy-career.js?v=0.28.0',
+    'js/match-environment.js?v=0.28.0','js/save.js?v=0.28.0','js/history-integrity.js?v=0.28.0','js/historical-player-mobility.js?v=0.28.0','js/game.js?v=0.28.1-grassroots-lives','js/grassroots-career.js?v=0.28.1-phase-2'
+  ];
+  function loadScripts(list) { return new Promise((resolve, reject) => { const next = () => { const src = list.shift(); if (!src) { resolve(); return; } const script = document.createElement('script'); script.src = src; script.onload = next; script.onerror = () => reject(new Error(`Could not load ${src}`)); document.body.appendChild(script); }; next(); }); }
+  function showProgress(info) { const percent = Number(info.percent) || 0; $('fill').style.width = `${percent}%`; $('yearReadout').textContent = info.year || 1888; $('status').textContent = `Simulating the ${info.year}/${String(Number(info.year) + 1).slice(-2)} football world · ${percent}% complete`; }
+  async function enter() { if (!readyGame) return; await FLSave.save(readyGame); location.href = 'game.html'; }
+  $('enterGame').addEventListener('click', enter);
+  $('startButton').addEventListener('click', async () => {
+    $('actions').style.display = 'none'; $('profiles').style.display = 'none'; $('loading').classList.add('active'); $('fill').style.width = '1%'; $('status').textContent = 'Starting the shared football-history simulation in 1888…';
+    try {
+      await loadScripts([...sources]);
+      readyGame = await FLGrassroots.createCareer(manager, createdClub, createdPlayers, stadium, showProgress, region);
+      $('fill').style.width = '100%'; $('yearReadout').textContent = '2026'; $('loadingTitle').textContent = 'Grassroots Career Ready'; $('historyHeadline').textContent = `${createdClub.name} enter at tier 15`;
+      $('historyLines').innerHTML = [
+        `${regionNames[region] || 'Home Counties'} Community League is the first step.`,
+        'The wider football world, all leagues, players, histories and records remain available.',
+        'The board is one unpaid volunteer and the manager keeps a day job.',
+        'The squad is part-time, matchday availability can change, and recruitment begins through local contacts.',
+        `Opening club balance: £${readyGame.finances.balance}. Transfer budget: £0.`
+      ].map(line => `<li>${line}</li>`).join('');
+      $('performanceLine').textContent = `Shared history generated in ${Math.max(0, Number(readyGame.meta.fastForwardMs) || 0).toLocaleString('en-GB')} ms. The created club has now replaced its reserved tier-15 slot.`;
+      $('historyCard').classList.add('active'); $('status').textContent = 'You take charge on 15 August 2026.';
+    } catch (error) {
+      console.error(error); $('error').textContent = error.message || 'The grassroots career could not be created.'; $('status').textContent = 'Generation did not complete.';
+    }
+  });
+</script>
+<script src="../controller-ui.js"></script>
+</body>
+</html>

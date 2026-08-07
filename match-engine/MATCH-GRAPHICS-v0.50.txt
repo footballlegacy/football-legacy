@@ -1,0 +1,8 @@
+Football Legacy Match Graphics v0.50
+
+Shoulder connection pass:
+- Replaced the rigid horizontal shoulder bar with a rounded upper-shirt yoke.
+- Added curved shoulder and armpit blending geometry so the torso flows into the arms.
+- Moved the arms inward so they sit under the shoulders rather than hanging from the outside edge.
+- Added overlapping shoulder and sleeve crowns to prevent visible gaps during arm movement.
+- Preserved the SculptGL face shape, current hair, gameplay, camera, kits, controls and match systems.

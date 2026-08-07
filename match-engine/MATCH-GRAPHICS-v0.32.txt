@@ -1,0 +1,11 @@
+Football Legacy Match Graphics v0.32
+
+This build replaces the old clay-style player model in match.html with a flatter 2.5D low-poly human model.
+
+Changed:
+- Removed sphere head / eyeball / nose / clay facial construction from playerMesh()
+- Replaced with box-based head, jaw, torso, limbs and hair blocks
+- Kept existing animation hooks so jogging, sprinting, shooting and tackling still use the same motion system
+- Retained kits, numbers, crests and sponsor textures
+
+This is a first replacement pass, not a claim of finished graphics.

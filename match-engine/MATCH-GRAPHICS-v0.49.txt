@@ -1,0 +1,8 @@
+Football Legacy Match Graphics v0.49
+
+Hair integration pass:
+- Kept the locked SculptGL face shape unchanged.
+- Reworked the hair so it wraps into the skull more naturally instead of looking glued on top.
+- Lowered the hairline and added side, temple and nape pieces so styles connect into the head.
+- Refined all eight styles: buzz cut, side part, quiff, messy crop, swept-back medium, curly top, afro, and curtains.
+- No gameplay or face-shape changes.

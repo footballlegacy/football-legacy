@@ -1,0 +1,7 @@
+Football Legacy Match Engine v0.76
+
+Goal replay order correction:
+- Goal sequence is now: goal, celebration, five-second goal replay, kickoff.
+- The existing celebration choreography and replay footage are unchanged.
+- SPACEBAR during either the celebration or replay skips the remaining goal sequence and returns directly to play.
+- No gameplay, AI, physics, controls, models, stadium, pitch, crowd, lighting, sound, UI, set-piece or difficulty code was changed.

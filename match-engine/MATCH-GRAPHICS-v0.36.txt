@@ -1,0 +1,9 @@
+Football Legacy Match Graphics v0.36
+
+Small face-readability patch:
+- Added visible eye slits to the player faces
+- Strengthened the mouth so it reads from the camera
+- Kept the softer 2.5D head shape from v0.35
+- Slightly increased face overlay visibility
+
+No gameplay changes.

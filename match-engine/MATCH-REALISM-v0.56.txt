@@ -1,0 +1,6 @@
+Football Legacy Match Realism v0.56
+
+Changes:
+- Celebration 2 (crowd mob): scorer now jumps into the middle of the supporters instead of stopping at the front edge of the stand.
+- Celebration 3 (backflip): scorer now runs for a short distance first, then performs the backflip.
+- Celebration 3 timing extended slightly so the run-up and flip both have time to play out.

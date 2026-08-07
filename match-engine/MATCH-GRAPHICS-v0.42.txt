@@ -1,0 +1,11 @@
+Football Legacy Match Graphics v0.42
+
+Soft organic head/shoulder pass:
+- Removed the chunky protruding face slabs from the previous pass.
+- Rebuilt the head around a smoother oval lathed skull with more segments and softer shaping.
+- Kept features subtle: gentle brow ridge, softer nose bridge/tip, inset eyeballs, understated lips.
+- Replaced the flat face-front look with a curved face layer that follows the head shape.
+- Softened the neck-to-shoulder connection and rounded the shoulder bar.
+- Kept smooth shading across head, neck, shoulders and hair.
+
+Only head/face/shoulder geometry and shading were changed.

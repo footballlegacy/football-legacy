@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Football Legacy integrated main menu">
+  <title>Football Legacy</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="masthead">
+      <div class="established">EST. 1888</div>
+      <div class="title-panel">
+        <h1>Football Legacy</h1>
+      </div>
+      <p class="tagline">History begins with you</p>
+    </header>
+
+    <div class="menu-flash" id="menuFlash" hidden aria-live="polite"></div>
+
+    <section class="menu-stack" aria-label="Football Legacy main menu">
+      <article class="menu-section" data-section="new-career">
+        <button class="menu-heading" type="button" aria-expanded="false" aria-controls="panel-new-career">
+          <span>New Career</span>
+          <span class="heading-arrow" aria-hidden="true">⌄</span>
+        </button>
+        <div class="menu-panel" id="panel-new-career" hidden>
+          <p>Start a new Football Legacy career using the existing career setup flow.</p>
+          <a class="action-button primary" href="career-mode/manager.html">Begin Your Legacy</a>
+        </div>
+      </article>
+
+      <article class="menu-section" data-section="load-career">
+        <button class="menu-heading" type="button" aria-expanded="false" aria-controls="panel-load-career">
+          <span>Load Career</span>
+          <span class="heading-arrow" aria-hidden="true">⌄</span>
+        </button>
+        <div class="menu-panel" id="panel-load-career" hidden>
+          <p class="panel-intro">Your current Career Mode save is read directly from the main Football Legacy game.</p>
+          <div class="save-grid" id="saveGrid" aria-live="polite"></div>
+        </div>
+      </article>
+
+      <article class="menu-section" data-section="quick-play">
+        <button class="menu-heading" type="button" aria-expanded="false" aria-controls="panel-quick-play">
+          <span>Quick Play</span>
+          <span class="heading-arrow" aria-hidden="true">⌄</span>
+        </button>
+        <div class="menu-panel" id="panel-quick-play" hidden>
+          <p>Choose one player against the AI, or play local two-player with one controller on each team.</p>
+          <div class="button-grid two-up">
+            <a class="action-button" href="quick-play/index.html?mode=single-player">Single Player</a>
+            <a class="action-button" href="quick-play/index.html?mode=co-op">Co-op</a>
+            <a class="action-button" href="match-engine/match.html?year=2026&amp;difficulty=medium&amp;weather=clear&amp;camera=broadcast&amp;controllerTest=1">PS5 Controller Test</a>
+          </div>
+          <p class="fine-print">PS5 Controller Test skips setup: the first detected controller is Home and the second is Away. Pair both in macOS, press a button on each, then open the test.</p>
+        </div>
+      </article>
+
+      <article class="menu-section" data-section="create">
+        <button class="menu-heading" type="button" aria-expanded="false" aria-controls="panel-create">
+          <span>Create</span>
+          <span class="heading-arrow" aria-hidden="true">⌄</span>
+        </button>
+        <div class="menu-panel" id="panel-create" hidden>
+          <p>Open the permanent creation tools. Players, stadiums and clubs share the same browser database and stable IDs.</p>
+          <div class="button-grid three-up">
+            <a class="action-button" href="create-player/index.html">Create Player</a>
+            <a class="action-button" href="create-stadium/index.html">Create Stadium</a>
+            <a class="action-button" href="create-club/index.html">Create Club</a>
+          </div>
+          <p class="fine-print">Created clubs will later be available in both Quick Play and New Career. Created players and stadiums will be reusable across the same shared database.</p>
+        </div>
+      </article>
+
+      <article class="menu-section" data-section="my-creations">
+        <button class="menu-heading" type="button" aria-expanded="false" aria-controls="panel-my-creations">
+          <span>My Creations</span>
+          <span class="heading-arrow" aria-hidden="true">⌄</span>
+        </button>
+        <div class="menu-panel" id="panel-my-creations" hidden>
+          <p>View everything you have made across the three creation tools. All records use the same permanent browser storage and stable IDs.</p>
+          <div class="creation-counts" aria-label="Created content totals">
+            <span><strong id="createdPlayerCount">0</strong> Players</span>
+            <span><strong id="createdStadiumCount">0</strong> Stadiums</span>
+            <span><strong id="createdClubCount">0</strong> Clubs</span>
+          </div>
+          <div class="button-grid three-up">
+            <a class="action-button" href="my-creations/index.html#players">View Players</a>
+            <a class="action-button" href="my-creations/index.html#stadiums">View Stadiums</a>
+            <a class="action-button" href="my-creations/index.html#clubs">View Clubs</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="menu-section" data-section="settings">
+        <button class="menu-heading" type="button" aria-expanded="false" aria-controls="panel-settings">
+          <span>Settings</span>
+          <span class="heading-arrow" aria-hidden="true">⌄</span>
+        </button>
+        <div class="menu-panel" id="panel-settings" hidden>
+          <p>Set Career save behaviour and the default controls used by Quick Play matches.</p>
+          <a class="action-button" id="settingsLink" href="settings.html">Open Settings</a>
+        </div>
+      </article>
+    </section>
+
+    <footer class="page-footer">
+      <span>Integrated Football Legacy</span>
+      <span>Main Menu · Career Mode · Create Suite · Quick Play</span>
+    </footer>
+  </main>
+
+  <script src="career-mode/js/save.js"></script>
+  <script src="app.js"></script>
+  <script src="controller-ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+Football Legacy Match Realism v0.27
+
+Focused changes to match rules and dead-ball presentation:
+- Fouls now identify the offender and victim in referee decisions.
+- Foul severity distinguishes ordinary, tactical, reckless and dangerous challenges.
+- Yellow cards are no longer automatically converted into a red on the next ordinary foul.
+- Second-yellow dismissals and straight red cards are handled separately.
+- Red cards remove the player from active play.
+- Referee decision cut-scenes pause live play and the match clock.
+- Penalty decisions receive a dedicated referee presentation.
+- Set-piece delays now vary realistically by restart type.
+- Corners, penalties and free kicks take longer to organise than throw-ins.
+- Card/foul cut-scenes must finish before the restart can be taken.
+- Existing match engine, graphics, controls and instant-result files are preserved.
+
+Source build: football-legacy-classic-fifa-visual-pass(1).zip

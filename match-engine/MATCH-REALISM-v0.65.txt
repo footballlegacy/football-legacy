@@ -1,0 +1,10 @@
+Football Legacy Match Visual Overhaul v0.65
+
+Changes limited to the requested testing goal control and P world-mob sequence:
+- G now triggers a guaranteed shot and goal from the currently controlled player's live position, regardless of distance or possession.
+- Guaranteed-goal key can be enabled or disabled from Pause > Match testing and is enabled by default.
+- The opening of the P celebration now uses three dramatic moving camera passes around the scorer as the first people arrive, followed by a crane pull-out as the mob grows.
+- The Earth scene now has a higher-detail globe, moving cloud layer, stronger atmosphere, denser stars and a slower cinematic orbit.
+- The world pile is physically aligned to the globe surface and grows outward and upward from one visible point instead of appearing as a detached vertical stack.
+
+No other gameplay, AI, controls, normal celebrations, player models, stadium, pitch, lighting, sound, UI systems or set-piece mechanics were changed.

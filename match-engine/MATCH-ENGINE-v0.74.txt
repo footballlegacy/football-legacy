@@ -1,0 +1,11 @@
+Football Legacy Match Engine v0.74
+
+Celebration/cutscene-only polish:
+- Celebration cameras are clamped to a safe pitch-side corridor so stands cannot block or swallow the shot.
+- Celebration endings are action-aware: finish the choreography, hold briefly, then return to kickoff with no long static aftermath.
+- Shoe-shine pair and surrounding teammates are grouped into a tighter huddle.
+- Team bundle players converge into a much tighter layered pile.
+- Backflip duration is slowed for a clearer full rotation, followed by only a brief reaction hold.
+- SPACEBAR skips any normal goal celebration or the P world-mob cutscene and returns directly to kickoff.
+
+No non-celebration gameplay or visual system was changed.

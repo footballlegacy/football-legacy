@@ -1,0 +1,9 @@
+Football Legacy Match Graphics v0.38
+
+Face cleanup pass:
+- Removed the blocky protruding face pieces as much as possible by flattening brows, eyes and mouth into face-mounted planes
+- Reduced nose depth so it no longer sticks out like a block
+- Strengthened facial decal details, especially eyes, nostrils and mouth
+- Increased face overlay prominence so the mouth should actually read now
+
+No gameplay changes.

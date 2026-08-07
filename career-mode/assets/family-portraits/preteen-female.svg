@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d7d0c1"/><stop offset="1" stop-color="#9b9385"/></linearGradient><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .08"/></feComponentTransfer></filter></defs>
+<rect width="256" height="256" fill="url(#bg)"/>
+<ellipse cx="128" cy="84" rx="41" ry="47" fill="#c9a68e"/><path d="M68 77 Q127 28 188 77 Q179 34 128 33 Q78 35 68 77Z" fill="#332d2a" opacity=".88"/>
+<ellipse cx="114" cy="82" rx="3.4" ry="2.7" fill="#2c2927"/><ellipse cx="142" cy="82" rx="3.4" ry="2.7" fill="#2c2927"/>
+<path d="M126 86 Q122 98 129 100" stroke="#8c6a59" stroke-width="2" fill="none"/>
+<path d="M113 110 Q128 117 143 110" stroke="#805a54" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+<path d="M62 256 Q70 168 128 154 Q186 168 194 256Z" fill="#6c4a58"/>
+<path d="M95 162 Q128 185 161 162" fill="#eee6d8" opacity=".9"/>
+<rect width="256" height="256" filter="url(#grain)" opacity=".45"/>
+</svg>

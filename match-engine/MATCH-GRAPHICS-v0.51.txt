@@ -1,0 +1,8 @@
+Football Legacy Match Graphics v0.51
+
+Shoulder + shoes refinement:
+- Refined shoulder and upper-arm connection to look less bulky and more integrated.
+- Pulled the arms slightly closer into the torso.
+- Softened the shoulder masses and sleeve transitions.
+- Added clearer footwear so players now visibly have shoes/boots: upper, toe, heel, sole, tongue and laces.
+- Face shape and hair left unchanged.

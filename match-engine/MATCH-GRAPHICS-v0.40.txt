@@ -1,0 +1,9 @@
+Football Legacy Match Graphics v0.40
+
+Head/face geometry pass only:
+- Rebuilt the neck/head join so the head sits lower and more naturally on a thicker neck.
+- Refined the low-poly head silhouette with a rounder cranium and softer tapered jaw.
+- Added subtle integrated face form (small brow ridge, subtle nose form, softened chin) without chunky protruding blocks.
+- Restored visible eyes, brows and mouth using flush face layers that sit on the front of the improved head.
+- Kept hair as a separate shaped cap following the skull.
+- No gameplay, body, camera, kit, or set-piece changes.

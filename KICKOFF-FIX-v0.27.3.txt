@@ -1,0 +1,12 @@
+Football Legacy v0.27.3 — Post-Replay Kick-off Repair
+
+Quick Play / interactive match engine
+- When a goal replay ends, the conceding team is placed at the centre spot and takes the first pass immediately.
+- The automatic action applies only to a post-goal restart. Opening and second-half kick-offs retain their existing behaviour.
+- A frame-by-frame retry remains active until the ball has genuinely left the kick-off taker's foot, preventing a failed first attempt from freezing play.
+
+Career Mode detailed match viewer
+- When the goal replay/celebration closes, the viewer advances directly to the recorded kick-off frame for the conceding side before normal playback resumes.
+- Half-time and full-time still take priority when a goal occurs at the boundary of a half.
+
+No other gameplay, data, menu, creation, match-physics, officiating or Career systems were changed.

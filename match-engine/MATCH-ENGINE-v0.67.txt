@@ -1,0 +1,23 @@
+Football Legacy Match Engine v0.67
+Player Bodies and Goal-Kick Presentation
+
+PLAYER BODY VISUAL PASS
+- Five performance-safe footballer archetypes: average athletic, powerful, lean, short/stocky and tall/slender.
+- More athletic silhouettes with sloped shoulders, shaped torsos, narrower waists, fuller hips and tapered limbs.
+- Low-poly kit shaping for sleeves, shirt hem, shorts legs, sock cuffs and boot transitions.
+- More recognisable hands and football boots using shared geometry.
+- Separate skin, fabric, shorts, sock and boot materials with restrained roughness variation.
+- Running and idle posture refined with acceleration lean, turn lean, hip rotation, elbow bend, stride variation and deceleration response.
+- Improved local foot planting to reduce visible floating and sliding.
+- The imported sculpted head/face construction is unchanged.
+
+BALL AND GOAL KICKS
+- Ball is slightly smaller visually while its gameplay collision radius remains unchanged.
+- Goal kicks use a legal goal-area position and wait for opponents to leave the penalty area.
+- Goal-kick and kickoff cameras remain at the normal wide broadcast view.
+- AI goalkeepers kick long most of the time, with tactical and era variation.
+- On user goal kicks: A plays short; S drives a long kick upfield.
+- Added a stronger goalkeeper goal-kick body action.
+
+PRESERVED
+- Gameplay AI outside goal-kick behaviour, ball physics, controls, set pieces, stadium, pitch, crowd, lighting, sound, UI, celebrations and hidden testing keys remain as in v0.66.

@@ -1,0 +1,9 @@
+Football Legacy Match Graphics v0.46
+
+SculptGL head import proof:
+- Uses the exact low-poly PLY head uploaded by the user.
+- Cleaned the SculptGL export's trailing padding and preserved the source PLY in assets/.
+- Embedded the mesh as an offline Three.js BufferGeometry: 642 vertices / 1,280 triangles.
+- Replaced the procedural skull and its added brow/nose pieces with the supplied sculpt.
+- Retained the existing eyes, mouth, hair, body, animation and gameplay systems.
+- Smooth vertex normals are calculated once and the geometry is shared by all players.

@@ -1,0 +1,11 @@
+Football Legacy Match Engine v0.71
+
+Presentation-only changes from v0.70:
+- Removed the permanent keyboard/controller instruction strip from live gameplay.
+- Added a full Buttons section to the pause menu with keyboard and Xbox/PlayStation mappings.
+- Pause menu now shows whether a controller is connected.
+- Slowed the cinematic celebration camera timeline so shots hold longer and cuts feel less rushed.
+- Added guaranteed minimum celebration lengths for all nine normal celebrations.
+- Crowd celebration now receives up to 18 seconds; the fish/reel, bundle, knee slide and other multi-player routines receive enough time to complete before kickoff.
+
+No gameplay, AI, ball physics, set pieces, controls, models, stadium, pitch, crowd, lighting, sound, hidden buttons, or celebration choreography was changed.

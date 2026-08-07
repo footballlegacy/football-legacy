@@ -1,0 +1,9 @@
+Football Legacy Match Engine v0.72
+
+Visual stadium cleanup only:
+- Replaced the green canvas fallback that flashed before the walkout with the dark stadium background colour.
+- Removed the artificial thin parallel bands from the pitch texture while retaining the broad mowing pattern and grass detail.
+- Increased crowd density across all stadium sizes using tighter spacing and higher attendance fill.
+- Increased the number of instanced full-body spectators and strengthened distant crowd visibility.
+
+No gameplay, AI, controls, ball physics, set pieces, cameras, celebrations, player models, lighting, sound or UI behaviour was changed.

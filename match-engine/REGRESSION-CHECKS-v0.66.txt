@@ -1,0 +1,31 @@
+Football Legacy v0.66 — Regression Check Record
+
+PASSED STATIC CHECKS
+- Main inline match JavaScript syntax
+- set-piece-system.js syntax
+- instant-result.js syntax
+- sculpt-head.js syntax
+- ZIP integrity
+- All non-match files compared against v0.65
+- Locked head/face code block compared against v0.65
+
+PRESERVED SYSTEM MARKERS
+- P world-mob celebration
+- G guaranteed-goal testing key and toggle
+- Celebrations 1–9
+- Normal shooting and low-driven shooting
+- Substitutions
+- Instant result
+- Kickoff own-half positioning
+- Fouls, cards, free kicks, penalties, corners, throws and goal kicks
+- Auto-switch and camera controls
+
+NEW DEBUG HOOKS
+- FLMatch.getMatchConfig()
+- FLMatch.getRestartState()
+- FLMatch.takeRestart(mode, power)
+- FLMatch.debugRestart(kind, team, fast)
+- FLMatch.debugAerial(team, type)
+
+NOTE
+The JavaScript and package were validated without modifying external dependencies. Final visual and gameplay feel should be judged in the normal browser build.

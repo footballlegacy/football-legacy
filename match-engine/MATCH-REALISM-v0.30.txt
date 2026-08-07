@@ -1,0 +1,9 @@
+Football Legacy Match Realism v0.30
+
+Dedicated set-piece integration:
+- Final-third user free kicks switch to the behind-the-player aiming system.
+- Penalties use the same dedicated aiming and power system.
+- When defending a penalty, the pointer selects where the goalkeeper dives.
+- Penalty-area geometry and penalty spot use regulation dimensions.
+- Final-third free-kick positions use the exact foul coordinates.
+- Best shooter takes final-third free kicks and penalties.

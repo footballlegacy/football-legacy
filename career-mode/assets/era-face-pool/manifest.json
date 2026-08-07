@@ -1,0 +1,34 @@
+{
+  "version": "0.22.6",
+  "fictionalCompositePool": true,
+  "eras": [
+    "victorian",
+    "edwardian",
+    "ww1",
+    "twenties",
+    "thirties",
+    "ww2",
+    "postwar",
+    "sixties",
+    "seventies",
+    "eighties",
+    "nineties",
+    "noughties",
+    "modern",
+    "future"
+  ],
+  "counts": {
+    "male": 24,
+    "female": 8
+  },
+  "stages": [
+    "young",
+    "prime",
+    "senior"
+  ],
+  "roles": [
+    "player",
+    "manager"
+  ],
+  "note": "Every output is a blended and geometrically altered composite. No source photograph is copied unchanged."
+}

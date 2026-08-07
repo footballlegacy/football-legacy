@@ -1,0 +1,6 @@
+Football Legacy Match Realism v0.58
+
+Shooting regression fix:
+- Fixed the user shooting function crashing when a shot was released.
+- The v0.57 AI overhaul accidentally referenced an undefined variable (`p`) inside user shooting; it now correctly clears the controlled player's AI intent through `src`.
+- Restored normal held-power shots, tap shots, and double-tap low-driven shots without removing the v0.57 AI changes.

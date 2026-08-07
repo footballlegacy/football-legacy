@@ -1,0 +1,30 @@
+FOOTBALL LEGACY INTEGRATION — PASS 1
+
+Connected in this pass:
+- New main menu is the root entry point.
+- New Career opens the existing Career Mode setup.
+- Load Career reads the real Career Mode IndexedDB save.
+- Career return-to-menu actions go back to the new main menu.
+- Settings can open the existing Career settings screen.
+- Quick Play uses a separate 2026/27 unlicensed database.
+- Quick Play clubs retain Football Legacy names, colours and kits.
+- Quick Play has deterministic fictional player identities/faces and separate modern ability records.
+- Team Management is inserted after team selection.
+- Quick Play hands the chosen lineups, formations, abilities and kits to the existing match engine.
+- Match-engine scoreboards, pause screen and full-time result use the selected fictional club names.
+- Career Mode remains on its existing simulation match system.
+- The existing match engine's local two-player behaviour remains Player 1 home / Player 2 away.
+
+Validation completed:
+- All 48 JavaScript files passed syntax checking.
+- All 14 inline JavaScript blocks passed syntax checking.
+- Quick Play contains 92 unique clubs across four divisions: 20 / 24 / 24 / 24.
+- Every built-in Quick Play club has a 23-player squad and no duplicate club ID.
+- Career Mode differs from the supplied build only where navigation/settings entry had to be connected.
+
+Still required before calling the integration final:
+- Hands-on Safari and Chrome regression testing on the user's machine.
+- Fine-grained player-by-player modern ability calibration. This pass establishes the separate modern database and club-quality bands; it is not yet a fully researched anonymous profile for every current real-world player.
+
+Graphics dependency:
+- The supplied match-engine package did not contain vendor/three.min.js. It retains its existing CDN fallback and INSTALL-OFFLINE-GRAPHICS.command helper.

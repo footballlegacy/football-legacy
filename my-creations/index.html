@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Creations | Football Legacy</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    .library-shell{width:min(1180px,calc(100% - 34px));margin:0 auto;padding:28px 0 40px;position:relative;z-index:1}
+    .library-top{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:22px}
+    .brand{display:flex;align-items:center;gap:13px;color:var(--cream);text-decoration:none}.brand-mark{width:48px;height:48px;display:grid;place-items:center;background:var(--orange);color:var(--navy-deep);font:700 18px Georgia,serif}.brand strong{display:block;font:700 19px Georgia,serif;text-transform:uppercase;letter-spacing:.07em}.brand small{display:block;margin-top:4px;color:var(--muted);font-size:10px;letter-spacing:.18em;text-transform:uppercase}
+    .library-hero{border-left:5px solid var(--orange);padding:2px 0 2px 17px;margin-bottom:20px}.library-hero h1{color:var(--cream);font-size:clamp(2.1rem,5vw,4rem);line-height:1;margin:0}.library-hero p{margin:8px 0 0;color:var(--muted);line-height:1.55}
+    .library-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);background:rgba(255,255,255,.025);margin-bottom:18px}.library-tab{border:0;border-right:1px solid var(--line);padding:16px;color:var(--muted);background:transparent;text-transform:uppercase;font-weight:800;font-size:.76rem;letter-spacing:.14em;cursor:pointer}.library-tab:last-child{border-right:0}.library-tab.active{background:var(--orange);color:var(--navy-deep)}
+    .library-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:14px}.library-count{color:var(--muted);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase}.library-count strong{color:var(--orange)}
+    .creation-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.creation-card{position:relative;min-height:230px;border:1px solid rgba(255,255,255,.11);padding:18px;background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(0,0,0,.12));box-shadow:0 12px 30px rgba(0,0,0,.18);overflow:hidden}.creation-card:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:var(--card-accent,var(--orange))}.creation-type{color:var(--orange);font-size:.64rem;letter-spacing:.2em;text-transform:uppercase}.creation-card h2{margin:14px 0 7px;color:var(--cream);font:700 1.3rem Georgia,serif}.creation-sub{min-height:38px;color:var(--muted);font-size:.79rem;line-height:1.52}.creation-meta{display:grid;gap:7px;margin:15px 0}.creation-row{display:flex;justify-content:space-between;gap:14px;padding-top:7px;border-top:1px solid rgba(255,255,255,.07);color:var(--muted);font-size:.72rem}.creation-row strong{color:var(--cream);text-align:right}.creation-id{margin-top:14px;color:rgba(170,183,197,.68);font-size:.62rem;overflow-wrap:anywhere}.creation-actions{display:flex;gap:8px;margin-top:15px}.creation-actions .action-button{flex:1;min-height:40px;padding:10px;font-size:.68rem}.empty-library{grid-column:1/-1;border:1px dashed rgba(255,255,255,.16);padding:50px 24px;text-align:center;color:var(--muted);background:rgba(255,255,255,.02)}
+    .swatches{display:flex;gap:6px;margin-top:12px}.swatch{width:28px;height:28px;border:2px solid rgba(255,255,255,.28);border-radius:50%}
+    @media(max-width:900px){.creation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.library-top{align-items:flex-start;flex-direction:column}.library-tabs,.creation-grid{grid-template-columns:1fr}.library-tab{border-right:0;border-bottom:1px solid var(--line)}.library-tab:last-child{border-bottom:0}.library-toolbar{align-items:stretch;flex-direction:column}}
+  </style>
+</head>
+<body>
+  <main class="library-shell">
+    <header class="library-top">
+      <a class="brand" href="../index.html"><span class="brand-mark">FL</span><span><strong>Football Legacy</strong><small>My Creations</small></span></a>
+      <a class="action-button" href="../index.html">Main Menu</a>
+    </header>
+    <section class="library-hero"><h1>My Creations</h1><p>Every permanent player, stadium and club saved through the standalone creation suite.</p></section>
+    <nav class="library-tabs" aria-label="Creation type">
+      <button class="library-tab active" data-tab="players" type="button">Players <span id="playerTabCount">0</span></button>
+      <button class="library-tab" data-tab="stadiums" type="button">Stadiums <span id="stadiumTabCount">0</span></button>
+      <button class="library-tab" data-tab="clubs" type="button">Clubs <span id="clubTabCount">0</span></button>
+    </nav>
+    <div class="library-toolbar"><div class="library-count" id="libraryCount"></div><a class="action-button primary" id="createNewLink" href="../create-player/index.html">Create New Player</a></div>
+    <section class="creation-grid" id="creationGrid" aria-live="polite"></section>
+  </main>
+  <script src="app.js"></script>
+  <script src="../controller-ui.js"></script>
+</body>
+</html>

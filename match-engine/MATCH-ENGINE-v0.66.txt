@@ -1,0 +1,55 @@
+Football Legacy Match Engine v0.66 — Aerial Football & Set-Piece Overhaul
+
+PRIMARY FOCUS
+- Rebuilt set-piece presentation inside the main 3D match scene.
+- Increased the number of genuine corners, crosses, aerial contests and headers.
+- Preserved the v0.65 hidden P world-mob celebration and G guaranteed-goal key.
+- Preserved every non-match file byte-for-byte from v0.65.
+
+SET PIECES
+- Retired the visually inconsistent separate set-piece canvas during normal play.
+- Corners, free kicks, penalties, goal kicks and throw-ins now use the same 3D pitch, players, lighting, camera and visual style as open play.
+- Added an in-world dashed delivery trajectory and landing/goal target marker.
+- Arrow keys adjust set-piece aim. A passes/crosses; S shoots where appropriate.
+- Added stable contextual set-piece cameras without replacing the normal camera system.
+- Added realistic dead-ball organisation time and preserved existing restart delays.
+- Improved AI corner targeting, prioritising heading, jumping, role and position.
+- Direct free kicks and penalties now use 3D flight trajectories from the existing ball.
+
+AERIAL FOOTBALL
+- Added predicted landing zones for high balls.
+- Attackers and defenders make contextual runs to the landing area.
+- Added contested aerial-duel scoring using heading, jumping, strength, awareness, balance, positioning and pressure.
+- Headers can become shots, clearances or passes.
+- A and S allow the controlled player to contest reachable high balls.
+- Added mild landing-zone assistance only when the user is not giving movement input.
+- Added heading and aerial-challenge body animation while preserving the locked head geometry.
+- Header shots remain live for goalkeeper saves and deflections.
+
+MORE CORNERS
+- Goalkeeper parries can now travel behind the goal line.
+- Defensive blocks can create authentic deflections, including corners.
+- Crosses and set-piece deliveries no longer lock the ball directly to a receiver.
+
+PHYSICAL PLAY
+- Added shoulder-to-shoulder contests influenced by strength, balance, speed and approach angle.
+- Physical challenges can create genuinely loose balls instead of automatic possession transfer.
+- Added body blocks and deflections for shots, crosses and aerial deliveries.
+- First touches now respond more clearly to technique, balance, pressure, ball speed and pitch conditions.
+
+ATTRIBUTES AND TEAM IDENTITY
+- Added heading, jumping, balance, agility, technique and aggression to player behaviour.
+- Pace and acceleration affect movement; agility affects turning; technique affects control and execution.
+- Existing team mentality, width, support, pressing, tempo, line height and directness now influence more aerial and progression decisions.
+
+ERA-SPECIFIC FOOTBALL
+- 1888–1924: heavier/slower ball, rougher surface, more direct play, more crosses and headers, stronger physicality.
+- 1925–1964: structured but physical play, high aerial importance and developing tactical shape.
+- 1965–1994: increasingly organised pressing, improved ball response and tactical variety.
+- 1995–modern: quicker surface, more compact shape, technical control and lower forced-cross frequency.
+- Era settings affect drag, ground grip, bounce, roughness, loft, physicality, keeper handling, crossing and heading tendencies.
+
+PRESERVATION
+- SculptGL head and face block remains byte-for-byte unchanged.
+- instant-result.js, set-piece-system.js, sculpt-head.js and every other non-match file remain byte-for-byte unchanged from v0.65.
+- Existing gameplay, UI, stadium, pitch, crowd, lighting, sound, celebrations, substitutions, P sequence and G key remain present.

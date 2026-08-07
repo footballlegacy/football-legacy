@@ -1,0 +1,96 @@
+FOOTBALL LEGACY v0.28.0 — GRASSROOTS TO GLORY, PHASE 1 FOUNDATION
+===================================================================
+
+Scope
+-----
+This phase adds the agreed Grassroots to Glory route inside the existing Career Mode. It does not replace the existing Career Mode and does not alter Quick Play or the interactive match engine.
+
+Career setup
+------------
+After creating the manager, Career Mode now presents three routes:
+
+1. Take Charge — the existing club-selection career.
+2. Create a Club — the existing creator route, reserved for later any-era league insertion work.
+3. Grassroots to Glory — create/select a user-created club and enter the modern pyramid at tier 15.
+
+Grassroots world integration
+----------------------------
+- The existing English pyramid now reaches tier 15 in the 2026 structure.
+- Tiers 11–15 contain 12 regional branches at each level.
+- A created club replaces a reserved tier-15 slot in the region inferred from its city/county.
+- The reserved internal club ID is retained so fixtures, tables, promotion, relegation and permanent history remain connected to the existing world.
+- The rest of the Career world remains the same shared simulation: all existing leagues, clubs, players, records, histories, jobs and competitions remain accessible.
+- Promotion from tier 15 to tier 14 and the corresponding relegation path use the existing movement/history system.
+
+Starting club circumstances
+---------------------------
+- £650 opening balance.
+- £0 transfer budget and £0 formal wage budget.
+- Basic facilities and a small community ground.
+- One unpaid volunteer who acts as chairman, secretary and treasurer.
+- The manager is an unpaid volunteer and retains a generated day job based on the manager profile.
+- Twenty-player local squad. Existing created players and faces are preserved; missing places are filled with generated local players.
+
+Part-time player foundation
+---------------------------
+Every player at the created grassroots club receives:
+- reliability;
+- commitment;
+- life stage;
+- day job;
+- work flexibility;
+- transport reliability;
+- social risk;
+- hidden-talent value;
+- match expenses;
+- training-attendance tendency.
+
+Before a controlled fixture, the squad's match availability is resolved. Players can miss the match because of work, a hangover, transport, family commitments, university or other plans. The system guarantees an emergency minimum of eleven so the current match flow remains usable. Missing players are shown through the existing inbox and team selection.
+
+Grassroots recruitment
+----------------------
+While the club remains below tier 6:
+- the normal formal transfer interface is replaced for the controlled club;
+- formal fees/contracts are blocked for the controlled club;
+- local leads arrive monthly through Facebook, the pub, five-a-side, teammates, referees and word of mouth;
+- reports contain unreliable ability ranges;
+- players register as amateurs for no fee or wage, with only match/travel expenses.
+
+Professional transfers elsewhere in the shared football world remain part of the existing simulation.
+
+Money and work
+--------------
+- Home-match income uses tiny gates, player subs and occasional local contributions.
+- Costs include pitch hire, referee fees, travel and player expenses.
+- A post-match inbox message records each local match settlement.
+- The manager has a Day Job panel and occasional work/football clash diary events.
+
+Protected scope
+---------------
+- The existing Take Charge career route remains non-grassroots.
+- Existing historical starts remain available.
+- Existing top-tier Career behaviour is not converted to part-time football.
+- Quick Play, creation-tool design, match-engine gameplay and the working post-goal kick-off repair are not changed by this phase.
+
+Validation completed
+--------------------
+- All project JavaScript files passed node syntax validation.
+- All 17 inline HTML script blocks passed syntax validation.
+- 2026 pyramid snapshot: 15 tiers, 12 tier-15 divisions, 12 reserved regional entry slots.
+- A direct 2026 snapshot hydrated 1,476 club records, with the created-club slot correctly placed in its regional tier-15 division.
+- Synthetic movement test confirmed tier-15 champion promotion to tier 14 and matching tier-14 relegation.
+- Normal 1888 Career test remained non-grassroots, retained a normal paid manager contract and did not receive grassroots state.
+- Grassroots module test confirmed created-club identity preservation, 20-player part-time squad generation, one-person unpaid board, volunteer manager, day job, local recruitment, blocked formal transfers and matchday availability.
+
+Not yet in this phase
+---------------------
+- Permanent life events such as leaving for university, moving away, quitting football, returning later or losing interest.
+- Interactive manager work decisions and consequences beyond the first diary/clash layer.
+- Facility/ground-grading requirements and rejected promotions.
+- The gradual transition from pub team to semi-professional and professional club as the team climbs.
+- Full long-career balance tuning across all 15 tiers.
+- The separate Create a Club route's any-era league-insertion screen.
+
+Browser note
+------------
+The build environment could not complete a reliable rendered Chromium run and cannot test Safari on the user's physical Mac. The full 1888-to-2026 generation harness also exceeds the available automated Node test window in both the previous baseline and this build. Those are not claimed as completed browser tests.

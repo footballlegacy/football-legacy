@@ -1,0 +1,443 @@
+{
+  "pack": "Football Legacy 1900s Heads \u2014 Game Edition",
+  "era": "1900s",
+  "count": 72,
+  "format": "WebP",
+  "dimensions": "384x576",
+  "transparent": true,
+  "files": [
+    {
+      "id": "1900_001",
+      "file": "faces/1900s/1900_001.webp",
+      "source": "antique_english_footballer_portrait.png",
+      "bytes": 17646
+    },
+    {
+      "id": "1900_002",
+      "file": "faces/1900s/1900_002.webp",
+      "source": "antique_portrait_of_a_young_man.png",
+      "bytes": 12098
+    },
+    {
+      "id": "1900_003",
+      "file": "faces/1900s/1900_003.webp",
+      "source": "auburn_bearded_man_portrait.png",
+      "bytes": 22466
+    },
+    {
+      "id": "1900_004",
+      "file": "faces/1900s/1900_004.webp",
+      "source": "buzz_cut_portrait_on_white.png",
+      "bytes": 18592
+    },
+    {
+      "id": "1900_005",
+      "file": "faces/1900s/1900_005.webp",
+      "source": "classic_moustache_portrait.png",
+      "bytes": 18852
+    },
+    {
+      "id": "1900_006",
+      "file": "faces/1900s/1900_006.webp",
+      "source": "classic_studio_headshot.png",
+      "bytes": 18190
+    },
+    {
+      "id": "1900_007",
+      "file": "faces/1900s/1900_007.webp",
+      "source": "close_up_portrait_of_a_fair_haired_man.png",
+      "bytes": 12478
+    },
+    {
+      "id": "1900_008",
+      "file": "faces/1900s/1900_008.webp",
+      "source": "curly_haired_man_with_mutton_chops.png",
+      "bytes": 29232
+    },
+    {
+      "id": "1900_009",
+      "file": "faces/1900s/1900_009.webp",
+      "source": "early_1900s_english_footballer_portrait.png",
+      "bytes": 11830
+    },
+    {
+      "id": "1900_010",
+      "file": "faces/1900s/1900_010.webp",
+      "source": "early_1900s_man_s_portrait_head.png",
+      "bytes": 23548
+    },
+    {
+      "id": "1900_011",
+      "file": "faces/1900s/1900_011.webp",
+      "source": "early_1900s_portrait_a_serious_young_man.png",
+      "bytes": 17726
+    },
+    {
+      "id": "1900_012",
+      "file": "faces/1900s/1900_012.webp",
+      "source": "early_1900s_portrait_blond_man_with_mustache.png",
+      "bytes": 14448
+    },
+    {
+      "id": "1900_013",
+      "file": "faces/1900s/1900_013.webp",
+      "source": "edwardian_british_footballer_portrait.png",
+      "bytes": 11654
+    },
+    {
+      "id": "1900_014",
+      "file": "faces/1900s/1900_014.webp",
+      "source": "edwardian_era_portrait_with_sandy_moustache.png",
+      "bytes": 14856
+    },
+    {
+      "id": "1900_015",
+      "file": "faces/1900s/1900_015.webp",
+      "source": "edwardian_era_serious_portrait.png",
+      "bytes": 14350
+    },
+    {
+      "id": "1900_016",
+      "file": "faces/1900s/1900_016.webp",
+      "source": "edwardian_flat_capped_footballer_portrait.png",
+      "bytes": 26500
+    },
+    {
+      "id": "1900_017",
+      "file": "faces/1900s/1900_017.webp",
+      "source": "edwardian_footballer_headshot.png",
+      "bytes": 17142
+    },
+    {
+      "id": "1900_018",
+      "file": "faces/1900s/1900_018.webp",
+      "source": "edwardian_footballer_headshot_with_goatee.png",
+      "bytes": 18126
+    },
+    {
+      "id": "1900_019",
+      "file": "faces/1900s/1900_019.webp",
+      "source": "edwardian_footballer_in_tweed_cap.png",
+      "bytes": 22690
+    },
+    {
+      "id": "1900_020",
+      "file": "faces/1900s/1900_020.webp",
+      "source": "edwardian_footballer_portrait.png",
+      "bytes": 17058
+    },
+    {
+      "id": "1900_021",
+      "file": "faces/1900s/1900_021.webp",
+      "source": "edwardian_footballer_portrait_cutout.png",
+      "bytes": 14086
+    },
+    {
+      "id": "1900_022",
+      "file": "faces/1900s/1900_022.webp",
+      "source": "edwardian_footballer_portrait_with_mutton_chops.png",
+      "bytes": 15536
+    },
+    {
+      "id": "1900_023",
+      "file": "faces/1900s/1900_023.webp",
+      "source": "edwardian_footballer_s_intense_gaze.png",
+      "bytes": 17486
+    },
+    {
+      "id": "1900_024",
+      "file": "faces/1900s/1900_024.webp",
+      "source": "edwardian_footballer_with_tweed_cap.png",
+      "bytes": 19702
+    },
+    {
+      "id": "1900_025",
+      "file": "faces/1900s/1900_025.webp",
+      "source": "edwardian_gentleman_in_tweed_cap.png",
+      "bytes": 13904
+    },
+    {
+      "id": "1900_026",
+      "file": "faces/1900s/1900_026.webp",
+      "source": "edwardian_gentleman_portrait.png",
+      "bytes": 13922
+    },
+    {
+      "id": "1900_027",
+      "file": "faces/1900s/1900_027.webp",
+      "source": "edwardian_ginger_footballer_portrait.png",
+      "bytes": 22524
+    },
+    {
+      "id": "1900_028",
+      "file": "faces/1900s/1900_028.webp",
+      "source": "edwardian_man_with_sandy_hair_and_moustache.png",
+      "bytes": 23152
+    },
+    {
+      "id": "1900_029",
+      "file": "faces/1900s/1900_029.webp",
+      "source": "edwardian_red_haired_footballer_portrait.png",
+      "bytes": 17466
+    },
+    {
+      "id": "1900_030",
+      "file": "faces/1900s/1900_030.webp",
+      "source": "edwardian_rugged_portrait_asset.png",
+      "bytes": 14218
+    },
+    {
+      "id": "1900_031",
+      "file": "faces/1900s/1900_031.webp",
+      "source": "ginger_bearded_studio_portrait.png",
+      "bytes": 26878
+    },
+    {
+      "id": "1900_032",
+      "file": "faces/1900s/1900_032.webp",
+      "source": "ginger_edwardian_footballer_portrait.png",
+      "bytes": 14392
+    },
+    {
+      "id": "1900_033",
+      "file": "faces/1900s/1900_033.webp",
+      "source": "ginger_haired_edwardian_footballer_headshot.png",
+      "bytes": 19332
+    },
+    {
+      "id": "1900_034",
+      "file": "faces/1900s/1900_034.webp",
+      "source": "gray_cap_portrait_of_a_young_man.png",
+      "bytes": 25040
+    },
+    {
+      "id": "1900_035",
+      "file": "faces/1900s/1900_035.webp",
+      "source": "historical_footballer_with_mutton_chops.png",
+      "bytes": 21624
+    },
+    {
+      "id": "1900_036",
+      "file": "faces/1900s/1900_036.webp",
+      "source": "light_brown_haired_man_with_goatee.png",
+      "bytes": 19814
+    },
+    {
+      "id": "1900_037",
+      "file": "faces/1900s/1900_037.webp",
+      "source": "man_with_curled_hair_and_moustache.png",
+      "bytes": 20838
+    },
+    {
+      "id": "1900_038",
+      "file": "faces/1900s/1900_038.webp",
+      "source": "man_with_dark_side_parted_hair.png",
+      "bytes": 21510
+    },
+    {
+      "id": "1900_039",
+      "file": "faces/1900s/1900_039.webp",
+      "source": "man_with_freckled_face_and_side_parted_hair.png",
+      "bytes": 21240
+    },
+    {
+      "id": "1900_040",
+      "file": "faces/1900s/1900_040.webp",
+      "source": "man_with_swept_back_hair_and_goatee.png",
+      "bytes": 24772
+    },
+    {
+      "id": "1900_041",
+      "file": "faces/1900s/1900_041.webp",
+      "source": "produce_a_concise_title_for_this_image.png",
+      "bytes": 24084
+    },
+    {
+      "id": "1900_042",
+      "file": "faces/1900s/1900_042.webp",
+      "source": "red_haired_freckled_portrait.png",
+      "bytes": 17438
+    },
+    {
+      "id": "1900_043",
+      "file": "faces/1900s/1900_043.webp",
+      "source": "respond_with_only_the_title.png",
+      "bytes": 15738
+    },
+    {
+      "id": "1900_044",
+      "file": "faces/1900s/1900_044.webp",
+      "source": "retro_moustache_portrait_in_a_newsboy_cap.png",
+      "bytes": 29864
+    },
+    {
+      "id": "1900_045",
+      "file": "faces/1900s/1900_045.webp",
+      "source": "rowan_freeman_in_a_tweed_flat_cap.png",
+      "bytes": 27670
+    },
+    {
+      "id": "1900_046",
+      "file": "faces/1900s/1900_046.webp",
+      "source": "rugged_edwardian_footballer_portrait.png",
+      "bytes": 13792
+    },
+    {
+      "id": "1900_047",
+      "file": "faces/1900s/1900_047.webp",
+      "source": "studio_portrait_of_a_young_blond_man.png",
+      "bytes": 22592
+    },
+    {
+      "id": "1900_048",
+      "file": "faces/1900s/1900_048.webp",
+      "source": "vintage_flat_cap_portrait.png",
+      "bytes": 17166
+    },
+    {
+      "id": "1900_049",
+      "file": "faces/1900s/1900_049.webp",
+      "source": "vintage_mustache_studio_portrait.png",
+      "bytes": 21912
+    },
+    {
+      "id": "1900_050",
+      "file": "faces/1900s/1900_050.webp",
+      "source": "vintage_portrait_with_drooping_moustache.png",
+      "bytes": 14718
+    },
+    {
+      "id": "1900_051",
+      "file": "faces/1900s/1900_051.webp",
+      "source": "we_need_answer_title_7_words_en_gb._need_succin.png",
+      "bytes": 29196
+    },
+    {
+      "id": "1900_052",
+      "file": "faces/1900s/1900_052.webp",
+      "source": "we_need_answer_title_in_en_gb_7_words_sentence.png",
+      "bytes": 14506
+    },
+    {
+      "id": "1900_053",
+      "file": "faces/1900s/1900_053.webp",
+      "source": "we_need_title_in_en_gb_7_words_sentence_case.png",
+      "bytes": 21490
+    },
+    {
+      "id": "1900_054",
+      "file": "faces/1900s/1900_054.webp",
+      "source": "we_need_title_in_en_gb_concise_7_words_capture.png",
+      "bytes": 18646
+    },
+    {
+      "id": "1900_055",
+      "file": "faces/1900s/1900_055.webp",
+      "source": "we_need_title_in_en_gb_succinct_7_words_senten.png",
+      "bytes": 21228
+    },
+    {
+      "id": "1900_056",
+      "file": "faces/1900s/1900_056.webp",
+      "source": "we_need_title_in_en_gb_succinct_7_words_sentenc.png",
+      "bytes": 20686
+    },
+    {
+      "id": "1900_057",
+      "file": "faces/1900s/1900_057.webp",
+      "source": "weathered_man_in_tweed_newsboy_cap.png",
+      "bytes": 16944
+    },
+    {
+      "id": "1900_058",
+      "file": "faces/1900s/1900_058.webp",
+      "source": "you_need_answer_with_title_only._need_in_en_gb._co.png",
+      "bytes": 11734
+    },
+    {
+      "id": "1900_059",
+      "file": "faces/1900s/1900_059.webp",
+      "source": "young_edwardian_footballer_portrait.png",
+      "bytes": 14244
+    },
+    {
+      "id": "1900_060",
+      "file": "faces/1900s/1900_060.webp",
+      "source": "young_man_s_neutral_blue_eyed_portrait.png",
+      "bytes": 14422
+    },
+    {
+      "id": "1900_061",
+      "file": "faces/1900s/1900_061.webp",
+      "source": "young_man_with_slicked_back_hair.png",
+      "bytes": 18528
+    },
+    {
+      "id": "1900_062",
+      "file": "faces/1900s/1900_062.webp",
+      "source": "young_man_with_wavy_hair_and_goatee.png",
+      "bytes": 18770
+    },
+    {
+      "id": "1900_063",
+      "file": "faces/1900s/1900_063.webp",
+      "source": "1900_001.png",
+      "bytes": 17826
+    },
+    {
+      "id": "1900_064",
+      "file": "faces/1900s/1900_064.webp",
+      "source": "1900_002.png",
+      "bytes": 15590
+    },
+    {
+      "id": "1900_065",
+      "file": "faces/1900s/1900_065.webp",
+      "source": "1900_003.png",
+      "bytes": 24080
+    },
+    {
+      "id": "1900_066",
+      "file": "faces/1900s/1900_066.webp",
+      "source": "1900_004.png",
+      "bytes": 18722
+    },
+    {
+      "id": "1900_067",
+      "file": "faces/1900s/1900_067.webp",
+      "source": "1900_005.png",
+      "bytes": 24644
+    },
+    {
+      "id": "1900_068",
+      "file": "faces/1900s/1900_068.webp",
+      "source": "1900_006.png",
+      "bytes": 17768
+    },
+    {
+      "id": "1900_069",
+      "file": "faces/1900s/1900_069.webp",
+      "source": "1900_007.png",
+      "bytes": 19082
+    },
+    {
+      "id": "1900_070",
+      "file": "faces/1900s/1900_070.webp",
+      "source": "1900_008.png",
+      "bytes": 20326
+    },
+    {
+      "id": "1900_071",
+      "file": "faces/1900s/1900_071.webp",
+      "source": "1900_009.png",
+      "bytes": 18766
+    },
+    {
+      "id": "1900_072",
+      "file": "faces/1900s/1900_072.webp",
+      "source": "1900_010.png",
+      "bytes": 19464
+    }
+  ],
+  "failed": []
+}

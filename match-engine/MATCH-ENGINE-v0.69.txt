@@ -1,0 +1,17 @@
+Football Legacy Match Engine v0.69
+Cinematic Celebrations + Avatar-Style Emotions
+
+Changes in this build:
+- Added multi-shot cinematic camera choreography to every normal celebration (1-9).
+- Added low tracking shots, moving orbit shots, direct scorer close-ups, teammate reaction close-ups, overhead shots and wide closing reveals.
+- Celebration 2 keeps dedicated run-up, jump and crowd-mob camera stages.
+- Celebration 6 receives a low ground-level knee-slide shot.
+- Celebration 7 receives scorer close-up, overhead pile and group reveal shots.
+- Celebration 8 receives separate fish, reeler and two-player shots.
+- Celebration 9 receives a low boot/shoe-shine shot plus close-ups of both participants.
+- Added lightweight Nintendo-avatar-inspired emotional expressions during goals and celebrations: joy, surprise, sadness, anger, silly, smug and dazed.
+- Expressions use only small eye, eyebrow and mouth components. The locked SculptGL head mesh and head proportions are not reshaped or replaced.
+
+Preserved:
+- v0.68 Xbox/DualSense controller support and all keyboard controls.
+- Gameplay, AI, ball physics, movement, bodies, stadium, pitch, crowd, lighting, sound, set pieces, normal celebration choreography and hidden P/G controls.

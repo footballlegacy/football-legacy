@@ -1,0 +1,8 @@
+Football Legacy Match Graphics v0.48
+
+Hair runtime fix:
+- Fixed the hair-style helper so every hairstyle part is created as a proper Three.js Mesh rather than raw Geometry.
+- Resolves the Safari runtime error: cap.scale.set is not a function.
+- Keeps all v0.47 hairstyle options.
+- SculptGL face/head shape remains untouched.
+- No gameplay, animation, camera, control, kit, sound, or minimap changes.

@@ -1,0 +1,28 @@
+Football Legacy Match Engine v0.77
+Local Two-Player Controller Support
+
+Activation
+- The browser polls navigator.getGamepads() every animation frame.
+- The first connected standard-mapped controller is Player 1 and controls the home team.
+- The second connected standard-mapped controller is Player 2 and controls the away team.
+- A second controller can be connected or disconnected during a match; no restart is required.
+- When fewer than two controllers are connected, local two-player mode is disabled and the original single-player-versus-AI behaviour remains active.
+- Keyboard controls remain available for Player 1 at all times.
+
+Shared-screen controls for both players
+- Left stick: analog movement, 0.15 dead zone
+- RT / R2: sprint
+- A / Cross: pass
+- B / Circle: shoot in possession / standing tackle while defending
+- X / Square: slide tackle
+- Y / Triangle: skill move
+- Right-stick flick: directional skill move
+- LB / L1: switch controlled player
+- Menu / Options: pause
+
+Implementation
+- One shared ball-following camera; no split screen.
+- Separate movement, button-edge, charge, double-tap, skill, sprint and switching state for each controller.
+- Player 2 uses the same movement acceleration, speed, stamina and action formulas as Player 1.
+- The existing AI continues to control every player except each team's currently selected human-controlled player.
+- Away-team restarts can be taken by Player 2 using the same buttons and left-stick aiming.

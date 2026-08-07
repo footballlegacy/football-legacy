@@ -1,0 +1,39 @@
+Football Legacy Match Realism v0.57 — Football Intelligence AI Overhaul
+
+This build keeps the working match engine and adds a new decision/positioning layer around it.
+
+Implemented:
+- Scan → plan → execute loop for AI ball carriers.
+- Pre-reception scanning: intended receivers prepare a likely next action before controlling the ball.
+- Separate decision quality from technical execution.
+- Contextual team phases: settle, probe, accelerate, recycle, protect, block, trap and press.
+- Match-state risk: scoreline, match minute, role, tactical mentality, fatigue and team phase affect choices.
+- Era profiles affect directness, dribbling, recycling, compactness, crossing and pressing coordination.
+- More varied off-ball movement: support, check short, stay wide, overlap, underlap, decoy, back-post and hold runs.
+- Improved team shape: lines shift together and defensive compactness changes with phase/tactics.
+- Stable press assignments instead of constantly changing chasers.
+- Pressing behaviour now delays, shows attackers outside, uses cover support and creates touchline traps.
+- Centre-backs are less likely to abandon the defensive line without cover.
+- Expanded pass evaluation: progression, receiver pressure, body shape, passing lane, switch potential, offside risk, distance, risk tolerance and recycling value.
+- Passing choices are selected naturally from several good options rather than always choosing a perfect maximum.
+- Safer backwards/recycling passes are used when pressure or match state requires them.
+- Contextual clearances from defenders in dangerous situations.
+- Shooting uses an expected-goal-style decision check including distance, angle, body shape, pressure, blockers and teammate chances.
+- AI passes rather than shoots when a teammate has a clearly better chance.
+- Crossing only happens when useful targets are in the box and the lane is viable.
+- Dribbling is reserved for players with space, control and a football reason to carry.
+- AI shot trajectories now vary between low, driven, rising and curled attempts.
+- First-touch success now accounts for incoming pace, body orientation, pressure, fatigue, control, weather and whether the player scanned beforehand.
+- Contextual heavy touches replace purely arbitrary errors.
+- Fatigue affects scanning, decisions, movement, pressing and execution context.
+
+Preserved unchanged:
+- SculptGL face/head mesh
+- Hair and player graphics
+- Celebrations and crowd-jump sequences
+- User controls
+- Camera modes
+- Kits and stadium
+- Set-piece system
+- Fouls/cards
+- Minimap and sound

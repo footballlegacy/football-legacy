@@ -1,0 +1,20 @@
+Football Legacy Integration Pass 3 — Officiating Realism
+
+Quick Play match engine
+- Added contextual dive input: X on keyboard, D-pad down on controller.
+- Added contextual shirt-pull input: E on keyboard, RB/R1 on controller.
+- Added contact, ball-first, near-miss, repeated-pull and referee-view measurements.
+- Added era-based challenge tolerance, referee strictness/control, match temperature, dissent, handbags, rare fights and persistent player feuds.
+- Added VAR checks only for match years 2020 and later.
+- Added a post-goal sequence watchdog and a forced AI kick-off fallback so the conceding opposition restarts after a goal.
+
+Career Mode detailed match simulation
+- Added era-based physicality and officiating thresholds.
+- Added simulation, shirt-pull, hard-challenge, dissent, confrontation and rare fight incidents.
+- Added persistent player feud memory to Career saves.
+- Added match-temperature history to detailed match records.
+- VAR is hard-gated to 2020 onward and the timeline activation has been moved into 2020.
+
+Boundary
+- Career still uses its existing simulation engine; it is not connected to the interactive Quick Play match engine.
+- No menu, creation-tool, club database, player-face, kit, transfer, history or match-physics redesign was made in this pass.

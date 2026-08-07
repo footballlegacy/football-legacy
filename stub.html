@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Football Legacy — Phase 1 Stub</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="stub-shell">
+    <section class="stub-card">
+      <div class="stub-eyebrow">Phase 1 navigation stub</div>
+      <h1 id="stubTitle">Football Legacy</h1>
+      <p id="stubCopy">This destination is intentionally stubbed during the main-menu phase.</p>
+      <a class="action-button primary" href="index.html">Return to Main Menu</a>
+    </section>
+  </main>
+
+  <script>
+    'use strict';
+
+    const query = new URLSearchParams(window.location.search);
+    const screen = query.get('screen') || 'unknown';
+    const mode = query.get('mode');
+    const slot = query.get('slot');
+
+    const screens = {
+      'new-career': {
+        title: 'New Career',
+        copy: 'This button is ready to hand control to the existing Begin Your Legacy flow. The career builder itself is outside this standalone Phase 1 prototype.'
+      },
+      'load-career': {
+        title: `Load Career${slot ? ` — Slot ${slot}` : ''}`,
+        copy: 'This occupied save slot is ready to hand its stable slot number to the real career save loader.'
+      },
+      'quick-play': {
+        title: `Quick Play${mode ? ` — ${mode.replaceAll('-', ' ')}` : ''}`,
+        copy: 'Quick Play navigation is wired. The era selector, independent team browser, match setup and matchData package belong to Phase 5.'
+      },
+      'create-player': {
+        title: 'Create Player',
+        copy: 'The player builder belongs to Phase 3. This route is reserved for permanent player records with stable IDs.'
+      },
+      'create-stadium': {
+        title: 'Create Stadium',
+        copy: 'The stadium builder belongs to Phase 2. This route is reserved for permanent stadium records with stable IDs.'
+      },
+      'create-club': {
+        title: 'Create Club',
+        copy: 'The club builder belongs to Phase 4. Created clubs will later be selectable in Quick Play and New Career.'
+      },
+      'settings': {
+        title: 'Settings',
+        copy: 'The Settings destination is present in the main navigation but intentionally contains no settings implementation during Phase 1.'
+      }
+    };
+
+    const selected = screens[screen] || {
+      title: 'Navigation Stub',
+      copy: 'This route has not been assigned to a later build phase yet.'
+    };
+
+    document.getElementById('stubTitle').textContent = selected.title;
+    document.getElementById('stubCopy').textContent = selected.copy;
+  </script>
+  <script src="controller-ui.js"></script>
+</body>
+</html>

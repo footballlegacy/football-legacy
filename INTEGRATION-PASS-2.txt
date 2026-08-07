@@ -1,0 +1,13 @@
+Football Legacy Integration Pass 2
+
+- Added a functioning standalone Settings page.
+- Settings now store Career autosave response and Quick Play defaults.
+- Fixed the main-menu Settings crash.
+- Recalibrated all 92 Quick Play clubs and all 2,116 fictional players onto a present-day four-division ability scale while preserving names, faces, kits and club identities.
+- Career Mode data and match simulation remain separate and unchanged apart from reading the selected autosave response delay.
+- Quick Play now reads saved difficulty, match length, camera and switching preferences.
+- JavaScript syntax validation completed.
+
+Testing limitation: Chromium could not complete a rendered headless launch in the Linux build environment because its process stalled on system-bus startup. Safari cannot be run in this environment. Browser testing should therefore still be repeated on the target Mac.
+
+three.min.js: the engine still retains its existing online fallback because the local dependency could not be retrieved inside the isolated build environment.

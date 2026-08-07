@@ -1,0 +1,101 @@
+FOOTBALL LEGACY v0.28.1 — GRASSROOTS TO GLORY, PHASE 2
+PLAYER LIVES, HIDDEN TALENT AND THE MANAGER'S DAY JOB
+=======================================================
+
+Scope
+-----
+This phase builds on the v0.28.0 grassroots foundation. It does not redesign the base Career Mode, Quick Play, creation tools or the interactive match engine.
+
+Player life events
+------------------
+Part-time players can now experience permanent and semi-permanent life changes while the controlled club remains in the informal lower-pyramid stages:
+
+- leaving for university;
+- moving away for work or family;
+- changing to a less flexible job;
+- taking on additional family commitments;
+- losing interest in football;
+- quitting local football;
+- returning later after deciding they miss playing.
+
+Players who move for university or relocation can register with another simulated lower-pyramid club. Their existing club-history spell is closed and a new spell is opened, so they remain part of the shared football world rather than simply disappearing.
+
+Players who quit are retained as inactive local free agents. AI squad filling is prevented from immediately treating them as ordinary available free agents. A former player can later message the club and return.
+
+The event engine is deliberately limited so a squad does not collapse unrealistically. Permanent departures are blocked once the active squad reaches fourteen players, and no more than two player-life events are generated in a single monthly pass.
+
+Hidden talent
+-------------
+Grassroots players now have:
+
+- talent knowledge;
+- a latent ability bonus;
+- a recorded amount of that bonus already revealed.
+
+Training attendance and match appearances gradually improve the club's knowledge of a player. Genuine hidden gems can trigger inbox events and receive staged ability/ceiling improvements as the evidence becomes convincing. Ordinary players do not generate repetitive monthly scouting messages.
+
+Manager work decisions
+----------------------
+The manager's day job is now interactive rather than merely descriptive.
+
+One to three days before some fixtures, a work shift can clash with football. Time stops and the Day Job page presents three choices:
+
+1. Put football first
+   - best football preparation;
+   - uses annual leave where available;
+   - otherwise counts as a missed shift;
+   - reduces employer patience and employment security.
+
+2. Cover the shift
+   - protects the job;
+   - reduces board confidence slightly;
+   - increases the chance of player availability problems for that fixture.
+
+3. Ask the chairman to cover
+   - creates a smaller preparation penalty;
+   - adds to the unpaid chairman's workload and reduces his approval.
+
+Repeatedly putting football first can now cost the manager the day job. The Day Job page displays employment status, employer patience, employment security, leave remaining, work stress and the number of football clashes.
+
+Presentation and records
+------------------------
+- Player-life changes appear in the existing inbox.
+- Major changes are written to the club/player history.
+- The grassroots Board page has a Player Lives timeline.
+- Work decisions and consequences are recorded in the existing Day Job diary.
+- Existing v0.28.0 grassroots saves are migrated by the normal ensure/migration path.
+
+Protected scope
+---------------
+- The normal Take Charge route is unchanged.
+- Quick Play and the interactive match engine are unchanged.
+- Existing club, league, history and player systems remain the shared world.
+- Grassroots rules apply only to the controlled Grassroots to Glory club while it is still using informal local recruitment.
+- No stadium ground-grading or professionalisation transition has been added in this phase.
+
+Validation completed
+--------------------
+- Every project JavaScript file passed Node syntax validation.
+- All 17 inline HTML script blocks passed syntax validation.
+- Targeted module tests confirmed:
+  - work clashes block time;
+  - all three work choices resolve and persist their consequences;
+  - covering a shift increases matchday availability risk;
+  - hidden talent can be revealed and improve a player;
+  - a university move transfers a player to another lower-pyramid club;
+  - quitting places a player into the inactive local pool;
+  - player histories and inbox records are written;
+  - normal non-grassroots saves do not receive grassroots state.
+- A five-season monthly life-event test retained at least fourteen active players, created no duplicate player IDs and moved players into other simulated clubs correctly.
+
+Still later
+-----------
+- New job searching after the manager loses employment.
+- Ground grading and refused promotions.
+- Gradual amateur to semi-professional to professional transition.
+- Full fifteen-tier long-career balance tuning.
+- The separate Create a Club route's any-era league insertion screen.
+
+Browser note
+------------
+No hands-on Safari or Chrome run on the user's physical Mac is claimed. The automated checks above validate code structure and targeted state transitions, not every rendered browser interaction.

@@ -1,0 +1,9 @@
+Football Legacy Match Graphics v0.37
+
+Face-detail pass:
+- Reworked the facial decal so eyes, brows, nose shading and mouth read much more clearly
+- Enlarged and darkened the eye geometry so eyes are visible from the match camera
+- Increased nose and mouth definition
+- Increased face overlay opacity and size slightly for more realistic facial features
+
+No gameplay or set-piece changes.

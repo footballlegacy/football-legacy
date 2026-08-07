@@ -1,0 +1,18 @@
+Football Legacy Match Engine v0.68 — Gamepad Support
+
+Controller input added through the browser Gamepad API. Keyboard controls remain unchanged and can be used at the same time.
+
+Standard Xbox / PS5 mapping:
+- Left stick: analog movement with 0.15 radial dead zone and variable movement speed
+- RT / R2: sprint
+- A / Cross: pass; hold for existing pass power
+- B / Circle: shoot while attacking; standing tackle while defending; double tap shot for existing low-driven shot
+- X / Square: slide tackle
+- Y / Triangle: skill move; double tap for roulette
+- Right stick flick: directional skill move
+- LB / L1: switch player
+- Menu / Options: pause / resume
+
+The controller is polled once per animation frame through navigator.getGamepads(). Connection and disconnection are handled without disabling keyboard input.
+
+Only match.html and this release note differ from v0.67.

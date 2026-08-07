@@ -1,0 +1,12 @@
+Football Legacy Match Realism v0.60
+
+Combined repair pass:
+- Restored the complete v0.58 set-piece module and preserved all dead-ball delays, positioning, penalties, direct free kicks, corners, throws and goal kicks.
+- Added a safe fallback so a dedicated set-piece view can never swallow or freeze a restart if it fails to open.
+- Celebration camera now moves once to a steady wide view and remains panned out for the whole celebration.
+- Crowd celebration is substantially longer. The scorer jumps into the middle rows and the entire scoring team, including the goalkeeper, runs over and enters the stand to mob him.
+- Shoe-shine pair now stand face-to-face in the correct direction.
+- Fishing celebration starts the pair much farther apart. The fish rolls across the ground toward the teammate reeling him in.
+- AI now gives stronger preference to safe progressive passes, carries into open forward space more often, and becomes more purposeful after circulating possession.
+- Kickoff own-half positioning remains included.
+- Existing controls, player models, face geometry, hair, shooting fix and celebrations remain included.

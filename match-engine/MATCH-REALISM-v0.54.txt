@@ -1,0 +1,8 @@
+Football Legacy Match Realism v0.54
+
+Changes:
+- Celebration 2 crowd mob now uses a proper stand / terrace section instead of a podium-style mob area.
+- Wider, slower crowd celebration camera so the full run, jump and crowd surround can be seen.
+- Crowd mob target tuned so the scorer lands into the stand more naturally.
+- Boot placement raised to reduce shoes sinking into the ground.
+- Player contact shadow reshaped and softened so it reads less like a Subbuteo circle.

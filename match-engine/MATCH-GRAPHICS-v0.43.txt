@@ -1,0 +1,9 @@
+Football Legacy Match Graphics v0.43
+
+Mouth visibility pass:
+- Kept the softer organic head from v0.42.
+- Enlarged and reshaped the lips slightly so they read from the match camera.
+- Added a clear mouth line and a subtle mouth shadow so the face no longer looks mouthless.
+- Slightly strengthened the painted mouth detail in the face texture.
+
+Only mouth/face readability changed.

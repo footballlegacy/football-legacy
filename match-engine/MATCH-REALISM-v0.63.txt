@@ -1,0 +1,11 @@
+Football Legacy Match Realism v0.63
+
+Crowd celebration rebuild only:
+- Celebration stand now spans the full length of the touchline instead of appearing as a small isolated terrace.
+- Scorer runs to the nearest touchline faster, launches over the barrier and lands in the middle supporter rows.
+- Jump movement and body animation now share the same timing, so the player visibly travels into the stand rather than jumping in place.
+- Nearby supporters leave an entry gap, react during the jump, then close around and mob the scorer.
+- Teammates and goalkeeper continue arriving and joining the crowd celebration.
+- Full-length background supporters use instanced geometry to keep the celebration performant.
+
+No gameplay, AI, controls, set pieces, ball physics, camera, pitch, lighting, faces, heads or normal player-body geometry was changed.

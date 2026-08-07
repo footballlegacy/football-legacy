@@ -1,0 +1,19 @@
+External visual source bundled in this build
+
+Poly Haven — Stadium 01 HDRI
+Author: Sergej Majboroda
+Source: https://polyhaven.com/a/stadium_01
+License: CC0 / public domain dedication
+Bundled representation: resized 2048×1024 tonemapped JPG, used as an environment-lighting map rather than as stadium geometry.
+
+Visual direction research
+
+Higgsfield Camera Controls / Cinema Studio
+Source: https://higgsfield.ai/camera-controls
+Source: https://higgsfield.ai/cinematic-video-generator
+Used as visual-direction research for controlled lens behaviour, stable camera movement, colour treatment, scene lighting and deliberate shot composition. No Higgsfield code or assets are included.
+
+Three.js r128
+Source: https://github.com/mrdoob/three.js/tree/r128
+License: MIT
+The existing project loads Three.js from its local vendor folder when installed, otherwise its existing CDN fallback remains active.

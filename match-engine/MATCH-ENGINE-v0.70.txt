@@ -1,0 +1,7 @@
+Football Legacy Match Engine v0.70
+
+Focused fixes only:
+- Knee slide now has a clear run-up, drop onto the knees, real forward travel with deceleration, and a settled finish.
+- Knee-slide camera begins wide enough to show the run and full slide; the direct close-up is delayed until the action is established.
+- AI kickoff receiver now favours a nearby midfielder and starts beside the centre spot, so the opening pass travels sideways instead of directly toward the goalkeeper.
+- No other gameplay, visuals, controls, AI systems, set pieces, celebrations, hidden keys, player models, stadium, pitch, crowd, sound or UI were intentionally changed.

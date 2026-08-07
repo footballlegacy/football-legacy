@@ -1,0 +1,11 @@
+Football Legacy Match Graphics v0.35
+
+Further player-model softening:
+- Rounded the head silhouette away from square blocks using multi-sided prism/cylinder shapes
+- Softened cheeks, jaw, forehead, hair and facial-feature blocks
+- Arms and legs changed from sharp boxes to smoother octagonal limb shapes
+- Hands and boots retained but sit on the smoother limbs
+- Running cycle toned down further to avoid the fast "Scooby-Doo" leg whirl
+- Materials smoothed slightly so edges read less jagged while keeping the 2.5D look
+
+Gameplay and set-piece systems unchanged.

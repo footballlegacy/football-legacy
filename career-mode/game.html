@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Football Legacy · 1888</title>
+  <link rel="stylesheet" href="css/game.css?v=0.27.5-gameplay-history">
+</head>
+<body>
+<div class="app-shell">
+  <header class="game-header">
+    <div class="legacy-brand">
+      <div class="fl-shield">FL</div>
+      <div><strong>FOOTBALL LEGACY</strong><span>1888</span></div>
+    </div>
+    <div class="club-header">
+      <div class="mini-crest" id="headerCrest">FL</div>
+      <div><strong id="headerClub">Your Club</strong><span id="headerManager">Manager</span></div>
+    </div>
+    <div class="date-block">
+      <div><strong id="dayName">Wednesday</strong><span id="currentDate">15 August 1888</span></div>
+      <button class="continue-button" id="advanceButton"><span>CONTINUE</span><small id="advanceLabel">Advance one day</small></button>
+    </div>
+  </header>
+
+  <nav class="main-nav" aria-label="Main navigation">
+    <button data-tab="home" class="active">⌂ <span>HOME</span></button>
+    <button data-tab="match" id="matchNavButton" disabled title="Available on match day">⚽ <span>MATCH</span></button>
+    <button data-tab="inbox">✉ <span>INBOX</span><b id="inboxBadge">3</b></button>
+    <button data-tab="team" title="Team management">♟ <span>TEAM</span></button>
+    <button data-tab="transfers">⇄ <span>TRANSFERS</span></button>
+    <button data-tab="club">▦ <span>CLUB</span></button>
+    <button data-tab="board">♜ <span>BOARD</span></button>
+    <button data-tab="competitions" title="Competitions and world football">♛ <span>COMPETITIONS</span></button>
+    <button data-tab="history">⌛ <span>HISTORY</span></button>
+    <button data-tab="search" title="Search the whole football world">⌕ <span>SEARCH</span></button>
+    <button data-tab="manager">♙ <span>MANAGER</span></button>
+    <button data-tab="settings" title="Settings">⚙ <span>SETTINGS</span></button>
+  </nav>
+
+  <main id="mainPanel"></main>
+  <footer class="status-footer"><span id="saveNote">Game saves automatically</span><button id="saveButton">SAVE GAME</button><button id="menuButton">MAIN MENU</button></footer>
+</div>
+<script src="js/club-database.js?v=0.24.1-manager-legacy"></script><script src="js/data.js?v=0.24.1-manager-legacy"></script><script src="js/timeline-data.js?v=0.24.1-manager-legacy"></script><script src="js/living-world-data.js?v=0.24.1-manager-legacy"></script><script src="js/pyramid-data.js?v=0.28.0-grassroots"></script><script src="js/football-balance.js?v=0.24.1-manager-legacy"></script><script src="js/club-history-data.js?v=0.24.1-manager-legacy"></script><script src="js/world-football-data.js?v=0.24.1-manager-legacy"></script><script src="js/economy.js?v=0.26.13-market-balance"></script><script src="js/manager-contracts.js?v=0.28.0-grassroots"></script><script src="js/people.js?v=0.24.1-manager-legacy"></script><script src="js/portrait-catalog.js?v=0.26.0-realistic"></script><script src="js/identity.js?v=0.26.1-era-grooming"></script><script src="js/family-age-portraits.js?v=0.26.12-family-age-fixes"></script><script src="js/voices.js?v=0.24.1-manager-legacy"></script><script src="js/conversations.js?v=0.24.3-conversation-world"></script><script src="js/personal-life.js?v=0.26.3-manager-relationships"></script><script src="js/club-trajectory.js?v=0.26.17-history-integrity"></script><script src="js/pyramid.js?v=0.26.17-history-integrity"></script><script src="js/world-football.js?v=0.27.5-player-careers"></script><script src="js/timeline.js?v=0.27.5-player-careers"></script><script src="js/living-world.js?v=0.24.4-career-records"></script><script src="js/legacy-systems.js?v=0.26.3-family-successor"></script><script src="js/dressing-room.js?v=0.26.15-staff-portrait"></script><script src="js/transfer-market.js?v=0.28.0-grassroots"></script><script src="js/english-cup.js?v=0.24.1-manager-legacy"></script><script src="js/career-systems.js?v=0.26.17-history-integrity"></script><script src="js/manager-legacy-career.js?v=0.24.1-manager-legacy"></script><script src="js/match-environment.js?v=0.24.1-manager-legacy"></script><script src="js/save.js?v=0.24.1-manager-legacy"></script><script src="js/history-integrity.js?v=0.27.5.1-history-placement-integrity"></script><script src="js/historical-player-mobility.js?v=0.27.5.1-era-mobility"></script><script src="js/game.js?v=0.28.1-grassroots-lives"></script><script src="js/grassroots-career.js?v=0.28.1-phase-2"></script><script src="js/ui.js?v=0.28.1-grassroots-lives"></script><script src="js/targeted-tweaks.js?v=0.27.5.1-inbox-routing"></script><script src="js/beta-targeted-fixes.js?v=0.26.3-manager-relationships"></script><script src="js/international-football-expansion.js?v=0.26.5-international-performance-hotfix"></script><script src="js/v0266-match-news-fixes.js?v=0.26.6-targeted-match-news"></script><script src="js/v0268-quick-sim.js?v=0.26.10-remove-instant-result"></script>
+<script>
+(async function bootFootballLegacy(){
+let game=await FLSave.load();
+if(!game){window.location.href='../index.html';return;}
+if(game&&window.FLEconomy)FLEconomy.migrate(game);
+if(game&&window.FLHistoryIntegrity)FLHistoryIntegrity.migrate(game);
+if(game&&window.FLLegacySystems)FLLegacySystems.ensure(game);
+if(game&&window.FLManagerLegacyCareer)FLManagerLegacyCareer.ensure(game);
+if(game&&window.FLPeople)FLPeople.ensure(game);
+if(game&&window.FLEraIdentity)FLEraIdentity.refreshAll(game);
+if(game&&window.FLConversations)FLConversations.ensure(game);
+if(game&&window.FLPersonalLife)FLPersonalLife.ensure(game);
+if(game&&window.FLTimeline)FLTimeline.ensure(game);
+if(game&&window.FLWorldFootball)FLWorldFootball.ensure(game);
+if(game&&window.FLPyramid){FLPyramid.ensure(game,Number(String(game.date||'1888').slice(0,4))||1888);if(!game.pyramid?.seasonYear)FLPyramid.prepareSeason(game,Number(String(game.date||'1888').slice(0,4))||1888);}
+if(game&&window.FLFootballBalance){const placementRepair=FLFootballBalance.repairSelectedPlacement(game);const needsForcedRepair=game.version!=='0.24.9'||placementRepair?.changed||Number(game.meta?.balanceRepair?.version||0)<4;FLFootballBalance.repairWorld(game,{force:Boolean(needsForcedRepair)});game.meta=game.meta||{};game.meta.runtimeRepair0221={date:game.date,placementChanged:Boolean(placementRepair?.changed)};}
+game.version='0.27.5.1';
+const entryTab=new URLSearchParams(window.location.search).get('tab');if(entryTab&&['home','inbox','team','squad','transfers','club','board','competitions','history','search','manager','settings','match','season'].includes(entryTab))game.selectedTab=entryTab;
+if(!['home','inbox','team','squad','transfers','club','board','competitions','history','search','manager','settings','match','season'].includes(game.selectedTab)) game.selectedTab='home';
+if(window.FLLivingWorld)FLLivingWorld.ensure(game);
+let dayRunner=null;
+function advanceToImmediatePostGoalKickoff(ui,record,ticks,total,current,scoringSide=null){
+ const frames=Array.isArray(record?.frames)?record.frames:[];
+ const concedingSide=scoringSide==='home'?'away':scoringSide==='away'?'home':null;
+ // Prefer the next centre pass by the team that conceded. Search the complete
+ // remaining frame list rather than a narrow two-minute window so no replay,
+ // technology event or dense sequence can strand the viewer after a goal.
+ const restart=frames.find(frame=>Number(frame?.tick)>current&&frame?.phase==='kickoff'&&(!concedingSide||frame?.side===concedingSide))
+   ||frames.find(frame=>Number(frame?.tick)>current&&frame?.phase==='kickoff');
+ if(!restart)return current;
+ const tick=Math.min(total,Math.max(current+1,Number(restart.tick)));
+ ui.clockStep=tick;ui.minute=Math.floor(tick/ticks);ui.postGoalRestartSide=restart.side||concedingSide||null;
+ return tick;
+}
+window.FLStartMatchTimer=()=>{
+ if(window.FLMatchTimer)clearInterval(window.FLMatchTimer);
+ const ui=game.matchUI||{},record=(game.matchRecords||[]).find(m=>m.id===ui.recordId),ticks=Number(record?.ticksPerMinute||4),total=Number(record?.totalTicks||90*ticks);
+ if(!Number.isFinite(Number(ui.clockStep)))ui.clockStep=Math.round(Number(ui.minute||0)*ticks);
+ ui.speed=Math.max(1,Math.min(3,Number(ui.speed||game.settings?.matchSpeed)||1));
+ if(ui.teamManagementOpen||!ui.playing||ui.phase==='goal'||ui.phase==='goal-flight'||ui.phase==='half-time'||Number(ui.clockStep||0)>=total)return;
+ const interval=Math.max(90,Math.round(330/ui.speed));
+ window.FLMatchTimer=setInterval(()=>{
+  const matchUI=game.matchUI||{},activeRecord=(game.matchRecords||[]).find(m=>m.id===matchUI.recordId),activeTicks=Number(activeRecord?.ticksPerMinute||4),activeTotal=Number(activeRecord?.totalTicks||90*activeTicks),halfTick=45*activeTicks;
+  if(matchUI.teamManagementOpen||matchUI.instantResultComplete||!matchUI.playing||matchUI.phase==='goal'||matchUI.phase==='goal-flight'||matchUI.phase==='half-time'){clearInterval(window.FLMatchTimer);window.FLMatchTimer=null;return;}
+  const previous=Number(matchUI.clockStep||0),previousMinute=Math.floor(previous/activeTicks),next=Math.min(activeTotal,previous+1);matchUI.clockStep=next;matchUI.minute=Math.floor(next/activeTicks);
+  if(next===halfTick&&!matchUI.halfTimeComplete){matchUI.playing=false;matchUI.phase='half-time';clearInterval(window.FLMatchTimer);FLSave.save(game);refresh();return;}
+  const goal=activeRecord?.events?.find(e=>e.type==='goal'&&Math.round((Number.isFinite(Number(e.clock))?Number(e.clock):Number(e.minute||0))*activeTicks)===next);
+  if(goal){
+   const clock=Number.isFinite(Number(goal.clock))?Number(goal.clock):Number(goal.minute||0),key=`${clock.toFixed(2)}-${goal.side}-${goal.playerId||goal.player||''}`;
+   matchUI.playing=false;matchUI.phase='goal-flight';matchUI.goalEventKey=key;clearInterval(window.FLMatchTimer);FLSave.save(game);refresh();
+   setTimeout(()=>{const flight=game.matchUI||{};if(flight.instantResultComplete||flight.phase!=='goal-flight'||flight.goalEventKey!==key)return;flight.phase='goal';FLSave.saveSoon?FLSave.saveSoon(game,100):FLSave.save(game);refresh();setTimeout(()=>{const active=game.matchUI||{};if(active.instantResultComplete)return;const rec=(game.matchRecords||[]).find(m=>m.id===active.recordId),tp=Number(rec?.ticksPerMinute||4),limit=Number(rec?.totalTicks||90*tp),current=Number(active.clockStep||0);if(active.phase!=='goal'||active.goalEventKey!==key)return;active.goalEventKey=null;if(current>=limit){active.phase='full-time';active.playing=false;active.minute=90;}else if(current===45*tp&&!active.halfTimeComplete){active.phase='half-time';active.playing=false;active.minute=45;}else{const restartTick=advanceToImmediatePostGoalKickoff(active,rec,tp,limit,current,goal.side);active.phase=active.halfTimeComplete?'second-half':'first-half';active.playing=true;active.minute=Math.floor(restartTick/tp);}FLSave.save(game);refresh();if(active.playing)window.FLStartMatchTimer();},2600);},480);
+   return;
+  }
+  if(next>=activeTotal){matchUI.playing=false;matchUI.phase='full-time';matchUI.minute=90;clearInterval(window.FLMatchTimer);if(activeRecord)FLGame.finalizeMatchStats(game,activeRecord);FLSave.save(game);refresh();return;}
+  const minuteChanged=Math.floor(next/activeTicks)!==previousMinute;
+  // The pitch must redraw on every simulation frame, not only when the displayed minute changes.
+  // A detailed match normally has six frames per minute, so this restores continuous movement.
+  refresh();
+  if(minuteChanged&&matchUI.minute%5===0)(FLSave.saveSoon?FLSave.saveSoon(game,500):FLSave.save(game));
+ },interval);
+};
+function matchToday(){const fixture=FLGame.fixtureOn(game,game.date);return fixture&&!fixture.played?fixture:null}
+function completedMatchToday(){const fixture=FLGame.fixtureOn(game,game.date);return fixture&&fixture.played?fixture:null}
+function updateContinueButton(){
+ const button=document.getElementById('advanceButton');
+ document.body.classList.toggle('match-mode',game.selectedTab==='match');
+ const main=button.querySelector('span');
+ if(game.selectedTab==='season'){
+  main.textContent='SEASON REVIEW';
+  document.getElementById('advanceLabel').textContent='Complete each chapter of the season transition';
+  button.classList.remove('running');button.classList.add('match-ready');
+ }else if(game.selectedTab==='match'){
+  const ui=game.matchUI||{};
+  if((ui.minute||0)>=90){
+   main.textContent='CONTINUE';
+   document.getElementById('advanceLabel').textContent='Return home and advance to the next day';
+  }else if(ui.phase==='half-time'){
+   main.textContent='HALF TIME';
+   document.getElementById('advanceLabel').textContent='Start the second half in the match centre';
+  }else if(ui.phase==='goal'||ui.phase==='goal-flight'){
+   main.textContent='GOAL';
+   document.getElementById('advanceLabel').textContent='Celebration in progress';
+  }else{
+   main.textContent='MATCH CENTRE';
+   document.getElementById('advanceLabel').textContent='Match in progress';
+  }
+  button.classList.remove('running');button.classList.add('match-ready');
+ }else if(matchToday()){
+  main.textContent='MATCH DAY';
+  document.getElementById('advanceLabel').textContent='Time has stopped for your fixture';
+  button.classList.remove('running');button.classList.add('match-ready');
+ }else if(dayRunner){
+  main.textContent='STOP';
+  document.getElementById('advanceLabel').textContent='Days are moving forward';
+  button.classList.add('running');button.classList.remove('match-ready');
+ }else{
+  main.textContent='CONTINUE';
+  button.classList.remove('running','match-ready');
+ }
+}
+function refresh(){FLUI.render(game);updateContinueButton()}
+function stopDays(message){
+ if(dayRunner){clearInterval(dayRunner);dayRunner=null;}
+ updateContinueButton();
+ if(message)document.getElementById('saveNote').textContent=message;
+}
+function moveOneDay(){
+ game.postMatchComplete=false;
+ const result=FLGame.advanceDay(game,{stopAtControlledMatch:true});
+ FLSave.save(game);refresh();
+ document.getElementById('saveNote').textContent=`Saved · ${FLUI.formatDate(game.date)}`;
+ if(result.stopped){const messages={match:'Match day reached · time stopped automatically',decision:'Decision required · time stopped automatically',season:'Season review ready · time stopped automatically','season-incomplete':'Season cannot close · unfinished fixtures remain'};stopDays(messages[result.reason]||'Time stopped automatically');}
+}
+window.FLContinueSeason=()=>{
+ stopDays();
+ if(completedMatchToday()) game.postMatchComplete=false;
+ moveOneDay();
+};
+document.querySelectorAll('.main-nav button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.tab==='match'&&!matchToday()&&!game.activeMatchId&&!game.matchUI?.recordId){document.getElementById('saveNote').textContent='Match centre is available on match day only';return}game.selectedTab=b.dataset.tab;FLSave.saveSoon?FLSave.saveSoon(game,900):FLSave.save(game);refresh()}));
+document.getElementById('advanceButton').addEventListener('click',()=>{
+ if(game.selectedTab==='season'){document.querySelector('[data-season-experience-next]')?.click();return;}
+ if(game.selectedTab==='match'){
+  if((game.matchUI?.minute||0)>=90){
+   if(dayRunner)stopDays();
+   const completedRecord=(game.matchRecords||[]).find(m=>m.id===game.matchUI?.recordId);if(completedRecord)FLGame.finalizeMatchStats(game,completedRecord);
+   game.matchUI.playing=false;
+   if(window.FLMatchTimer)clearInterval(window.FLMatchTimer);
+   game.activeMatchId=null;
+   game.matchUI.recordId=null;
+   game.matchUI.pitchPositions={};
+   game.matchUI.pitchVelocities={};
+   game.matchUI.phase='complete';
+   game.postMatchComplete=false;
+   game.selectedTab='home';
+   const result=FLGame.advanceDay(game,{stopAtControlledMatch:true});
+   FLSave.save(game);refresh();
+   document.getElementById('saveNote').textContent=`Match complete · advanced to ${FLUI.formatDate(game.date)}`;
+  }
+  return;
+ }
+ if(game.postMatchComplete&&completedMatchToday()){window.FLContinueSeason();return;}
+ if(matchToday()){
+  const fixture=matchToday();
+  try{
+   FLUI.beginMatch(game,fixture,{autoPlay:true});
+   game.selectedTab='match';FLSave.saveSoon?FLSave.saveSoon(game,100):FLSave.save(game);refresh();
+   setTimeout(()=>{if(game.matchUI?.playing&&typeof window.FLStartMatchTimer==='function')window.FLStartMatchTimer();},0);
+  }catch(error){console.error('Match simulation failed',error);document.getElementById('saveNote').textContent=`Match simulation stopped: ${error.message||'unknown error'}`;}
+  return;
+ }
+ if(dayRunner){stopDays('Day progression stopped');return;}
+ moveOneDay();
+ if(!matchToday()){const speed={slow:800,normal:450,fast:180}[game.settings?.simulationSpeed]||450;dayRunner=setInterval(moveOneDay,speed);updateContinueButton();}
+});
+document.getElementById('saveButton').addEventListener('click',()=>{FLSave.save(game);document.getElementById('saveNote').textContent='Game saved';});
+document.getElementById('menuButton').addEventListener('click',()=>{if(FLSave.flush)FLSave.flush(game);window.location.href='../index.html'});
+window.addEventListener('pagehide',()=>{if(FLSave.flush)FLSave.flush(game)});
+if(game.selectedTab==='match'&&!matchToday()&&!game.activeMatchId&&!game.matchUI?.recordId)game.selectedTab='home';
+if(game.selectedTab==='match'&&matchToday()&&!game.matchUI?.recordId){
+ try{FLUI.beginMatch(game,matchToday(),{autoPlay:true});}catch(error){console.error('Match simulation failed on load',error);game.selectedTab='home';}
+}
+refresh();
+if(game.selectedTab==='match'&&game.matchUI?.playing)setTimeout(()=>window.FLStartMatchTimer(),0);
+})();
+</script>
+<script src="../controller-ui.js"></script>
+</body>
+</html>

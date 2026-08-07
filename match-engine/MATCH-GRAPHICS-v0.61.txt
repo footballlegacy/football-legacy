@@ -1,0 +1,22 @@
+Football Legacy — Cinematic Match Visuals v0.61
+
+This is a visual/rendering overhaul built on v0.60. Existing gameplay AI, controls, shooting, set pieces, celebrations, rules and match logic remain in place.
+
+Visual changes
+- New layered procedural sky with horizon haze, sun/moon glow, clouds and night stars.
+- ACES colour grade, physically based lighting, stronger soft shadows, fill light and rim light.
+- Bundled 2K Poly Haven Stadium 01 environment map used for natural reflections and material lighting.
+- Physical wet/dry pitch material with improved grass grain, mowing bands, wear, line clarity and rain sheen.
+- Stadium materials reworked for metal roofs, concrete, glass and coloured seating.
+- Added individual seat backs, rails, roof lighting and a large stadium video board.
+- Crowd rebuilt with adult-sized instanced bodies, heads, arms, scarves, standing/seated variation and animated arm movement.
+- Crowd dots reduced so the stands read as people rather than coloured particles.
+- Player rendering improved through skin, cloth, hair and boot material response; exact SculptGL head shape remains untouched.
+- Added shirt collar detail without changing the face/head geometry.
+- Ball mesh and surface response refined.
+- Broadcast camera receives very subtle physical roll while retaining the existing camera modes and gameplay framing.
+- Added restrained vignette and film grain overlay to reduce the flat browser-rendered look.
+
+Performance
+- Crowd uses instancing rather than thousands of separate objects.
+- Environment image reduced from 8K to 2K for a much smaller build and lower GPU memory use.
