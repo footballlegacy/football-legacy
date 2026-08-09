@@ -7,8 +7,8 @@ window.FLEnglishCup = (() => {
   function competitionRecord(game){
     if(window.FLTimeline)FLTimeline.ensure(game,{bootstrap:false});
     const list=game.worldState?.competitions||(game.worldState.competitions=[]);let row=list.find(c=>c.id==='english-cup');
-    if(!row){row={id:'english-cup',name:'English Cup',tier:0,official:true,active:true,founded:1871};list.push(row)}
-    if(row.name!=='English Cup')row.name='English Cup';return row;
+    if(!row){row={id:'english-cup',name:'FA Cup',tier:0,official:true,active:true,founded:1871};list.push(row)}
+    if(row.name!=='FA Cup')row.name='FA Cup';return row;
   }
   function active(game){return competitionRecord(game).active!==false&&!game.worldState?.officialLeagueSuspended}
   function existingClubs(game,startYear){return (game.clubs||[]).filter(c=>c.leagueActive!==false&&yearOf(c.founded||1888)<=startYear)}
@@ -20,7 +20,7 @@ window.FLEnglishCup = (() => {
   function hash(text){let h=2166136261;for(const c of String(text)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
   function fixture(game,state,tie,home,away,date,replay=0){
     const id=`english-cup-${state.startYear}-r${state.roundNumber}-t${tie.index}${replay?`-replay${replay}`:''}`;
-    const f={id,date,round:state.roundNumber,home,away,played:false,homeGoals:null,awayGoals:null,competition:'English Cup',competitionId:'english-cup',divisionId:'english-cup',tier:0,official:true,cupRound:state.roundName,cupTieId:tie.id,cupReplay:replay};
+    const f={id,date,round:state.roundNumber,home,away,played:false,homeGoals:null,awayGoals:null,competition:'FA Cup',competitionId:'english-cup',divisionId:'english-cup',tier:0,official:true,cupRound:state.roundName,cupTieId:tie.id,cupReplay:replay};
     game.fixtures.push(f);tie.fixtureIds.push(id);return f;
   }
   function scheduleRound(game,state,entrants,date){
@@ -38,10 +38,10 @@ window.FLEnglishCup = (() => {
   }
   function finish(game,state,winnerId){
     const champion=(game.clubs||[]).find(c=>c.id===winnerId);state.active=false;state.championId=winnerId;state.champion=champion?.name||winnerId;
-    const record={season:state.season,competition:'English Cup',winnerId,winner:state.champion,date:game.date};state.history=Array.isArray(state.history)?state.history:[];if(!state.history.some(x=>x.season===record.season))state.history.push(record);
-    if(champion){champion.honours=Array.isArray(champion.honours)?champion.honours:[];if(!champion.honours.some(h=>h.name==='English Cup'&&h.season===state.season))champion.honours.push({name:'English Cup',season:state.season});(champion.players||[]).filter(p=>(p.appearances||0)>0).forEach(p=>{p.honours=Array.isArray(p.honours)?p.honours:[];if(!p.honours.some(h=>h.name==='English Cup'&&h.season===state.season))p.honours.push({name:'English Cup',season:state.season})})}
-    game.news=Array.isArray(game.news)?game.news:[];game.news.unshift({id:`english-cup-winner-${state.startYear}`,date:game.date,headline:`${state.champion} win the English Cup`,body:`${state.champion} lift the English Cup after the ${state.season} final.`,category:'competition'});
-    game.history=Array.isArray(game.history)?game.history:[];game.history.push({id:`english-cup-winner-${state.startYear}`,date:game.date,type:'competition',title:`${state.champion} win the English Cup`,text:`The ${state.season} English Cup is won by ${state.champion}.`});
+    const record={season:state.season,competition:'FA Cup',winnerId,winner:state.champion,date:game.date};state.history=Array.isArray(state.history)?state.history:[];if(!state.history.some(x=>x.season===record.season))state.history.push(record);
+    if(champion){champion.honours=Array.isArray(champion.honours)?champion.honours:[];if(!champion.honours.some(h=>h.name==='FA Cup'&&h.season===state.season))champion.honours.push({name:'FA Cup',season:state.season});(champion.players||[]).filter(p=>(p.appearances||0)>0).forEach(p=>{p.honours=Array.isArray(p.honours)?p.honours:[];if(!p.honours.some(h=>h.name==='FA Cup'&&h.season===state.season))p.honours.push({name:'FA Cup',season:state.season})})}
+    game.news=Array.isArray(game.news)?game.news:[];game.news.unshift({id:`english-cup-winner-${state.startYear}`,date:game.date,headline:`${state.champion} win the FA Cup`,body:`${state.champion} lift the FA Cup after the ${state.season} final.`,category:'competition'});
+    game.history=Array.isArray(game.history)?game.history:[];game.history.push({id:`english-cup-winner-${state.startYear}`,date:game.date,type:'competition',title:`${state.champion} win the FA Cup`,text:`The ${state.season} FA Cup is won by ${state.champion}.`});
   }
   function afterFixtures(game){
     const state=game.englishCup;if(!state?.active||!active(game))return state;const round=state.rounds?.[state.currentRound];if(!round||round.complete)return state;
@@ -55,7 +55,7 @@ window.FLEnglishCup = (() => {
     state.roundNumber++;const latestDate=round.ties.flatMap(t=>t.fixtureIds).map(id=>game.fixtures.find(f=>f.id===id)?.date).filter(Boolean).sort().at(-1)||round.date;scheduleRound(game,state,winners,addDays(latestDate,21));return state;
   }
   function suspend(game){if(game.englishCup?.active){game.englishCup.active=false;(game.fixtures||[]).filter(f=>f.competitionId==='english-cup'&&!f.played).forEach(f=>f.abandoned=true)}}
-  function seasonRecord(game,label){return (game.englishCup?.history||[]).filter(x=>x.season===label).map(x=>({name:'English Cup',winner:x.winner,winnerId:x.winnerId,date:x.date}))}
+  function seasonRecord(game,label){return (game.englishCup?.history||[]).filter(x=>x.season===label).map(x=>({name:'FA Cup',winner:x.winner,winnerId:x.winnerId,date:x.date}))}
   function ensure(game,startYear=yearOf(game.date)){competitionRecord(game);if(!game.englishCup&&active(game))newSeason(game,startYear);return game.englishCup}
   return {ensure,newSeason,afterFixtures,suspend,active,seasonRecord};
 })();

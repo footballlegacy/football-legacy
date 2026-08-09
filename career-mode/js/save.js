@@ -52,13 +52,13 @@ window.FLSave = (() => {
   async function load(){
     try{
       const saved=await readIndexed();
-      if(saved)return saved;
+      if(saved)return window.FLOriginalNames?.restoreGame?.(saved)||saved;
     }catch(error){console.warn('Football Legacy: IndexedDB load unavailable; checking legacy storage.',error)}
     const legacy=legacyLoad();
     if(legacy){
       try{await save(legacy);localStorage.removeItem(KEY)}catch(error){console.warn('Football Legacy: legacy save migration deferred.',error)}
     }
-    return legacy;
+    return window.FLOriginalNames?.restoreGame?.(legacy)||legacy;
   }
 
   function save(game){

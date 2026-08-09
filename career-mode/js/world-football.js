@@ -154,7 +154,7 @@ window.FLWorldFootball = (() => {
   function retireAndRenew(game,league,club,year,r){
     const survivors=[];
     club.players.forEach(p=>{const age=Number(p.age)||22,chance=age<33?0:age===33?.06:age===34?.15:age===35?.3:age===36?.5:age===37?.72:.9;if(p.status!=='active'||r()<chance){
-      p.status='retired';p.retiredDate=`${year+1}-07-01`;game.worldFootball.retiredPlayers.push({id:p.id,name:p.name,nationality:p.nationality,position:p.position,lastClubId:club.id,lastClub:club.name,leagueId:league.id,retiredDate:p.retiredDate,legendArchetype:p.legendArchetype,archetypeLabel:p.archetypeLabel,careerTotals:{...(p.careerTotals||{})},clubHistory:(p.clubHistory||[]).map((spell,index,all)=>({...spell,to:index===all.length-1&&spell.to==='Present'?year+1:spell.to})),seasonHistory:(p.seasonHistory||[]).slice(-CONFIG.PLAYER_HISTORY_LIMIT),honours:[...(p.honours||[])]});
+      p.status='retired';p.retiredDate=`${year+1}-07-01`;game.worldFootball.retiredPlayers.push({id:p.id,name:p.name,nationality:p.nationality,position:p.position,age,retiredAge:age,birthYear:Number(p.birthYear)||year+1-age,ability:Number(p.ability)||0,potential:Number(p.potential)||Number(p.ability)||0,ceiling:Number(p.ceiling)||Number(p.potential)||Number(p.ability)||0,personalityLabel:p.personalityLabel||'Balanced',traits:[...(p.traits||[])],lastClubId:club.id,lastClub:club.name,leagueId:league.id,retiredDate:p.retiredDate,legendArchetype:p.legendArchetype,archetypeLabel:p.archetypeLabel,careerTotals:{...(p.careerTotals||{})},clubHistory:(p.clubHistory||[]).map((spell,index,all)=>({...spell,to:index===all.length-1&&spell.to==='Present'?year+1:spell.to})),seasonHistory:(p.seasonHistory||[]).slice(-CONFIG.PLAYER_HISTORY_LIMIT),honours:[...(p.honours||[])]});
     }else survivors.push(p)});
     club.players=survivors;while(club.players.length<CONFIG.ROSTER_SIZE){club.players.push(makePlayer(game,league,club,year+1,club.players.length,r,{age:16+Math.floor(r()*3)}));}
     if(game.worldFootball.retiredPlayers.length>CONFIG.RETIRED_LIMIT){const legends=game.worldFootball.retiredPlayers.filter(p=>p.legendArchetype),ordinary=game.worldFootball.retiredPlayers.filter(p=>!p.legendArchetype).sort((a,b)=>(b.careerTotals?.goals||0)-(a.careerTotals?.goals||0)||(b.careerTotals?.appearances||0)-(a.careerTotals?.appearances||0)).slice(0,CONFIG.RETIRED_LIMIT);game.worldFootball.retiredPlayers=[...legends,...ordinary];}
@@ -214,6 +214,9 @@ window.FLWorldFootball = (() => {
   }
   function annualUpdate(game,startYear){
     const w=ensure(game,{backfill:false}),endingYear=startYear-1,results=[];
+    // Save migration for builds which retained a stale registry copy after a
+    // global prospect had already been placed at a foreign club.
+    if(Array.isArray(game.globalPlayers))game.globalPlayers=game.globalPlayers.filter(p=>p&&p.status!=='placed-in-foreign-league');
     data.leagues.forEach(def=>{const league=w.leagues[def.id];if(!league)return;repairLeague(game,league,def,startYear);if(endingYear>=Number(activeDate(def).slice(0,4)))results.push(simulateSeason(game,league,def,endingYear));league.name=nameFor(def,startYear);absorbGlobalProspects(game,league,startYear);});
     return results.filter(Boolean);
   }
@@ -221,7 +224,12 @@ window.FLWorldFootball = (() => {
   function absorbGlobalProspects(game,league,year){
     if(!Array.isArray(game.globalPlayers))return;
     const matching=game.globalPlayers.filter(p=>p.status==='global-prospect'&&p.nationality===league.nationality&&Number(p.age||16)<=30);
-    matching.forEach(p=>{const r=seeded(hash(`${game.meta?.seed||1}-${p.id}-${year}-absorb`)),available=league.clubs.filter(c=>c.worldActivatedYear!=null&&Number(c.founded||0)<=year),club=[...available].sort((a,b)=>b.stature-a.stature)[Math.floor(r()*Math.min(5,available.length))]||available[0];if(!club)return;const built=makePlayer(game,league,club,year,club.players.length,r,{...p,id:p.id,name:p.name,nationality:p.nationality,position:p.position,age:p.age,ability:p.ability,ceiling:p.ceiling,potential:p.potential,legendArchetype:p.legendArchetype,archetypeLabel:p.archetypeLabel,traits:p.traits,personalityLabel:p.personalityLabel||'Generational Talent',developmentCurve:'early'});club.players.push(built);p.status='placed-in-foreign-league';p.clubId=club.id;p.clubName=club.name;game.news.unshift({date:`${year}-07-01`,headline:`${club.name} unveil ${built.name}, an era-defining ${built.nationality.toLowerCase()} talent`});});
+    const placedIds=new Set();
+    matching.forEach(p=>{const r=seeded(hash(`${game.meta?.seed||1}-${p.id}-${year}-absorb`)),available=league.clubs.filter(c=>c.worldActivatedYear!=null&&Number(c.founded||0)<=year),club=[...available].sort((a,b)=>b.stature-a.stature)[Math.floor(r()*Math.min(5,available.length))]||available[0];if(!club)return;const originalName=p.name,originalBirthYear=Number(p.birthYear)||Number(p.generatedYear||year)-Number(p.age||16),built=makePlayer(game,league,club,year,club.players.length,r,{...p,id:p.id,name:originalName,nationality:p.nationality,position:p.position,age:p.age,ability:p.ability,ceiling:p.ceiling,potential:p.potential,legendArchetype:p.legendArchetype,archetypeLabel:p.archetypeLabel,traits:p.traits,personalityLabel:p.personalityLabel||'Generational Talent',developmentCurve:'early'});built.name=originalName;built.birthYear=originalBirthYear;club.players.push(built);placedIds.add(p.id);game.news.unshift({date:`${year}-07-01`,headline:`${club.name} unveil ${built.name}, an era-defining ${built.nationality.toLowerCase()} talent`});});
+    // The foreign-club player is now the canonical object. Keeping the old
+    // prospect in globalPlayers produced a second, frozen copy which could be
+    // renamed/re-aged decades later and conflict with the genuine retiree.
+    if(placedIds.size)game.globalPlayers=game.globalPlayers.filter(p=>!placedIds.has(p.id));
   }
   function placeLegend(game,player,archetype,startYear,rngFn){
     const id=nationalityLeague[player.nationality],w=ensure(game,{backfill:false}),league=id?w.leagues[id]:null;if(!league)return false;
