@@ -72,6 +72,7 @@
     $('actions').style.display = 'none'; $('profiles').style.display = 'none'; $('loading').classList.add('active'); $('fill').style.width = '1%'; $('status').textContent = 'Starting the shared football-history simulation in 1888…';
     try {
       await loadScripts([...sources]);
+      await loadScripts(['js/original-names.js?v=0.30.0-original-names']);
       readyGame = await FLGrassroots.createCareer(manager, createdClub, createdPlayers, stadium, showProgress, region);
       $('fill').style.width = '100%'; $('yearReadout').textContent = '2026'; $('loadingTitle').textContent = 'Grassroots Career Ready'; $('historyHeadline').textContent = `${createdClub.name} enter at tier 15`;
       $('historyLines').innerHTML = [
