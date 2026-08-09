@@ -52,7 +52,7 @@
         <div class="versus-mark" aria-hidden="true">VS</div>
 
         <article class="team-selector away-side">
-          <header class="selector-header"><span>Away</span><strong>AI</strong></header>
+          <header class="selector-header"><span>Away</span><strong id="awayControlLabel">AI</strong></header>
           <div class="field-grid">
             <label><span>League / Division</span><select id="awayLeague"></select></label>
             <label><span>Team</span><select id="awayTeam"></select></label>
@@ -95,7 +95,7 @@
             <label><span>Match Time</span><select id="matchTime"><option value="afternoon">Afternoon</option><option value="evening">Evening</option><option value="night">Night</option></select></label>
             <label><span>Weather</span><select id="weather"><option value="clear">Clear</option><option value="overcast">Overcast</option><option value="rain">Rain</option></select></label>
             <label><span>Match Length</span><select id="matchLength"><option value="4">4 minutes</option><option value="6" selected>6 minutes</option><option value="8">8 minutes</option><option value="10">10 minutes</option></select></label>
-            <label><span>Difficulty</span><select id="difficulty"><option value="amateur">Amateur</option><option value="semi-pro">Semi-Pro</option><option value="professional" selected>Professional</option><option value="world-class">World Class</option><option value="legendary">Legendary</option></select></label>
+            <label><span>Difficulty</span><select id="difficulty"><option value="amateur">Amateur</option><option value="semi-pro">Semi-Pro</option><option value="professional">Professional</option><option value="world-class">World Class</option><option value="legendary" selected>Legendary</option></select></label>
             <label><span>Camera</span><select id="camera"><option value="broadcast" selected>Broadcast</option><option value="classic">Classic</option><option value="dynamic">Dynamic</option><option value="tactical">Tactical Wide</option></select></label>
             <label><span id="homeKitLabel">Home Kit</span><select id="homeKit"><option value="home">Home</option><option value="away">Away</option><option value="third">Third</option></select></label>
             <label><span id="awayKitLabel">Away Kit</span><select id="awayKit"><option value="away" selected>Away</option><option value="home">Home</option><option value="third">Third</option></select></label>
@@ -136,9 +136,10 @@
       </div>
     </section>
 
-    <footer class="footer"><span>Football Legacy Quick Play</span><span>Single Player · Co-op · 2026/27 English divisions</span></footer>
+    <footer class="footer"><span>Football Legacy Quick Play</span><span>Single Player · Co-op · CPU Spectator · 2026/27 English divisions</span></footer>
   </main>
   <script src="teams.js"></script>
+  <script src="historic-playtest-squads.js"></script>
   <script src="app.js"></script>
   <script src="../controller-ui.js"></script>
 </body>
