@@ -1,0 +1,16 @@
+.squad-row > button {
+  min-height: 31px;
+  padding: 0 9px;
+  border: 1px solid var(--orange);
+  background: rgba(232, 120, 36, 0.1);
+  color: var(--orange);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.squad-row > button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Player Career | Football Legacy</title>
+  <link rel="stylesheet" href="player-career.css">
+</head>
+<body class="setup-body">
+  <main class="setup-page">
+    <header class="setup-topbar">
+      <a class="pc-brand" href="../index.html"><span>FL</span><strong>Football Legacy<small>Player Career</small></strong></a>
+      <div class="setup-age"><b>14</b><span>Your story starts here</span></div>
+    </header>
+
+    <section class="setup-hero">
+      <span>NEW CAREER · PLAYER</span>
+      <h1>Become the legacy.</h1>
+      <p>Start at fourteen. Earn every promotion, survive every drop, represent your country and decide when the story ends.</p>
+    </section>
+
+    <div class="setup-layout">
+      <section class="setup-main">
+        <article class="setup-panel">
+          <div class="panel-title"><span>01</span><div><b>Create your player</b><small>Identity and playing profile</small></div></div>
+          <div class="form-grid">
+            <label>First name<input id="firstName" maxlength="24" value="Jamie" autocomplete="given-name"></label>
+            <label>Surname<input id="lastName" maxlength="28" value="Wright" autocomplete="family-name"></label>
+            <label>Nationality<select id="nationality"></select></label>
+            <label>Position<select id="position"><option>GK</option><option>FB</option><option>HB</option><option>W</option><option>IF</option><option selected>CF</option></select></label>
+            <label>Preferred foot<select id="foot"><option selected>Right</option><option>Left</option></select></label>
+            <label>Height<select id="height"><option>165 cm</option><option>170 cm</option><option selected>175 cm</option><option>180 cm</option><option>185 cm</option><option>190 cm</option><option>195 cm</option></select></label>
+          </div>
+          <div class="archetypes" id="archetypes"></div>
+        </article>
+
+        <article class="setup-panel">
+          <div class="panel-title"><span>02</span><div><b>Choose the beginning</b><small>Both paths can rise, fall and cross again</small></div></div>
+          <div class="entry-routes">
+            <button class="entry-route active" data-entry="academy">
+              <em>ACADEMY</em><strong>Join a club academy</strong><p>Enter at U14 level with a coach, teammates and a clear route towards the first team.</p><small>Higher pressure · stronger development</small>
+            </button>
+            <button class="entry-route" data-entry="grassroots">
+              <em>GRASSROOTS</em><strong>Start on local pitches</strong><p>Build scouting attention through school and weekend football before earning a trial.</p><small>Longer road · bigger redemption story</small>
+            </button>
+          </div>
+        </article>
+
+        <article class="setup-panel" id="academyPanel">
+          <div class="panel-title"><span>03</span><div><b>Choose an academy</b><small>Existing Football Legacy clubs</small></div></div>
+          <div class="club-filters"><input id="clubSearch" placeholder="Search clubs or locations"><select id="leagueFilter"><option value="all">All levels</option></select></div>
+          <div class="academy-grid" id="academyGrid"></div>
+        </article>
+      </section>
+
+      <aside class="setup-summary">
+        <div class="player-monogram" id="monogram">JW</div>
+        <span class="summary-kicker">PLAYER CAREER</span>
+        <h2 id="summaryName">Jamie Wright</h2>
+        <p id="summaryLine">English · CF · Right foot</p>
+        <dl>
+          <div><dt>Starting age</dt><dd>14</dd></div>
+          <div><dt>Starting level</dt><dd id="summaryTier">Academy U14</dd></div>
+          <div><dt>Club</dt><dd id="summaryClub">Choose academy</dd></div>
+          <div><dt>Player type</dt><dd id="summaryArchetype">Complete Forward</dd></div>
+          <div><dt>International team</dt><dd id="summaryNation">England</dd></div>
+        </dl>
+        <div class="career-promise"><b>NO CAREER CAP</b><span>Your ability curve and opportunities decide the path. Retirement remains your choice.</span></div>
+        <button class="begin-player-career" id="beginCareer">BEGIN PLAYER CAREER <b>→</b></button>
+        <p class="setup-error" id="setupError" aria-live="polite"></p>
+      </aside>
+    </div>
+  </main>
+
+  <script src="../career-mode/js/club-database.js"></script>
+  <script src="../career-mode/js/original-names.js"></script>
+  <script src="player-career.js"></script>
+  <script src="setup.js"></script>
+  <script src="../controller-ui.js"></script>
+</body>
+</html>
