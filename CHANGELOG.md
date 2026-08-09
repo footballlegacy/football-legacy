@@ -8,6 +8,13 @@ This file records the two source lines and the combined build produced from them
 - **Career and data build v0.30.1** — the current Player Career/original-names copy with the Create-a-Club career fixes below.
 - **Match Engine v0.96** — Josh's GitHub pull request #1, included unchanged except for the intentional Quick Play integration described below.
 
+## v0.31.1 — Missing-fixture recovery hotfix
+
+- Repairs saves that open with no scheduled matches for the controlled club.
+- Preserves existing fixtures and prevents duplicate fixture IDs.
+- Runs defensively so repair or persistence failure cannot stop the career page rendering.
+- Adds an automated 1888 broken-save recovery test.
+
 ## v0.31.0 — Combined career and match integration
 
 **Status:** published to the shared GitHub `main` branch through [pull request #2](https://github.com/connorwr833/football-legacy/pull/2) on 9 August 2026. Merge commit: `b306474`.
