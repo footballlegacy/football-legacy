@@ -132,9 +132,6 @@
             <label>Temperament<select id="temperament">
               <option>Calm</option><option>Passionate</option><option>Stern</option><option>Charismatic</option><option>Ruthless</option><option>Reserved</option><option>Volatile</option><option>Patient</option>
             </select></label>
-            <label>Previous Occupation<select id="occupation">
-              <option>Schoolmaster</option><option>Former Footballer</option><option>Railway Clerk</option><option>Factory Foreman</option><option>Accountant</option><option>Publican</option><option>Military Officer</option><option>Solicitor</option>
-            </select></label>
             <label>Starting Reputation<select id="reputation">
               <option>Unknown Local Coach</option><option>Respected Amateur</option><option>Former Footballer</option>
             </select></label>
@@ -154,9 +151,8 @@
             <div class="fact"><span>Birthplace</span><span id="summaryBirthplace">Manchester</span></div>
             <div class="fact"><span>Style</span><span id="summaryStyle">Direct Football</span></div>
             <div class="fact"><span>Temperament</span><span id="summaryTemperament">Calm</span></div>
-            <div class="fact"><span>Background</span><span id="summaryOccupation">Schoolmaster</span></div>
           </div>
-          <button class="continue" id="continueButton" type="button">Choose Career Route →</button>
+          <button class="continue" id="continueButton" type="button">Continue →</button>
           <a class="back" href="../index.html">← Back to Main Menu</a>
         </div>
       </aside>
@@ -167,25 +163,20 @@
   <script src="js/portrait-catalog.js?v=0.26.0-realistic"></script><script src="js/identity.js?v=0.26.0-realistic-portraits"></script>
   <script>
     const $ = id => document.getElementById(id);
+    const directRoute=new URLSearchParams(location.search).get('route');
+    if(['take-charge','create-club'].includes(directRoute))sessionStorage.setItem('footballLegacyCareerRoute',directRoute);
     const portraitAges=[35,41,38,45,55,48,42,50,36,44];
     let portraits=[];
-    const state={portrait:null,custom:false,startYear:Math.max(1888,Math.min(2026,Number(sessionStorage.getItem('footballLegacyStartYear'))||1888))};
+    const state={portrait:null,custom:false,startYear:directRoute==='create-club'?2026:Math.max(1888,Math.min(2026,Number(sessionStorage.getItem('footballLegacyStartYear'))||1888))};
     const eraTitle=year=>year<1902?'Victorian':year<1915?'Edwardian':year<1919?'First World War':year<1930?'1920s':year<1939?'1930s':year<1946?'Second World War':year<1960?'Post-war':year<1970?'1960s':year<1980?'1970s':year<1990?'1980s':year<2000?'1990s':year<2010?'2000s':year<2027?'Modern':'Future';
     const eraSubtitle=year=>year===1888?'The first era':year<1919?'Early organised football':year<1946?'The inter-war game':year<1970?'The post-war game':year<2000?'The modernising game':'The modern game';
     const stageFor=age=>age<30?'young':age<50?'prime':'senior';
     function makePortraits(year){return FLEraIdentity.portraitOptions(year,$('nationality')?.value||'England',10)}
-    function updateOccupationOptions(year){
-      const select=$('occupation'),current=select.value;
-      const early=['Schoolmaster','Former Footballer','Railway Clerk','Factory Foreman','Accountant','Publican','Military Officer','Solicitor'];
-      const mid=['Former Footballer','Coach','Scout','Schoolteacher','Club Secretary','Military Officer','Accountant','Journalist'];
-      const modern=['Former Professional Footballer','Academy Coach','Assistant Manager','Tactical Coach','Sports Scientist','Analyst','Scout','Semi-professional Manager'];
-      const rows=year<1930?early:year<1980?mid:modern;select.innerHTML=rows.map(x=>`<option>${x}</option>`).join('');select.value=rows.includes(current)?current:rows[0];
-    }
     function setStartYear(value,preserveIndex=true){
       const year=Math.max(1888,Math.min(2026,Number(value)||1888)),oldIndex=Math.max(0,portraits.findIndex(p=>p.id===state.portrait?.id));
       state.startYear=year;portraits=makePortraits(year);state.portrait=portraits[preserveIndex?Math.min(oldIndex,portraits.length-1):0]||portraits[0];
       $('careerStartYear').value=year;$('managerEraYear').textContent=year;$('managerEraLabel').textContent=eraSubtitle(year);$('portraitPeriodLabel').textContent=eraTitle(year);$('portraitEraNote').textContent=`Choose a photorealistic ${eraTitle(year).toLowerCase()}-era manager. The clothing and studio style are matched to ${year}.`;
-      updateOccupationOptions(year);sessionStorage.setItem('footballLegacyStartYear',String(year));renderPortrait();updateSummary();
+      sessionStorage.setItem('footballLegacyStartYear',String(year));renderPortrait();updateSummary();
     }
     function faceConfig(){return {skin:$('faceSkin').value,hair:$('faceHair').value,hairStyle:$('hairStyle').value,facialHair:$('facialHair').value,eyes:$('faceEyes').value,faceShape:$('faceShape').value,outfit:$('faceOutfit').value,accessory:$('faceAccessory').value}}
     function identitySeed(){const text=`${$('firstName').value}|${$('lastName').value}|${state.startYear}|${Object.values(faceConfig()).join('|')}`;let h=2166136261;for(const ch of text){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
@@ -195,20 +186,24 @@
     function movePortrait(direction){const current=Math.max(0,portraits.findIndex(p=>p.id===state.portrait.id));state.portrait=portraits[(current+direction+portraits.length)%portraits.length];state.custom=false;renderPortrait();updateSummary()}
     function updateSummary(){
       if(!state.portrait)return;const fullName=`${$('firstName').value.trim()||'Unnamed'} ${$('lastName').value.trim()||'Manager'}`,age=state.custom?(Number($('managerAge').value)||35):state.portrait.age,portrait=state.custom?customPortrait():state.portrait.image;
-      $('summaryName').textContent=fullName;$('summaryAge').textContent=`Age ${age}`;$('summaryImage').src=portrait;if(state.custom)$('customFacePreview').src=portrait;$('summaryNation').textContent=$('nationality').value;$('summaryBirthplace').textContent=$('birthplace').value.trim()||'—';$('summaryStyle').textContent=$('style').value;$('summaryTemperament').textContent=$('temperament').value;$('summaryOccupation').textContent=$('occupation').value;
+      $('summaryName').textContent=fullName;$('summaryAge').textContent=`Age ${age}`;$('summaryImage').src=portrait;if(state.custom)$('customFacePreview').src=portrait;$('summaryNation').textContent=$('nationality').value;$('summaryBirthplace').textContent=$('birthplace').value.trim()||'—';$('summaryStyle').textContent=$('style').value;$('summaryTemperament').textContent=$('temperament').value;
     }
-    ['firstName','lastName','birthplace','style','temperament','occupation','reputation'].forEach(id=>{$(id).addEventListener('input',updateSummary);$(id).addEventListener('change',updateSummary)});$('nationality').addEventListener('change',()=>setStartYear(state.startYear,true));
+    ['firstName','lastName','birthplace','style','temperament','reputation'].forEach(id=>{$(id).addEventListener('input',updateSummary);$(id).addEventListener('change',updateSummary)});$('nationality').addEventListener('change',()=>setStartYear(state.startYear,true));
     ['managerAge','faceSkin','faceShape','faceHair','hairStyle','facialHair','faceEyes','faceOutfit','faceAccessory'].forEach(id=>{$(id).addEventListener('input',()=>{state.custom=true;updateSummary()});$(id).addEventListener('change',()=>{state.custom=true;updateSummary()})});
     $('careerStartYear').addEventListener('change',e=>setStartYear(e.target.value));$('customMode').addEventListener('click',()=>setAppearanceMode(true));$('portraitMode').addEventListener('click',()=>setAppearanceMode(false));$('previousPortrait').addEventListener('click',()=>movePortrait(-1));$('nextPortrait').addEventListener('click',()=>movePortrait(1));$('portraitCarousel').addEventListener('keydown',event=>{if(event.key==='ArrowLeft'){event.preventDefault();movePortrait(-1)}if(event.key==='ArrowRight'){event.preventDefault();movePortrait(1)}});
     $('continueButton').addEventListener('click',()=>{
       const firstName=$('firstName').value.trim(),lastName=$('lastName').value.trim();if(!firstName||!lastName){$('error').textContent='Enter both a first name and surname before continuing.';return}$('error').textContent='';
       const age=state.custom?(Number($('managerAge').value)||35):state.portrait.age,portrait=state.custom?customPortrait():state.portrait.image;
-      const manager={firstName,lastName,age,portraitId:state.portrait.id,faceAssetId:state.portrait.faceAssetId||null,managerFaceAssetId:state.portrait.faceAssetId||null,faceAssignedYear:state.startYear,managerCreationYear:state.startYear,portrait,managerPortraitAsset:portrait,faceConfig:state.custom?faceConfig():null,identitySeed:identitySeed(),appearanceIndex:state.portrait.id,skinTone:state.custom?$('faceSkin').value:'light',appearanceMode:state.custom?'custom':'portrait',nationality:$('nationality').value,birthplace:$('birthplace').value.trim(),managementStyle:$('style').value,style:$('style').value,temperament:$('temperament').value,occupation:$('occupation').value,reputation:$('reputation').value,portraitRole:'manager',era:state.startYear};
-      sessionStorage.setItem('footballLegacyManager',JSON.stringify(manager));sessionStorage.setItem('footballLegacyStartYear',String(state.startYear));window.location.href='career-route.html';
+      const manager={firstName,lastName,age,portraitId:state.portrait.id,faceAssetId:state.portrait.faceAssetId||null,managerFaceAssetId:state.portrait.faceAssetId||null,faceAssignedYear:state.startYear,managerCreationYear:state.startYear,portrait,managerPortraitAsset:portrait,faceConfig:state.custom?faceConfig():null,identitySeed:identitySeed(),appearanceIndex:state.portrait.id,skinTone:state.custom?$('faceSkin').value:'light',appearanceMode:state.custom?'custom':'portrait',nationality:$('nationality').value,birthplace:$('birthplace').value.trim(),managementStyle:$('style').value,style:$('style').value,temperament:$('temperament').value,occupation:'Full-time Football Manager',reputation:$('reputation').value,portraitRole:'manager',era:state.startYear,playerCareerLegacy:saved?.playerCareerLegacy||null};
+      sessionStorage.setItem('footballLegacyManager',JSON.stringify(manager));sessionStorage.setItem('footballLegacyStartYear',String(state.startYear));
+      if(directRoute==='take-charge'){sessionStorage.setItem('footballLegacyCareerRoute','take-charge');window.location.href='club-selection.html';return}
+      if(directRoute==='create-club'){sessionStorage.setItem('footballLegacyCareerRoute','create-club');sessionStorage.setItem('footballLegacyStartYear','2026');window.location.href='../create-club/index.html?careerMode=career';return}
+      window.location.href='../index.html';
     });
     const savedManager=sessionStorage.getItem('footballLegacyManager');let saved=null;if(savedManager){try{saved=JSON.parse(savedManager)}catch(e){}}
     if(saved){state.startYear=Math.max(1888,Math.min(2026,Number(saved.managerCreationYear||saved.faceAssignedYear||state.startYear)||1888));$('firstName').value=saved.firstName||'';$('lastName').value=saved.lastName||'';$('nationality').value=saved.nationality||'England';$('birthplace').value=saved.birthplace||'';$('style').value=saved.managementStyle||'Direct Football';$('temperament').value=saved.temperament||'Calm';if(saved.age)$('managerAge').value=saved.age;if(saved.faceConfig){const f=saved.faceConfig;$('faceSkin').value=f.skin||'medium';$('faceShape').value=f.faceShape||'oval';$('faceHair').value=f.hair||'brown';$('hairStyle').value=f.hairStyle||'side-part';$('facialHair').value=f.facialHair||'moustache';$('faceEyes').value=f.eyes||'brown';$('faceOutfit').value=f.outfit||'suit';$('faceAccessory').value=f.accessory||'none'}}
-    portraits=makePortraits(state.startYear);state.portrait=portraits.find(p=>p.id===saved?.portraitId)||portraits[0];setStartYear(state.startYear);if(saved){$('occupation').value=[...$('occupation').options].some(o=>o.value===saved.occupation)?saved.occupation:$('occupation').value;$('reputation').value=saved.reputation||'Unknown Local Coach'}setAppearanceMode(false);updateSummary();
+    if(directRoute==='create-club'){state.startYear=2026;$('careerStartYear').value='2026';$('careerStartYear').min='2026';$('careerStartYear').max='2026';$('careerStartYear').disabled=true;$('portraitEraNote').textContent='Created-club careers currently begin in the present day.';$('continueButton').textContent='Create Your Club →'}
+    portraits=makePortraits(state.startYear);state.portrait=portraits.find(p=>p.id===saved?.portraitId)||portraits[0];setStartYear(state.startYear);if(saved)$('reputation').value=saved.reputation||'Unknown Local Coach';setAppearanceMode(false);updateSummary();
   </script>
   <script src="../controller-ui.js"></script>
 </body>

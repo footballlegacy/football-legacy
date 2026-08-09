@@ -32,7 +32,8 @@ window.FLTimeline = (() => {
     game.globalPlayers=Array.isArray(game.globalPlayers)?game.globalPlayers:[];
     game.news=Array.isArray(game.news)?game.news:[];game.history=Array.isArray(game.history)?game.history:[];game.inbox=Array.isArray(game.inbox)?game.inbox:[];
     const current=String(game.date||'1888-08-15');
-    data.clubSeeds.filter(c=>c.founded<=current).forEach(seed=>registerClub(game,seed,false));
+    const registeredClubIds=new Set(w.clubDirectory.map(club=>club.id));
+    data.clubSeeds.filter(c=>c.founded<=current&&!registeredClubIds.has(c.id)).forEach(seed=>{registerClub(game,seed,false);registeredClubIds.add(seed.id)});
     if(options.bootstrap!==false){
       data.events.filter(e=>e.date<=current&&!w.processedEventIds.includes(e.id)).forEach(e=>applyEvent(game,e,{silent:true,bootstrap:true}));
     }
@@ -202,7 +203,7 @@ window.FLTimeline = (() => {
     const player={id:`${team.id}-y${startYear}-${index}-${Math.floor(r()*99999)}`,name:window.FLEraIdentity?FLEraIdentity.generatedName('English',startYear-age+18,Math.floor(r()*4294967295)):`${pick(FLData.firstNames,r)} ${pick(FLData.lastNames,r)}`,clubId:team.id,nationality:'English',birthYear:startYear-age,generatedYear:startYear,position:pick(FLData.positions,r),age,condition:90,form:'—',ability:base,potential:Math.round(base+(ceiling-base)*.72),ceiling,developmentCurve:pick(['early','steady','steady','late','volatile'],r),developmentMomentum:0,personalityProfile:{professionalism:35+Math.floor(r()*65),ambition:30+Math.floor(r()*70),loyalty:25+Math.floor(r()*75),leadership:20+Math.floor(r()*80),bigMatches:25+Math.floor(r()*75),consistency:35+Math.floor(r()*65),injuryProneness:8+Math.floor(r()*78),temperament:20+Math.floor(r()*80),teamwork:35+Math.floor(r()*65),determination:30+Math.floor(r()*70),adaptability:25+Math.floor(r()*75)},personalityLabel:pick(['Professional','Driven','Balanced','Loyal','Ambitious'],r),wage:window.FLEconomy?FLEconomy.recommendedWage(game,{ability:base,age},team,'Prospect'):1+Math.floor(base/22),appearances:0,starts:0,subApps:0,minutes:0,goals:0,assists:0,yellowCards:0,redCards:0,cleanSheets:0,conceded:0,playerOfMatch:0,averageRating:'—',honours:[],seasonHistory:[],matchHistory:[],careerTotals:{appearances:0,goals:0,assists:0,cleanSheets:0},youthIntakeYear:startYear,wartimeIntake:Boolean(war),intakeQuality:Number(intake.quality||50),goldenGenerationId:intake.golden?intake.generationId||null:null};if(window.FLLivingWorld)FLLivingWorld.ensurePlayer(game,player,team);if(window.FLEraIdentity)FLEraIdentity.applyPlayer(game,player,startYear);return player;
   }
 
-  function legendName(archetype,r){const pool=data.namePools[archetype.nationality]||data.namePools.English;return `${pick(pool.first,r)} ${pick(pool.last,r)}`;}
+  function legendName(archetype,r){const restored=window.FLOriginalNames?.legendNames?.[archetype.id];if(restored)return restored;const pool=data.namePools[archetype.nationality]||data.namePools.English;return `${pick(pool.first,r)} ${pick(pool.last,r)}`;}
   function generateLegend(game,archetype,startYear,r){
     const w=ensure(game,{bootstrap:false});if(w.generatedArchetypes.includes(archetype.id))return null;
     const age=15+Math.floor(r()*3),player={id:`legend-${archetype.id}-${startYear}`,name:legendName(archetype,r),nationality:archetype.nationality,position:archetype.position,age,ability:archetype.ability+Math.floor(r()*4)-1,ceiling:archetype.ceiling,potential:archetype.ceiling-1,condition:96,form:'—',personalityLabel:'Generational Talent',legendArchetype:archetype.id,archetypeLabel:archetype.label,traits:[...archetype.traits],careerTotals:{appearances:0,goals:0,assists:0,cleanSheets:0},honours:[],seasonHistory:[],matchHistory:[],status:'global-prospect',generatedYear:startYear};

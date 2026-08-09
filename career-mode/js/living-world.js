@@ -18,6 +18,9 @@ window.FLLivingWorld = (() => {
     if(!p||typeof p!=='object')return p;
     const r=seeded(hash(`${game.meta?.seed||1}-${p.id}-career-profile`)),pp=p.personalityProfile||(p.personalityProfile={});
     p.nationality=p.nationality||'English';
+    ['appearances','starts','subApps','minutes','goals','assists','yellowCards','redCards','cleanSheets','conceded','playerOfMatch'].forEach(k=>{if(!Number.isFinite(Number(p[k])))p[k]=0});
+    p.averageRating=p.averageRating??'—';p.honours=Array.isArray(p.honours)?p.honours:[];p.seasonHistory=Array.isArray(p.seasonHistory)?p.seasonHistory:[];p.matchHistory=Array.isArray(p.matchHistory)?p.matchHistory:[];
+    p.careerTotals=p.careerTotals&&typeof p.careerTotals==='object'?p.careerTotals:{};['appearances','goals','assists','cleanSheets'].forEach(k=>{if(!Number.isFinite(Number(p.careerTotals[k])))p.careerTotals[k]=0});
     ['professionalism','ambition','loyalty','leadership','bigMatches','consistency','injuryProneness','temperament','teamwork','determination','adaptability'].forEach(k=>{if(!Number.isFinite(Number(pp[k])))pp[k]=25+Math.floor(r()*75)});
     if(!Number.isFinite(Number(pp.resilience)))pp.resilience=25+Math.floor(r()*75);
     if(!Number.isFinite(Number(pp.confidenceStability)))pp.confidenceStability=25+Math.floor(r()*75);
@@ -63,6 +66,7 @@ window.FLLivingWorld = (() => {
       c.heritage.famousMatches=Array.isArray(c.heritage.famousMatches)?c.heritage.famousMatches:[];
       (c.players||[]).forEach(p=>ensurePlayer(game,p,c));
     });
+    (game.freeAgents||[]).forEach(p=>ensurePlayer(game,p,null));
     if(window.FLWorldFootball)allForeignPlayers(game).forEach(x=>ensurePlayer(game,x.p,x.c));
     game.managerCareer=game.managerCareer||{view:'overview',timeline:[],honours:[],relationships:{board:game.boardConfidence||60,supporters:58,players:60,press:45}};
     game.managerCareer.timeline=Array.isArray(game.managerCareer.timeline)?game.managerCareer.timeline:[];game.managerCareer.honours=Array.isArray(game.managerCareer.honours)?game.managerCareer.honours:[];

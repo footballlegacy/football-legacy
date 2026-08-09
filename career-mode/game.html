@@ -42,10 +42,31 @@
   <footer class="status-footer"><span id="saveNote">Game saves automatically</span><button id="saveButton">SAVE GAME</button><button id="menuButton">MAIN MENU</button></footer>
 </div>
 <script src="js/club-database.js?v=0.24.1-manager-legacy"></script><script src="js/data.js?v=0.24.1-manager-legacy"></script><script src="js/timeline-data.js?v=0.24.1-manager-legacy"></script><script src="js/living-world-data.js?v=0.24.1-manager-legacy"></script><script src="js/pyramid-data.js?v=0.28.0-grassroots"></script><script src="js/football-balance.js?v=0.24.1-manager-legacy"></script><script src="js/club-history-data.js?v=0.24.1-manager-legacy"></script><script src="js/world-football-data.js?v=0.24.1-manager-legacy"></script><script src="js/economy.js?v=0.26.13-market-balance"></script><script src="js/manager-contracts.js?v=0.28.0-grassroots"></script><script src="js/people.js?v=0.24.1-manager-legacy"></script><script src="js/portrait-catalog.js?v=0.26.0-realistic"></script><script src="js/identity.js?v=0.26.1-era-grooming"></script><script src="js/family-age-portraits.js?v=0.26.12-family-age-fixes"></script><script src="js/voices.js?v=0.24.1-manager-legacy"></script><script src="js/conversations.js?v=0.24.3-conversation-world"></script><script src="js/personal-life.js?v=0.26.3-manager-relationships"></script><script src="js/club-trajectory.js?v=0.26.17-history-integrity"></script><script src="js/pyramid.js?v=0.26.17-history-integrity"></script><script src="js/world-football.js?v=0.27.5-player-careers"></script><script src="js/timeline.js?v=0.27.5-player-careers"></script><script src="js/living-world.js?v=0.24.4-career-records"></script><script src="js/legacy-systems.js?v=0.26.3-family-successor"></script><script src="js/dressing-room.js?v=0.26.15-staff-portrait"></script><script src="js/transfer-market.js?v=0.28.0-grassroots"></script><script src="js/english-cup.js?v=0.24.1-manager-legacy"></script><script src="js/career-systems.js?v=0.26.17-history-integrity"></script><script src="js/manager-legacy-career.js?v=0.24.1-manager-legacy"></script><script src="js/match-environment.js?v=0.24.1-manager-legacy"></script><script src="js/save.js?v=0.24.1-manager-legacy"></script><script src="js/history-integrity.js?v=0.27.5.1-history-placement-integrity"></script><script src="js/historical-player-mobility.js?v=0.27.5.1-era-mobility"></script><script src="js/game.js?v=0.28.1-grassroots-lives"></script><script src="js/grassroots-career.js?v=0.28.1-phase-2"></script><script src="js/ui.js?v=0.28.1-grassroots-lives"></script><script src="js/targeted-tweaks.js?v=0.27.5.1-inbox-routing"></script><script src="js/beta-targeted-fixes.js?v=0.26.3-manager-relationships"></script><script src="js/international-football-expansion.js?v=0.26.5-international-performance-hotfix"></script><script src="js/v0266-match-news-fixes.js?v=0.26.6-targeted-match-news"></script><script src="js/v0268-quick-sim.js?v=0.26.10-remove-instant-result"></script>
+<script src="js/original-names.js?v=0.30.0-original-names"></script>
 <script>
 (async function bootFootballLegacy(){
 let game=await FLSave.load();
 if(!game){window.location.href='../index.html';return;}
+// Repair incomplete hand-offs from older setup pages before any career system
+// or renderer tries to read the controlled club. This keeps an otherwise valid
+// save playable instead of leaving the homepage blank.
+game.clubs=Array.isArray(game.clubs)?game.clubs:[];
+game.meta=game.meta&&typeof game.meta==='object'?game.meta:{};
+const requestedClub=game.clubs.find(club=>club.id===game.controlledClubId)
+  ||game.clubs.find(club=>club.id===game.meta.preselectedClubId)
+  ||game.clubs.find(club=>club.leagueActive)
+  ||game.clubs[0];
+if(!requestedClub){window.location.href='../index.html';return;}
+game.controlledClubId=requestedClub.id;
+game.meta.preselectedClubId=requestedClub.id;
+requestedClub.players=Array.isArray(requestedClub.players)?requestedClub.players:[];
+game.manager=game.manager&&typeof game.manager==='object'?game.manager:{firstName:'New',lastName:'Manager',age:35,nationality:'England',user:true};
+game.date=/^\d{4}-\d{2}-\d{2}$/.test(String(game.date||''))?game.date:'2026-08-15';
+game.inbox=Array.isArray(game.inbox)?game.inbox:[];
+game.news=Array.isArray(game.news)?game.news:[];
+game.history=Array.isArray(game.history)?game.history:[];
+game.fixtures=Array.isArray(game.fixtures)?game.fixtures:[];
+game.finances=game.finances&&typeof game.finances==='object'?game.finances:{balance:0,income:0,expenses:0,transferBudget:0,weeklyWageBudget:0};
 if(game&&window.FLEconomy)FLEconomy.migrate(game);
 if(game&&window.FLHistoryIntegrity)FLHistoryIntegrity.migrate(game);
 if(game&&window.FLLegacySystems)FLLegacySystems.ensure(game);
@@ -58,7 +79,7 @@ if(game&&window.FLTimeline)FLTimeline.ensure(game);
 if(game&&window.FLWorldFootball)FLWorldFootball.ensure(game);
 if(game&&window.FLPyramid){FLPyramid.ensure(game,Number(String(game.date||'1888').slice(0,4))||1888);if(!game.pyramid?.seasonYear)FLPyramid.prepareSeason(game,Number(String(game.date||'1888').slice(0,4))||1888);}
 if(game&&window.FLFootballBalance){const placementRepair=FLFootballBalance.repairSelectedPlacement(game);const needsForcedRepair=game.version!=='0.24.9'||placementRepair?.changed||Number(game.meta?.balanceRepair?.version||0)<4;FLFootballBalance.repairWorld(game,{force:Boolean(needsForcedRepair)});game.meta=game.meta||{};game.meta.runtimeRepair0221={date:game.date,placementChanged:Boolean(placementRepair?.changed)};}
-game.version='0.27.5.1';
+game.version=game.meta?.grassroots?'0.28.1-phase-2':(game.meta?.createdClubCareer?'0.30.1-created-club':'0.27.5.1');
 const entryTab=new URLSearchParams(window.location.search).get('tab');if(entryTab&&['home','inbox','team','squad','transfers','club','board','competitions','history','search','manager','settings','match','season'].includes(entryTab))game.selectedTab=entryTab;
 if(!['home','inbox','team','squad','transfers','club','board','competitions','history','search','manager','settings','match','season'].includes(game.selectedTab)) game.selectedTab='home';
 if(window.FLLivingWorld)FLLivingWorld.ensure(game);

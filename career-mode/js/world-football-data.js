@@ -19,7 +19,7 @@ window.FLWorldFootballData = (() => {
     },
     {
       id:'spain',country:'Spain',nationality:'Spanish',startDate:'1929-02-10',distance:'continental',baseQuality:73,threePointsYear:1995,
-      names:[{from:1929,name:'Spanish National League'},{from:1984,name:'Spanish Primera División'},{from:2008,name:'Spanish Premier Division'}],
+      names:[{from:1929,name:'Primera División'},{from:2008,name:'La Liga'}],
       sizes:[{from:1929,size:10},{from:1941,size:14},{from:1950,size:16},{from:1971,size:18},{from:1987,size:20}],
       suspensions:[{from:1936,to:1938,label:'Civil-war suspension'}],
       clubs:[
@@ -37,7 +37,7 @@ window.FLWorldFootballData = (() => {
     },
     {
       id:'italy',country:'Italy',nationality:'Italian',startDate:'1929-10-06',distance:'continental',baseQuality:75,threePointsYear:1994,
-      names:[{from:1929,name:'Italian National Division'},{from:1946,name:'Italian Serie A'}],sizes:[{from:1929,size:18},{from:1934,size:16},{from:1952,size:18},{from:1967,size:16},{from:1988,size:18},{from:2004,size:20}],
+      names:[{from:1929,name:'Serie A'}],sizes:[{from:1929,size:18},{from:1934,size:16},{from:1952,size:18},{from:1967,size:16},{from:1988,size:18},{from:2004,size:20}],
       suspensions:[{from:1943,to:1945,label:'Wartime suspension'}],
       clubs:[
         club('Juventus','Turin Zebras','Turin',5,94,'#171717','#f4f0df',1897),club('AC Milan','Milan Reds','Milan',5,91,'#b51e30','#171717',1899),
@@ -54,7 +54,7 @@ window.FLWorldFootballData = (() => {
     },
     {
       id:'france',country:'France',nationality:'French',startDate:'1932-09-11',distance:'continental',baseQuality:68,threePointsYear:1994,
-      names:[{from:1932,name:'French National Division'},{from:1972,name:'French Division 1'},{from:2002,name:'French Ligue 1'}],sizes:[{from:1932,size:20},{from:1933,size:14},{from:1946,size:18},{from:1965,size:20},{from:1997,size:18},{from:2002,size:20}],
+      names:[{from:1932,name:'Division 1'},{from:2002,name:'Ligue 1'}],sizes:[{from:1932,size:20},{from:1933,size:14},{from:1946,size:18},{from:1965,size:20},{from:1997,size:18},{from:2002,size:20}],
       suspensions:[{from:1939,to:1945,label:'Wartime regional championships'}],
       clubs:[
         club('Paris Saint-Germain','Paris Rouge et Bleu','Paris',5,88,'#1b3766','#b92335',1970),club('Marseille','Marseille Olympique','Marseille',5,84,'#2a9fd4','#f4f0df',1899),
@@ -71,7 +71,7 @@ window.FLWorldFootballData = (() => {
     },
     {
       id:'portugal',country:'Portugal',nationality:'Portuguese',startDate:'1935-01-20',distance:'continental',baseQuality:67,threePointsYear:1995,
-      names:[{from:1934,name:'Portuguese Experimental League'},{from:1938,name:'Portuguese First Division'},{from:1999,name:'Portuguese Premier League'}],sizes:[{from:1934,size:8},{from:1938,size:8},{from:1946,size:14},{from:1971,size:16},{from:1987,size:20},{from:1991,size:18}],
+      names:[{from:1934,name:'Campeonato da Liga'},{from:1938,name:'Primeira Divisão'},{from:1999,name:'Primeira Liga'}],sizes:[{from:1934,size:8},{from:1938,size:8},{from:1946,size:14},{from:1971,size:16},{from:1987,size:20},{from:1991,size:18}],
       clubs:[
         club('Benfica','Lisbon Eagles','Lisbon',5,88,'#c52436','#f4f0df',1904),club('Sporting CP','Lisbon Lions','Lisbon',5,85,'#207747','#f4f0df',1906),
         club('Porto','Porto Dragons','Porto',5,87,'#245da0','#f4f0df',1893),club('Braga','Braga Bishops','Braga',4,72,'#c42a39','#f4f0df',1921),
@@ -86,7 +86,7 @@ window.FLWorldFootballData = (() => {
     },
     {
       id:'brazil',country:'Brazil',nationality:'Brazilian',startDate:'1959-08-23',distance:'intercontinental',baseQuality:78,threePointsYear:1995,
-      names:[{from:1959,name:'Brazilian Champions Tournament'},{from:1971,name:'Brazilian National Championship'},{from:2003,name:'Brazilian Série A'}],sizes:[{from:1959,size:16},{from:1971,size:20},{from:1987,size:24},{from:2003,size:20}],
+      names:[{from:1959,name:'Taça Brasil'},{from:1971,name:'Campeonato Brasileiro Série A'}],sizes:[{from:1959,size:16},{from:1971,size:20},{from:1987,size:24},{from:2003,size:20}],
       clubs:[
         club('Flamengo','Rio Black and Red','Rio de Janeiro',5,91,'#bd2637','#171717',1895),club('Fluminense','Rio Tricolour','Rio de Janeiro',5,83,'#7a2138','#26814b',1902),
         club('Vasco da Gama','Rio Navigators','Rio de Janeiro',5,84,'#171717','#f4f0df',1898),club('Botafogo','Rio Lone Star','Rio de Janeiro',4,78,'#171717','#f4f0df',1904),
@@ -102,7 +102,7 @@ window.FLWorldFootballData = (() => {
     },
     {
       id:'germany',country:'Germany',nationality:'German',startDate:'1963-08-24',distance:'continental',baseQuality:77,threePointsYear:1995,
-      names:[{from:1963,name:'German Federal League'}],sizes:[{from:1963,size:16},{from:1965,size:18},{from:1991,size:20},{from:1992,size:18}],
+      names:[{from:1963,name:'Bundesliga'}],sizes:[{from:1963,size:16},{from:1965,size:18},{from:1991,size:20},{from:1992,size:18}],
       clubs:[
         club('Bayern Munich','Munich Reds','Munich',5,96,'#bd2437','#f4f0df',1900),club('Borussia Dortmund','Dortmund Yellows','Dortmund',5,88,'#e4c82d','#171717',1909),
         club('Schalke 04','Gelsenkirchen Blues','Gelsenkirchen',5,81,'#2363a8','#f4f0df',1904),club('Hamburg','Hamburg North','Hamburg',5,84,'#f4f0df','#225799',1887),
@@ -129,7 +129,7 @@ window.FLWorldFootballData = (() => {
     },
     {
       id:'saudi',country:'Saudi Arabia',nationality:'Saudi',startDate:'2008-08-13',distance:'intercontinental',baseQuality:62,threePointsYear:2008,
-      names:[{from:2008,name:'Saudi Professional League'}],sizes:[{from:2008,size:12},{from:2010,size:14},{from:2023,size:18}],
+      names:[{from:2008,name:'Saudi Pro League'}],sizes:[{from:2008,size:12},{from:2010,size:14},{from:2023,size:18}],
       clubs:[
         club('Al Hilal','Riyadh Crescent','Riyadh',5,83,'#2456a4','#f4f0df',1957),club('Al Nassr','Riyadh Victory','Riyadh',5,81,'#e1c52d','#285da4',1955),
         club('Al Ittihad','Jeddah Union','Jeddah',5,80,'#e4c52c','#171717',1927),club('Al Ahli','Jeddah Royals','Jeddah',5,78,'#25804d','#f4f0df',1937),

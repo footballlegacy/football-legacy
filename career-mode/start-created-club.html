@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Building Created Club Career | Football Legacy</title>
+  <style>
+    :root{--navy:#06182c;--deep:#03101f;--orange:#e87824;--cream:#f4ead8;--muted:#aab7c5;--line:rgba(232,120,36,.28);--green:#89b85f}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;color:var(--cream)}body{background:radial-gradient(circle at 50% 0%,rgba(68,107,48,.30),transparent 38%),linear-gradient(145deg,var(--navy),var(--deep) 78%);display:grid;place-items:center;padding:24px}.panel{width:min(760px,100%);padding:42px;border:1px solid var(--line);border-top:5px solid var(--orange);background:rgba(8,31,54,.95);box-shadow:0 25px 70px rgba(0,0,0,.35);text-align:center}.mark{width:52px;height:52px;margin:0 auto 22px;display:grid;place-items:center;background:var(--orange);color:var(--deep);font:700 16px Georgia,serif}.tag{color:var(--green);font-size:11px;text-transform:uppercase;letter-spacing:.18em}.panel h1{margin:10px 0 8px;font:700 clamp(2.1rem,6vw,4rem) Georgia,serif;text-transform:uppercase}.panel p{color:var(--muted);line-height:1.5}.year{margin-top:26px;color:var(--orange);font:700 38px Georgia,serif}.bar{height:10px;background:rgba(255,255,255,.08);margin:17px auto;overflow:hidden}.fill{height:100%;width:1%;background:var(--green);transition:width .2s}.status{min-height:24px;color:var(--muted)}.error{margin-top:20px;color:#ffb38a}.error a{display:inline-block;margin-top:15px;padding:12px 16px;color:var(--cream);border:1px solid var(--line);text-decoration:none;text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.1em}
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <div class="mark">FL</div>
+    <div class="tag" id="tierLabel">Created Club · Present Day</div>
+    <h1 id="clubName">Building Your Career</h1>
+    <p id="description">Preparing the complete 2026 football world, registering your club and taking you straight to the career homepage.</p>
+    <div class="year" id="yearReadout">1888</div>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="status" id="status">Preparing football history…</div>
+    <div class="error" id="error"></div>
+  </main>
+<script>
+  const $ = id => document.getElementById(id);
+  const readRows = key => { try { const rows = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(rows) ? rows : []; } catch { return []; } };
+  const manager = (() => { try { return JSON.parse(sessionStorage.getItem('footballLegacyManager') || 'null'); } catch { return null; } })();
+  const createdClubId = sessionStorage.getItem('footballLegacyCreatedCareerClubId');
+  const createdClub = readRows('footballLegacyCreatedClubsV1').find(row => row.id === createdClubId) || null;
+  const createdPlayers = readRows('footballLegacyCreatedPlayersV1');
+  const stadium = readRows('footballLegacyCreatedStadiumsV1').find(row => row.id === createdClub?.stadiumId) || null;
+  const tier = Math.max(1, Math.min(15, Number(createdClub?.startingTier) || 15));
+  const sources = [
+    'js/club-database.js?v=0.30.1','js/data.js?v=0.30.1','js/timeline-data.js?v=0.30.1','js/living-world-data.js?v=0.30.1','js/pyramid-data.js?v=0.30.1',
+    'js/football-balance.js?v=0.30.1','js/club-history-data.js?v=0.30.1','js/world-football-data.js?v=0.30.1','js/economy.js?v=0.30.1','js/manager-contracts.js?v=0.30.1',
+    'js/people.js?v=0.30.1','js/portrait-catalog.js?v=0.30.1','js/identity.js?v=0.30.1','js/voices.js?v=0.30.1','js/conversations.js?v=0.30.1','js/personal-life.js?v=0.30.1',
+    'js/club-trajectory.js?v=0.30.1','js/pyramid.js?v=0.30.1','js/world-football.js?v=0.30.1','js/timeline.js?v=0.30.1','js/living-world.js?v=0.30.1','js/legacy-systems.js?v=0.30.1',
+    'js/dressing-room.js?v=0.30.1','js/transfer-market.js?v=0.30.1','js/english-cup.js?v=0.30.1','js/career-systems.js?v=0.30.1','js/manager-legacy-career.js?v=0.30.1',
+    'js/match-environment.js?v=0.30.1','js/save.js?v=0.30.1','js/history-integrity.js?v=0.30.1','js/historical-player-mobility.js?v=0.30.1','js/game.js?v=0.30.1','js/grassroots-career.js?v=0.30.1'
+  ];
+  function loadScripts(list) {
+    return new Promise((resolve, reject) => {
+      const next = () => {
+        const src = list.shift();
+        if (!src) { resolve(); return; }
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = next;
+        script.onerror = () => reject(new Error(`Could not load ${src}`));
+        document.body.appendChild(script);
+      };
+      next();
+    });
+  }
+  function progress(info) {
+    const percent = Number(info.percent) || 0;
+    $('fill').style.width = `${percent}%`;
+    $('yearReadout').textContent = info.year || 1888;
+    $('status').textContent = `Building the ${info.year}/${String(Number(info.year) + 1).slice(-2)} football world · ${percent}%`;
+  }
+  async function start() {
+    if (!manager || !createdClub) {
+      $('error').innerHTML = 'The manager or created club details are missing.<br><a href="../index.html">Return to Main Menu</a>';
+      return;
+    }
+    $('clubName').textContent = createdClub.name || 'Building Your Career';
+    $('tierLabel').textContent = `Tier ${tier} · ${tier >= 7 ? 'Grassroots / Part-Time' : 'Professional'} · 2026/27`;
+    try {
+      await loadScripts([...sources]);
+      await loadScripts(['js/original-names.js?v=0.30.1']);
+      const game = await FLGrassroots.createCareer(manager, createdClub, createdPlayers, stadium, progress);
+      $('fill').style.width = '100%';
+      $('yearReadout').textContent = '2026';
+      $('status').textContent = 'Career ready · opening your club…';
+      await FLSave.save(game);
+      sessionStorage.removeItem('footballLegacyCreatedCareerClubId');
+      location.replace('game.html');
+    } catch (error) {
+      console.error(error);
+      $('status').textContent = 'Career creation stopped.';
+      $('error').innerHTML = `${String(error?.message || 'The created-club career could not be built.')}<br><a href="../create-club/index.html?careerMode=career">Return to Club Creator</a>`;
+    }
+  }
+  start();
+</script>
+</body>
+</html>

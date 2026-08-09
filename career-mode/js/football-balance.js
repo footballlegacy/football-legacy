@@ -135,10 +135,10 @@ window.FLFootballBalance = (() => {
     for(const club of game?.clubs||[]){
       if(!club.leagueActive&&club.id!==game.controlledClubId)continue;
       const result=calibrateClub(game,club,{force:Boolean(options.force)});if(result.changed){changed+=result.changed;clubs++}
-      const clubSeasons=Array.isArray(club.seasonHistory)?club.seasonHistory:[];
+      const clubSeasons=Array.isArray(club.seasonHistory)?club.seasonHistory:[],clubSeasonByLabel=new Map(clubSeasons.map(season=>[String(season.season),season]));
       for(const player of club.players||[]){
         for(const row of player.seasonHistory||[]){
-          const matching=clubSeasons.find(s=>String(s.season)===String(row.season));
+          const matching=clubSeasonByLabel.get(String(row.season));
           if(!row.league&&matching?.division){row.league=matching.division;historyRows++}
           if(!row.division&&matching?.division){row.division=matching.division;historyRows++}
           if(!row.divisionId&&matching?.divisionId){row.divisionId=matching.divisionId;historyRows++}

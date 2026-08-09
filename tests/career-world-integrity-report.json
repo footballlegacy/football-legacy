@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-08-09T09:46:17.183Z",
+  "root": "/Users/connorwright/Documents/Codex/2026-08-07/i-w/Football-Legacy-Player-Career-Test-v0.30.0",
+  "metrics": {
+    "htmlAssetReferencesChecked": 84,
+    "portraitAssetsDeclared": 1616,
+    "portraitAssetsMissing": 0,
+    "catalogueEnglishClubs": 164,
+    "catalogueWorldClubs": 156,
+    "catalogueTotalClubs": 320,
+    "iconicArchetypesTimeline": 112,
+    "iconicArchetypesPyramid": 24,
+    "iconicArchetypesUnique": 136,
+    "simulationMs2026": 113769,
+    "clubs2026": 1477,
+    "freeAgents2026": 161,
+    "clubSeasonRows2026": 25396,
+    "players2026": 6979,
+    "playerSeasonRows2026": 72297,
+    "playerClubHistoryRows2026": 4669,
+    "generatedIconicPlayers2026": 125,
+    "generatedIconicArchetypes2026": 136,
+    "managerArchive2026": 4731,
+    "managerVacancies2026": 2,
+    "availableManagerPool2026": 90,
+    "saveRoundTripBytes2026": 204875177
+  },
+  "summary": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "errors": [],
+  "warnings": []
+}

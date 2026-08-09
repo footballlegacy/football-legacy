@@ -60,10 +60,12 @@ async function loadCareerSave(){
 function careerClub(save){return save?.clubs?.find(club=>club.id===save.controlledClubId)||null}
 async function renderSaveSlots(){
   const saveGrid=document.getElementById('saveGrid');if(!saveGrid)return;
-  const save=await loadCareerSave(),club=careerClub(save);
-  if(!save){saveGrid.innerHTML=`<article class="save-card empty"><span class="save-number">Career Mode</span><h2 class="empty-label">No Career Save</h2><p class="empty-copy">Start a new legacy using the existing Career Mode setup.</p><a class="action-button" href="career-mode/manager.html">Start Career</a></article>`;return}
-  const year=String(save.date||save.meta?.startYear||'1888').slice(0,4),last=save.meta?.lastSaved?new Date(save.meta.lastSaved).toLocaleString('en-GB'):'Saved';
-  saveGrid.innerHTML=`<article class="save-card occupied"><span class="save-number">Career Mode</span><h2>${escapeHtml(club?.name||'Football Legacy Career')}</h2><div class="save-meta"><span>Current year <strong>${escapeHtml(year)}</strong></span><span>Last saved <strong>${escapeHtml(last)}</strong></span></div><a class="action-button primary" href="career-mode/game.html">Continue</a></article>`;
+  const save=await loadCareerSave(),club=careerClub(save);let playerSave=null;try{playerSave=JSON.parse(localStorage.getItem('footballLegacyPlayerCareerV1')||'null')}catch(error){console.warn('Could not read Player Career save.',error)}
+  if(!save&&!playerSave){saveGrid.innerHTML=`<article class="save-card empty"><span class="save-number">Career Mode</span><h2 class="empty-label">No Career Saves</h2><p class="empty-copy">Open New Career above to choose a career type and begin.</p></article>`;return}
+  const year=String(save?.date||save?.meta?.startYear||'1888').slice(0,4),last=save?.meta?.lastSaved?new Date(save.meta.lastSaved).toLocaleString('en-GB'):'Saved';
+  const managerCard=save?`<article class="save-card occupied"><span class="save-number">Manager Career</span><h2>${escapeHtml(club?.name||'Football Legacy Career')}</h2><div class="save-meta"><span>Current year <strong>${escapeHtml(year)}</strong></span><span>Last saved <strong>${escapeHtml(last)}</strong></span></div><a class="action-button primary" href="career-mode/game.html">Continue</a></article>`:'';
+  const playerCard=playerSave?`<article class="save-card occupied player-save"><span class="save-number">Player Career</span><h2>${escapeHtml(playerSave.player?.name||`${playerSave.player?.firstName||''} ${playerSave.player?.lastName||''}`.trim()||'Playing Career')}</h2><div class="save-meta"><span>${escapeHtml(playerSave.club?.name||'Unattached')} <strong>${escapeHtml(playerSave.path?.tier||'Player')}</strong></span><span>Age <strong>${escapeHtml(playerSave.player?.age||14)}</strong> · ${escapeHtml(playerSave.records?.totals?.appearances||0)} apps</span></div><a class="action-button primary" href="player-career/game.html">Continue Player Career</a></article>`:'';
+  saveGrid.innerHTML=managerCard+playerCard;
 }
 
 function escapeHtml(value) {

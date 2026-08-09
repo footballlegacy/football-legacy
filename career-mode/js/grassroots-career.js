@@ -265,18 +265,107 @@ window.FLGrassroots = (() => {
     player.createdAppearance = row.appearance || null;
     player.face = row.appearance?.facePreset || player.face;
     player.shirtNumber = Number(row.shirtNumber) || index + 1;
+    if (row.legendArchetype) {
+      player.legendArchetype = row.legendArchetype;
+      player.traits = [...(row.traits || player.traits || [])];
+    }
     return applyPartTimeProfile(player, game);
   }
 
-  function buildSquad(game, club, createdClub, createdPlayers) {
+  const tierRating = tier => ({1:82,2:74,3:68,4:63,5:58,6:54,7:50,8:47,9:44,10:41,11:38,12:35,13:32,14:29,15:26})[Number(tier)] || 42;
+
+  function convertProfessionalPlayer(row, template, index, club, game, tier) {
+    const random = seeded(hash(`${row?.id || index}|${club.id}|professional`));
+    const player = playerBase(template, index, club, random, game);
+    const rawName = row?.name || `${row?.firstName || 'Squad'} ${row?.lastName || `Player ${index + 1}`}`;
+    const parts = String(rawName).trim().split(/\s+/);
+    player.id = `created-career-${row?.id || `${club.id}-${index}`}`;
+    player.createdPlayerId = row?.source === 'created' ? row.id : null;
+    player.name = rawName;
+    player.firstName = row?.firstName || parts.shift() || 'Squad';
+    player.lastName = row?.lastName || parts.join(' ') || `Player ${index + 1}`;
+    player.age = Number(row?.age) || 18 + Math.floor(random() * 17);
+    player.nationality = row?.nationality || 'England';
+    player.position = mapPosition(row?.primaryPosition || row?.position || template?.position);
+    player.positions = [player.position];
+    player.ability = clamp(Number(row?.overall) || Number(template?.ability) || tierRating(tier), 22, 92);
+    player.ceiling = clamp(Math.max(player.ability, player.ability + 3 + Math.floor(random() * 10)), player.ability, 96);
+    player.potential = player.ceiling;
+    player.partTime = false;
+    player.contractType = 'Professional';
+    player.contractStatus = 'Secure';
+    player.contractStart = game.date;
+    player.contractEnd = '2029-06-30';
+    player.wage = Math.max(120, Math.round((player.ability * player.ability) * Math.max(1, 7 - Number(tier))));
+    player.squadStatus = index < 11 ? 'First Team' : index < 17 ? 'Rotation' : 'Backup';
+    if (row?.legendArchetype) {
+      player.legendArchetype = row.legendArchetype;
+      player.traits = [...(row.traits || player.traits || [])];
+    }
+    delete player.dayJob;
+    delete player.matchExpense;
+    return player;
+  }
+
+  function takeExistingRealPlayer(game, row) {
+    if (!row?.legendArchetype) return null;
+    for (const team of game.clubs || []) {
+      const index = (team.players || []).findIndex(player => player.legendArchetype === row.legendArchetype);
+      if (index >= 0) return team.players.splice(index, 1)[0];
+    }
+    for (const found of window.FLWorldFootball?.players?.(game) || []) {
+      if (found.p?.legendArchetype !== row.legendArchetype) continue;
+      const index = (found.c?.players || []).findIndex(player => player.id === found.p.id);
+      if (index >= 0) return found.c.players.splice(index, 1)[0];
+    }
+    for (const key of ['freeAgents', 'globalPlayers']) {
+      const rows = Array.isArray(game[key]) ? game[key] : [];
+      const index = rows.findIndex(player => player.legendArchetype === row.legendArchetype);
+      if (index >= 0) return rows.splice(index, 1)[0];
+    }
+    return null;
+  }
+
+  function moveExistingRealPlayer(player, row, index, club, game, tier, informal) {
+    player.clubHistory = Array.isArray(player.clubHistory) ? player.clubHistory : [];
+    const previousSpell = player.clubHistory.at(-1);
+    if (previousSpell?.to === 'Present') previousSpell.to = 2026;
+    player.clubHistory.push({ clubId: club.id, club: club.name, from: 2026, to: 'Present' });
+    player.clubId = club.id;
+    player.status = 'active';
+    player.available = true;
+    player.position = mapPosition(row.primaryPosition || player.position);
+    player.positions = [player.position];
+    player.condition = clamp(player.condition || 92, 55, 100);
+    player.squadStatus = index < 11 ? 'First Team' : index < 17 ? 'Rotation' : 'Backup';
+    if (informal) return applyPartTimeProfile(player, game);
+    player.partTime = false;
+    player.contractType = 'Professional';
+    player.contractStatus = 'Secure';
+    player.contractStart = game.date;
+    player.contractEnd = '2029-06-30';
+    player.wage = Math.max(Number(player.wage) || 0, Math.round((Number(player.ability || row.overall) ** 2) * Math.max(1, 7 - Number(tier))));
+    delete player.dayJob;
+    delete player.matchExpense;
+    return player;
+  }
+
+  function buildSquad(game, club, createdClub, createdPlayers, informal = true) {
     const templates = [...(club.players || [])];
     const selectedIds = new Set(createdClub?.squad?.playerIds || []);
-    const selectedRows = (createdPlayers || []).filter(player => selectedIds.has(player.id));
+    const embedded = Array.isArray(createdClub?.squad?.players) ? createdClub.squad.players : [];
+    const byId = new Map([...(createdPlayers || []), ...embedded].map(player => [player.id, player]));
+    const selectedRows = [...selectedIds].map(id => byId.get(id)).filter(Boolean);
     const squad = [];
     const createdIdMap = {};
 
     selectedRows.forEach((row, index) => {
-      const player = convertCreatedPlayer(row, templates[index], index, club, game);
+      const existing = row.source === 'real' ? takeExistingRealPlayer(game, row) : null;
+      const player = existing
+        ? moveExistingRealPlayer(existing, row, index, club, game, createdClub.startingTier, informal)
+        : informal
+          ? convertCreatedPlayer(row, templates[index], index, club, game)
+          : convertProfessionalPlayer(row, templates[index], index, club, game, createdClub.startingTier);
       squad.push(player);
       createdIdMap[row.id] = player.id;
     });
@@ -293,11 +382,19 @@ window.FLGrassroots = (() => {
       player.position = positions[index % positions.length];
       player.positions = [player.position];
       player.age = 17 + Math.floor(random() * 26);
-      player.ability = clamp(24 + Math.floor(random() * 19) + (index < 4 ? 2 : 0), 20, 48);
-      player.ceiling = clamp(player.ability + 2 + Math.floor(random() * 17), player.ability, 65);
+      player.ability = informal ? clamp(24 + Math.floor(random() * 19) + (index < 4 ? 2 : 0), 20, 48) : clamp(tierRating(createdClub.startingTier) - 4 + Math.floor(random() * 9), 22, 92);
+      player.ceiling = clamp(player.ability + 2 + Math.floor(random() * 17), player.ability, informal ? 65 : 96);
       player.potential = player.ceiling;
       player.nationality = 'England';
-      applyPartTimeProfile(player, game);
+      if (informal) applyPartTimeProfile(player, game);
+      else {
+        player.partTime = false;
+        player.contractType = 'Professional';
+        player.contractStatus = 'Secure';
+        player.wage = Math.max(120, Math.round((player.ability * player.ability) * Math.max(1, 7 - Number(createdClub.startingTier))));
+        delete player.dayJob;
+        delete player.matchExpense;
+      }
       squad.push(player);
     }
 
@@ -379,23 +476,76 @@ window.FLGrassroots = (() => {
     return state.recruitment.candidates;
   }
 
+  function startingDivision(game, tier, region) {
+    const choices = (window.FLPyramid?.divisionList?.(game, 2026) || []).filter(division => Number(division.tier) === Number(tier));
+    return choices.find(division => division.regionKey === region)
+      || choices.find(division => (division.regions || []).includes(region))
+      || choices.find(division => division.region === window.FLPyramidData?.deepRegions?.[region]?.side)
+      || choices[0]
+      || null;
+  }
+
+  function placeCreatedClub(game, club, tier, region) {
+    const previousDivisionId = club.divisionId;
+    const target = startingDivision(game, tier, region);
+    if (!target) throw new Error(`Tier ${tier} is not available in the 2026 football pyramid.`);
+
+    if (previousDivisionId !== target.id) {
+      const replacement = (window.FLPyramid?.clubsInDivision?.(game, target.id) || [])
+        .filter(candidate => candidate.id !== club.id && candidate.id !== game.controlledClubId)
+        .sort((a, b) => Number(a.reputation || a.stature || 0) - Number(b.reputation || b.stature || 0))[0];
+      if (!replacement) throw new Error(`${target.name} has no club slot available for the created club.`);
+      replacement.divisionId = previousDivisionId;
+      replacement.tier = 15;
+      replacement.initialTier = Number(replacement.initialTier) || 15;
+      replacement.leagueActive = true;
+      if (game.pyramid?.membership) game.pyramid.membership[replacement.id] = previousDivisionId;
+      if (game.pyramid?.nextDivisionAssignments) game.pyramid.nextDivisionAssignments[replacement.id] = previousDivisionId;
+      if (game.pyramid?.nextTierAssignments) game.pyramid.nextTierAssignments[replacement.id] = 15;
+    }
+
+    club.divisionId = target.id;
+    club.tier = Number(tier);
+    club.initialTier = Number(tier);
+    club.leagueActive = true;
+    club.systemEntry = 2026;
+    if (tier <= 4) club.earnedNationalEntryYear = 2026;
+    game.pyramid = game.pyramid || {};
+    game.pyramid.membership = game.pyramid.membership || {};
+    game.pyramid.nextDivisionAssignments = game.pyramid.nextDivisionAssignments || {};
+    game.pyramid.nextTierAssignments = game.pyramid.nextTierAssignments || {};
+    game.pyramid.mandatoryClubIds = [...new Set([...(game.pyramid.mandatoryClubIds || []), club.id])];
+    game.pyramid.membership[club.id] = target.id;
+    game.pyramid.nextDivisionAssignments[club.id] = target.id;
+    game.pyramid.nextTierAssignments[club.id] = Number(tier);
+    game.pyramid.uiDivisionId = target.id;
+    return target;
+  }
+
   function applyCreatedClub(game, createdClub, createdPlayers = [], stadium = null, region = null) {
     const club = controlled(game);
-    if (!club) throw new Error('The grassroots club slot could not be loaded.');
+    if (!club) throw new Error('The created-club slot could not be loaded.');
     region = region || regionForCreatedClub(createdClub);
+    const tier = clamp(Number(createdClub?.startingTier) || 15, 1, 15);
+    const informal = tier >= 7;
+    const rating = tierRating(tier);
+    const division = placeCreatedClub(game, club, tier, region);
 
     // Keep the existing slot ID. All pyramid memberships, tables, fixtures and
     // histories already point at this record, so retaining it prevents a custom
     // club from becoming detached from the shared career world.
-    game.meta.grassroots = true;
+    game.meta = game.meta || {};
+    game.meta.grassroots = informal;
     game.meta.grassrootsRegion = region;
     game.meta.grassrootsCreatedClubId = createdClub.id;
-    game.meta.grassrootsClubId = club.id;
-    game.meta.careerRoute = 'grassroots';
+    game.meta.grassrootsClubId = informal ? club.id : null;
+    game.meta.createdClubCareer = true;
+    game.meta.createdClubStartingTier = tier;
+    game.meta.careerRoute = 'create-club';
     game.meta.startYear = 2026;
     game.meta.preselectedClubId = club.id;
 
-    club.name = createdClub.name || 'Created Grassroots Club';
+    club.name = createdClub.name || 'Created Club';
     club.initials = (createdClub.abbreviation || createdClub.shortName || club.name)
       .replace(/[^A-Za-z]/g, '')
       .slice(0, 4)
@@ -410,11 +560,14 @@ window.FLGrassroots = (() => {
     club.b = club.secondary;
     club.colours = `${club.primary} and ${club.secondary}`;
     club.ground = stadiumName(createdClub, stadium);
-    club.capacity = Math.max(80, Math.min(900, Number(stadium?.capacity) || 180));
+    const defaultCapacity = tier === 1 ? 32000 : tier === 2 ? 22000 : tier <= 4 ? 12000 : tier <= 6 ? 5000 : 500;
+    club.capacity = informal
+      ? Math.max(80, Math.min(2400, Number(stadium?.capacity) || defaultCapacity))
+      : Math.max(1000, Number(stadium?.capacity) || defaultCapacity);
     club.founded = `${Number(createdClub.founded) || 2026}-01-01`;
     club.createdClub = true;
     club.createdClubId = createdClub.id;
-    club.grassrootsClub = true;
+    club.grassrootsClub = informal;
     club.source = 'created';
     club.badge = createdClub.badge || null;
     club.kits = createdClub.kits || null;
@@ -422,25 +575,24 @@ window.FLGrassroots = (() => {
     club.honours = [];
     club.seasonHistory = [];
     club.managerHistory = [];
-    club.tier = 15;
-    club.initialTier = 15;
-    club.divisionId = divisionId(region);
-    club.leagueActive = true;
-    club.powerRating = 28;
-    club.clubRating = 28;
-    club.reputation = 18;
-    club.stature = 16;
-    club.financialPower = 8;
-    club.strength = 1;
-    club.expectation = 'Keep the club alive, fulfil the fixtures and see where the season takes you.';
-    club.facilities = { training: 1, youth: 1, medical: 1, scouting: 0, stadium: 1 };
+    club.powerRating = rating;
+    club.clubRating = rating;
+    club.reputation = clamp(rating - 7, 16, 92);
+    club.stature = clamp(rating - 9, 14, 90);
+    club.financialPower = informal ? clamp(20 - tier, 4, 14) : clamp(92 - tier * 7, 30, 88);
+    club.strength = clamp(Math.round(rating / 20), 1, 5);
+    club.expectation = informal
+      ? 'Keep the club alive, fulfil the fixtures and see where the season takes you.'
+      : `Establish the new club in ${division.name} and build a sustainable first season.`;
+    const facilityLevel = informal ? 1 : clamp(7 - tier, 1, 5);
+    club.facilities = { training: facilityLevel, youth: facilityLevel, medical: informal ? 1 : facilityLevel, scouting: informal ? 0 : Math.max(1, facilityLevel - 1), stadium: facilityLevel };
 
-    const createdIdMap = buildSquad(game, club, createdClub, createdPlayers);
+    const createdIdMap = buildSquad(game, club, createdClub, createdPlayers, informal);
     game.manager = {
       ...game.manager,
       appointedDate: '2026-08-15',
       user: true,
-      occupation: game.manager.occupation || 'Day job'
+      occupation: informal ? (game.manager.occupation || 'Day job') : 'Full-time Football Manager'
     };
     club.managerProfile = {
       ...game.manager,
@@ -453,40 +605,52 @@ window.FLGrassroots = (() => {
       name: `${game.manager.firstName} ${game.manager.lastName}`,
       from: '2026-08-15',
       to: 'Present',
-      role: 'Player-manager / volunteer manager',
+      role: informal ? 'Player-manager / volunteer manager' : 'Manager',
       age: game.manager.age
     });
 
-    game.finances = {
-      balance: 650,
-      income: 0,
-      expenses: 0,
-      transferBudget: 0,
-      weeklyWageBudget: 0,
-      grassroots: true,
-      pitchFee: 85,
-      refereeFee: 45,
-      matchFeesExpected: 120
-    };
-    game.boardConfidence = 68;
-    game.board = boardFor(game, club);
-    game.managerContract = {
-      grassroots: true,
-      clubId: club.id,
-      startDate: '2026-08-15',
-      expiryDate: null,
-      lengthYears: null,
-      weeklyWage: 0,
-      annualWage: 0,
-      marketWeeklyWage: 0,
-      compensation: 0,
-      status: 'Volunteer',
-      boardDecision: 'continue',
-      pendingOffer: null,
-      wageHistory: [],
-      reviewHistory: [],
-      offerHistory: []
-    };
+    if (informal) {
+      game.finances = {
+        balance: 650,
+        income: 0,
+        expenses: 0,
+        transferBudget: 0,
+        weeklyWageBudget: 0,
+        grassroots: true,
+        pitchFee: 85,
+        refereeFee: 45,
+        matchFeesExpected: 120
+      };
+      game.boardConfidence = 68;
+      game.board = boardFor(game, club);
+      game.managerContract = {
+        grassroots: true,
+        clubId: club.id,
+        startDate: '2026-08-15',
+        expiryDate: null,
+        lengthYears: null,
+        weeklyWage: 0,
+        annualWage: 0,
+        marketWeeklyWage: 0,
+        compensation: 0,
+        status: 'Volunteer',
+        boardDecision: 'continue',
+        pendingOffer: null,
+        wageHistory: [],
+        reviewHistory: [],
+        offerHistory: []
+      };
+    } else {
+      game.boardConfidence = 65;
+      game.finances = {
+        balance: window.FLEconomy?.clubBudget?.(game, club) || Math.max(50000, rating * rating * 150),
+        income: 0,
+        expenses: 0,
+        transferBudget: window.FLEconomy?.transferBudget?.(game, club) || Math.max(25000, rating * rating * 40),
+        weeklyWageBudget: window.FLEconomy?.weeklyWageBudget?.(game, club) || Math.max(2000, rating * 400)
+      };
+      window.FLManagerContracts?.startAppointment?.(game, club, { startDate: game.date });
+    }
 
     game.teamManagement = null;
     const startingXI = (createdClub.squad?.startingXI || []).map(id => createdIdMap[id]).filter(Boolean);
@@ -500,11 +664,12 @@ window.FLGrassroots = (() => {
       };
     }
 
+    game.fixtures = window.FLGame?.makePyramidSchedule?.(game, 2026) || game.fixtures || [];
     game.grassroots = null;
-    const state = ensure(game);
-    setupRecruitment(game);
+    const state = informal ? ensure(game) : null;
+    if (informal) setupRecruitment(game);
 
-    game.inbox = [
+    game.inbox = informal ? [
       {
         id: 'grassroots-welcome',
         date: game.date,
@@ -530,21 +695,44 @@ window.FLGrassroots = (() => {
         read: false,
         link: { tab: 'transfers', label: 'VIEW LOCAL LEADS' }
       }
+    ] : [
+      {
+        id: 'created-club-welcome',
+        date: game.date,
+        from: game.board?.members?.[0]?.name || 'Club Board',
+        subject: `Welcome to ${club.name}`,
+        body: `The new club has been registered in ${division.name}. Your full squad, professional contracts and first-season budget are ready.`,
+        read: false
+      },
+      {
+        id: 'created-club-squad',
+        date: game.date,
+        from: 'Director of Football',
+        subject: 'Your first-team squad is ready',
+        body: `${club.players.length} players have been registered. You can review the squad, contracts and starting eleven from the Team screen.`,
+        read: false,
+        link: { tab: 'team', label: 'VIEW TEAM' }
+      }
     ];
+    game.news = Array.isArray(game.news) ? game.news : [];
     game.news.unshift({
       date: game.date,
-      headline: `${club.name} enter ${divisionName(region)}`,
-      body: 'A newly formed local club begins at tier 15 with a volunteer board and a part-time squad.',
+      headline: `${club.name} enter ${division.name}`,
+      body: informal
+        ? `A newly formed local club begins at tier ${tier} with a volunteer board and a part-time squad.`
+        : `A newly formed professional club begins at tier ${tier} with a complete first-team squad.`,
       category: 'competition'
     });
+    game.history = Array.isArray(game.history) ? game.history : [];
     game.history.push({
       date: game.date,
       type: 'club-formation',
       clubId: club.id,
       title: `${club.name} are formed`,
-      text: `The created club enters ${divisionName(region)} at tier 15.`
+      text: `The created club enters ${division.name} at tier ${tier}.`
     });
-    game.version = VERSION;
+    game.selectedTab = 'home';
+    game.version = informal ? VERSION : '0.30.1-created-club';
     return game;
   }
 

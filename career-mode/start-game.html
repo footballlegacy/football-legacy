@@ -41,6 +41,7 @@
       $('actions').style.display='none';$('profiles').style.display='none';$('loading').classList.add('active');$('yearReadout').textContent='1888';$('fill').style.width=startYear===1888?'100%':'1%';$('status').textContent=startYear===1888?'Preparing the founding season…':`Starting the headless simulation in 1888…`;
       try{
         await loadScripts([...sources]);
+        await loadScripts(['js/original-names.js?v=0.30.0-original-names']);
         readyGame=await FLGame.createStartYear(manager,club,startYear,showProgress);$('fill').style.width='100%';$('yearReadout').textContent=startYear;$('status').textContent='History generated. Preparing your first day at the club…';
         const summary=FLGame.clubHistorySummary(readyGame,readyGame.controlledClubId);$('loadingTitle').textContent='The World Is Ready';$('historyHeadline').textContent=summary.headline;$('historyLines').innerHTML=summary.lines.map(line=>`<li>${line}</li>`).join('');$('performanceLine').textContent=`Generated ${startYear-1888} season${startYear-1888===1?'':'s'} in ${Math.max(0,Number(readyGame.meta.fastForwardMs)||0).toLocaleString('en-GB')} ms using the live simulation engine.`;$('historyCard').classList.add('active');$('status').textContent=`You take charge on 15 August ${startYear}.`;
       }catch(error){console.error(error);$('error').textContent=error.message||'The history generator stopped unexpectedly.';$('status').textContent='Generation did not complete.'}

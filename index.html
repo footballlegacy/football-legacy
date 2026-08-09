@@ -26,8 +26,12 @@
           <span class="heading-arrow" aria-hidden="true">⌄</span>
         </button>
         <div class="menu-panel" id="panel-new-career" hidden>
-          <p>Start a new Football Legacy career using the existing career setup flow.</p>
-          <a class="action-button primary" href="career-mode/manager.html">Begin Your Legacy</a>
+          <p>Choose your career once. A created club can begin anywhere from the Premier League to local grassroots football.</p>
+          <div class="button-grid three-up">
+            <a class="action-button primary" href="career-mode/manager.html?route=take-charge">Take Charge</a>
+            <a class="action-button" href="career-mode/manager.html?route=create-club">Create a Club</a>
+            <a class="action-button player-career-action" href="player-career/setup.html">Player Career</a>
+          </div>
         </div>
       </article>
 
@@ -112,6 +116,8 @@
     </footer>
   </main>
 
+  <script src="career-mode/js/club-database.js"></script>
+  <script src="career-mode/js/original-names.js"></script>
   <script src="career-mode/js/save.js"></script>
   <script src="app.js"></script>
   <script src="controller-ui.js"></script>
