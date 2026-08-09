@@ -361,6 +361,8 @@ async function auditEra(year) {
   metrics[`simulationMs${year}`] = Math.round(performance.now() - started);
   metrics[`clubs${year}`] = game.clubs?.length || 0;
   metrics[`freeAgents${year}`] = game.freeAgents?.length || 0;
+  const controlledFixtures=(game.fixtures||[]).filter(f=>f.home===game.controlledClubId||f.away===game.controlledClubId);if(!controlledFixtures.length)fail('fixtures',`The controlled club has no fixtures in ${year}`);
+  const broken=JSON.parse(JSON.stringify(game));broken.fixtures=[];const repair=context.FLGame.repairMissingFixtures?.(broken);if(!repair?.changed||!context.FLGame.nextFixture(broken))fail('fixtures',`Missing-fixture recovery failed in ${year}`,repair);
   if (year >= 1950 && (game.freeAgents?.length || 0) < 12) fail("free-agents", `Only ${game.freeAgents?.length || 0} free agents exist in ${year}`);
   metrics[`clubSeasonRows${year}`] = auditSeasonRows(game);
   const duplicateClubIds = duplicateValues((game.clubs || []).map(row => row.id));
