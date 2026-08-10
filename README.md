@@ -1,4 +1,4 @@
-# Football Legacy — Build 170 Online lobby transaction fix
+# Football Legacy — Build 171 Online code-verification hold
 
 Football Legacy is a browser football game prototype with Quick Play, local controller multiplayer, an early friends-only Online Versus mode, creation tools, Career Mode and Grassroots to Glory.
 
@@ -8,11 +8,11 @@ Online Versus must be launched from the hosted HTTPS version:
 
 **[Open Football Legacy](https://footballlegacy.github.io/football-legacy/)**
 
-1. Josh and Connor each open the link above in a supported desktop browser and connect a controller.
-2. From the main menu, choose **Online**.
-3. One player chooses **Host** and sends the displayed room code to the other player.
-4. The other player chooses **Join**, enters the room code and occupies the Away slot. The host occupies Home.
-5. Each player chooses their own team, lineup, tactics and kit. The host chooses the shared match settings.
+1. Josh and Connor each use a supported desktop browser and connect a controller.
+2. Home opens the link above, chooses **Online**, then chooses **Host**.
+3. Home remains on the code-verification screen and sends Away the displayed copyable full join URL. The room code stays visible while Home waits.
+4. Away opens that URL. The entered room code remains visible on Away's verification screen; both players stay at this boundary until the peer connection opens.
+5. After connection, Home occupies the Home slot and Away occupies the Away slot. Each player chooses their own team, lineup, tactics and kit; Home chooses the shared match settings.
 6. Both players select **Ready** for the exact teams, lineups, tactics, kits and shared settings shown on screen.
 7. Once both matching Ready states are confirmed, Home explicitly presses **Start Online Match**. Away becoming ready never starts the match by itself. If either player changes a team, tactic or kit, or Home changes a shared match setting, both players must ready again before Home can start.
 
@@ -20,11 +20,11 @@ The Online shell and all five setup stages support D-pad/left-stick navigation, 
 
 Match sound starts on. If Chrome or Firefox requests a first interaction, click **Enable match sound** once. After that, pause the match and use **Match sound** to mute or restore audio.
 
-The host runs the authoritative match and the joining player's controller operates Away. Josh and Connor's first real two-machine Build 169 test connected both controllers and reached Ready Up, but their readiness displays disagreed and launch stalled. Build 170 repairs that exact failure with acknowledged, retried Ready state tied to the current lobby configuration; continuously reconciled peer connection state; and a retried proposal -> acknowledgement -> commit launch transaction. A fresh Josh/Connor Build 170 internet retest is still required before this early friends-only prototype can be called remotely accepted.
+The host runs the authoritative match and the joining player's controller operates Away. Build 171 removes the one-frame room-code handoff: Home's verification screen persists until Away opens the peer connection, Away can see the code it is joining, and Home can copy the complete join URL instead of asking the other player to remember a flashing code. It advances the Online cache token and room namespace to Build 171 so this flow does not mix with older cached clients or room names.
 
-Build 170 also tolerates a missed one-shot connection event by continuously publishing peer truth with a connection epoch, allows 24 seconds for heartbeat recovery, replaces stale connections during reconnect, and rejects readiness after any relevant lobby change. Controller navigation remains the working Build 169 DualSense/Xbox route. Online files carry the Build 170 cache-bust token so both machines load the same protocol revision.
+Build 171 retains Build 170's acknowledged Ready and launch transactions, missed-event recovery, 24-second heartbeat tolerance, reconnect replacement and readiness invalidation. Controller navigation remains the working Build 169 DualSense/Xbox route. This change does not alter match gameplay.
 
-The local two-tab acceptance deliberately dropped the first Home Ready packet and the explicit connected event, then passed Home-first and Away-first readiness, settings-change invalidation, explicit Home Start, and the Home-match/Away-live-view transition. The focused gates pass **13/13** controller checks and **85/85** lobby-transaction checks. The additional unchanged-area checks pass original names **5/5**, player links **2/2**, Player Career **9/9** and Create-a-Club **1/1**. The exhaustive career-world integrity suite was not rerun to completion because that expensive area is untouched by this Online-only repair.
+Build 171 has passed a local two-browser acceptance: Home retained the visible code, the full join URL prefilled Away's matching code, and both clients entered setup only after the peer connection opened. A real two-machine test must still confirm that handoff plus the complete Ready-to-match route before this early friends-only prototype can be called remotely accepted.
 
 Do not use a downloaded `file://` ZIP for Online Versus. Local-file browser origin and media restrictions make that route unsupported and unreliable. Downloaded copies remain suitable for offline Quick Play.
 

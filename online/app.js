@@ -1,8 +1,8 @@
 'use strict';
 (() => {
   const PROTOCOL='football-legacy-online-v1';
-  const BUILD='170';
-  const PEER_PREFIX='football-legacy-170-';
+  const BUILD='171';
+  const PEER_PREFIX='football-legacy-171-';
   const TARGET_ORIGIN=location.origin==='null'?'*':location.origin;
   const $=id=>document.getElementById(id);
   const ui={
@@ -138,7 +138,7 @@
     ui.networkRole.textContent=role==='host'?'Home · Host':'Away · Guest';
     ui.networkLatency.textContent=role==='host'?`Room ${roomCode}`:'Private peer link';
     childReady=false;
-    ui.frame.src=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=170-lobby-transaction-4`;
+    ui.frame.src=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=171-code-verification-1`;
     ui.frame.onload=()=>{
       try{ui.frame.focus()}catch{}
     };
@@ -190,15 +190,19 @@
     roomCode=retry?randomCode():roomCode||randomCode();
     showOnly(ui.waiting);
     ui.waitingEyebrow.textContent='Home slot';
-    ui.waitingTitle.textContent='Room ready';
-    ui.waitingCopy.textContent='Send this private code to Connor. You can choose Home while the room waits for Away.';
+    ui.waitingTitle.textContent='Creating room';
+    ui.waitingCopy.textContent='Your room code will stay on this screen until Away connects and both machines verify the same room.';
     ui.roomCodeBlock.hidden=false;
     ui.roomCode.textContent=roomCode;
     setConnection('connecting','Opening room');
     try{peer&&peer.destroy()}catch{}
     peer=createPeer(peerIdFor(roomCode));
     if(!peer)return;
-    peer.on('open',()=>{setConnection('connecting','Waiting for Away');loadLobby()});
+    peer.on('open',()=>{
+      setConnection('connecting','Waiting for Away');
+      ui.waitingTitle.textContent='Waiting for Away';
+      ui.waitingCopy.textContent='Send the join link to Away. This code will remain visible until the connection is verified.';
+    });
     peer.on('connection',acceptConnection);
   }
   function connectGuest(){
@@ -217,10 +221,11 @@
     }
     ui.roomInput.setCustomValidity('');
     showOnly(ui.waiting);
-    ui.roomCodeBlock.hidden=true;
+    ui.roomCodeBlock.hidden=false;
+    ui.roomCode.textContent=roomCode;
     ui.waitingEyebrow.textContent='Away slot';
-    ui.waitingTitle.textContent='Joining '+roomCode;
-    ui.waitingCopy.textContent='Finding the Home player and checking the game build.';
+    ui.waitingTitle.textContent='Verifying '+roomCode;
+    ui.waitingCopy.textContent='Checking the Home player, room code and game build. Team selection will open only after the connection is verified.';
     setConnection('connecting','Opening connection');
     peer=createPeer();
     if(!peer)return;
@@ -245,10 +250,19 @@
       fail('Match connection lost','This Online beta cannot safely resume a match after the peer link closes. Return to Online Versus and create a new room.');
       return;
     }
+    showOnly(ui.waiting);
+    ui.roomCodeBlock.hidden=false;
+    ui.roomCode.textContent=roomCode;
     if(role==='host'){
+      ui.waitingEyebrow.textContent='Home slot';
+      ui.waitingTitle.textContent='Away disconnected';
+      ui.waitingCopy.textContent='The room code remains valid. This screen will stay here until Away reconnects and the peer link is verified again.';
       setConnection('connecting','Waiting for Away');
       return;
     }
+    ui.waitingEyebrow.textContent='Away slot';
+    ui.waitingTitle.textContent='Reconnecting '+roomCode;
+    ui.waitingCopy.textContent='Keeping the room code visible while the connection to Home is restored.';
     reconnectDeadline=Date.now()+20000;
     clearInterval(reconnectTimer);
     reconnectTimer=setInterval(()=>{
@@ -343,7 +357,7 @@
     if(!message||message.protocol!==PROTOCOL)return;
     if(message.build!==BUILD){
       const active=connection;
-      fail('Different game versions','Both players must open build 170 of Football Legacy.');
+      fail('Different game versions','Both players must open build 171 of Football Legacy.');
       try{active&&active.close()}catch{}
       return;
     }
@@ -613,13 +627,17 @@
     ui.roomInput.value=cleanCode(ui.roomInput.value);
     try{ui.roomInput.setSelectionRange(position,position)}catch{}
   });
+  function roomInviteUrl(){const url=new URL('index.html',location.href);url.search='';url.hash='';url.searchParams.set('join',roomCode);return url.href}
   $('copyCode').addEventListener('click',async()=>{
-    try{await navigator.clipboard.writeText(roomCode);$('copyCode').textContent='Copied'}catch{$('copyCode').textContent='Select the code above'}
+    try{await navigator.clipboard.writeText(roomInviteUrl());$('copyCode').textContent='Join link copied'}catch{$('copyCode').textContent='Select the code above'}
   });
   ui.videoGate.addEventListener('click',playGuestVideo);
   $('cancelButton').addEventListener('click',reset);
   $('retryButton').addEventListener('click',reset);
   addEventListener('beforeunload',()=>{clearTimers();try{connection&&connection.close()}catch{}try{mediaCall&&mediaCall.close()}catch{}try{peer&&peer.destroy()}catch{}});
+
+  const invitedRoom=cleanCode(new URLSearchParams(location.search).get('join'));
+  if(invitedRoom.replace('-','').length===10){ui.joinForm.hidden=false;ui.roomInput.value=invitedRoom;ui.roomInput.focus()}
 
   requestAnimationFrame(pollGuestInput);
 })();

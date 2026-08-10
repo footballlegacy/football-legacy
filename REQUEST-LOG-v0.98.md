@@ -1,8 +1,25 @@
-# Football Legacy request log — build 170 Online lobby transaction truth
+# Football Legacy request log — build 171 Online code-verification truth
 
-Updated 10 August 2026 after Josh and Connor's first real two-machine Online test proved the Build 169 controller repair but exposed a cross-machine Ready/launch desynchronisation. Build 170 repairs that exact protocol boundary without changing the match engine. Josh's current locomotion verdict remains explicit: “the game, the running, it feels amazing now. amazing.” This remains a playable development base and an early online prototype, not a claim that Josh has accepted every animation, control feel or art-direction choice or that Build 170 has passed its required fresh two-machine internet retest.
+Updated 10 August 2026 after the Online room code appeared too briefly to hand to the other machine without recording the screen. Build 171 keeps both players at a visible verification boundary and supplies a copyable full join URL, without changing the match engine. Josh's current locomotion verdict remains explicit: “the game, the running, it feels amazing now. amazing.” This remains a playable development base and an early online prototype; local browser acceptance is not proof that Build 171 has passed its required fresh two-machine internet retest.
 
 This log deliberately separates **code presence** from **playtest proof**. Josh's existing comments below remain the human acceptance authority; a browser check or CPU simulation cannot silently overwrite them.
+
+## Build 171 — persistent code verification and full join URL
+
+### Request and implementation contract
+
+- **Observed blocker:** Home's generated room code flashed for roughly one frame before the page changed, making ordinary handoff impractical and forcing Josh to recover it from a screen recording.
+- **Persistent Home verification:** the generated code and connection state remain on screen until Away actually opens the peer connection.
+- **Copyable handoff:** Home receives a copyable full join URL carrying the room destination, so it can be sent directly to the second machine.
+- **Visible Away verification:** Away continues to see the entered room code while connecting; it is not hidden immediately after submission.
+- **Shared gate:** both players remain at the verification boundary until the peer opens. Only then does the normal Online Quick Play setup replace that screen.
+- **Build separation:** the Online cache token and room namespace advance to Build 171, separating this flow from cached Build 170 files and older room names.
+- **Preserved scope:** Build 170's connection/Ready/launch transactions and Build 169's controller route remain in place. Build 171 changes no locomotion, CPU, positional, physics, finishing, defending, goalkeeper, animation, stadium, FLARE, replay, free-kick or difficulty values.
+
+### Acceptance boundary
+
+- **Locally exercised, not remotely accepted:** a two-browser run held Home at the code screen, prefilled Away from the full join URL and released both clients only after peer connection. The dedicated gate passes **27/27**, while the retained Online controller and lobby-transaction gates pass **13/13** and **85/85**.
+- **Still mandatory:** on the hosted Build 171, Home must copy and send the full join URL; Away must open it and see the intended code; both screens must persist until connection; then both players must complete setup, matching Ready states, explicit Home Start, Home/Away control, audio/video and an intentional disconnect.
 
 ## Build 170 — Online readiness and launch transaction repair
 
