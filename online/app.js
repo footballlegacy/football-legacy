@@ -1,8 +1,8 @@
 'use strict';
 (() => {
   const PROTOCOL='football-legacy-online-v1';
-  const BUILD='171';
-  const PEER_PREFIX='football-legacy-171-';
+  const BUILD='172';
+  const PEER_PREFIX='football-legacy-172-';
   const TARGET_ORIGIN=location.origin==='null'?'*':location.origin;
   const $=id=>document.getElementById(id);
   const ui={
@@ -19,6 +19,7 @@
   let connection=null;
   let connectionPending=false;
   let mediaCall=null;
+  let hostMatchStream=null;
   let role=null;
   let roomCode='';
   let opponentPeer='';
@@ -51,6 +52,23 @@
   let acceptedGuestLaunch=null;
   let launchTimer=null;
   let launchCommitted='';
+  let lobbyFrameRecoveryTimer=null;
+  let mediaStatsTimer=null;
+  let mediaStatsBusy=false;
+  let mediaRecoveryTimer=null;
+  let mediaRecoveryDeadline=0;
+  let mediaGeneration=0;
+  let transportProfileIndex=0;
+  let transportBadSamples=0;
+  let transportGoodSamples=0;
+  let transportChangedAt=0;
+  const STREAM_PROFILES=[
+    {id:'sharp-60',label:'Sharp',fps:60,bitrate:5000000,scale:1},
+    {id:'balanced-50',label:'Balanced',fps:50,bitrate:3500000,scale:1},
+    {id:'stable-40',label:'Stable',fps:40,bitrate:2400000,scale:1.2},
+    {id:'rescue-30',label:'Recovery',fps:30,bitrate:1500000,scale:1.5}
+  ];
+  let streamQuality={...STREAM_PROFILES[0],measuredFps:null,rtt:null,loss:null,availableBitrate:null,applied:false};
   const protocolTrace=[];
 
   function traceProtocol(direction,type,detail={}){
@@ -58,7 +76,7 @@
     if(protocolTrace.length>240)protocolTrace.splice(0,protocolTrace.length-240);
   }
   window.FLOnlineDebug={
-    getState:()=>({build:BUILD,role,roomCode,matchStarted,connectionOpen:!!(connection&&connection.open),connectionEpoch,connectionPending,lastPongAge:lastPongAt?Date.now()-lastPongAt:null,latestRemoteInputSeq,guestPadConnected,hostSeesAwayController,videoPlaying,pendingLaunch:pendingLaunch?{launchId:pendingLaunch.launchId,phase:pendingLaunch.phase,lobbyVersion:pendingLaunch.lobbyVersion,configRevision:pendingLaunch.configRevision}:null,launchCommitted}),
+    getState:()=>({build:BUILD,role,roomCode,matchStarted,connectionOpen:!!(connection&&connection.open),connectionEpoch,connectionPending,lastPongAge:lastPongAt?Date.now()-lastPongAt:null,latestRemoteInputSeq,guestPadConnected,hostSeesAwayController,videoPlaying,streamQuality:{...streamQuality},pendingLaunch:pendingLaunch?{launchId:pendingLaunch.launchId,phase:pendingLaunch.phase,lobbyVersion:pendingLaunch.lobbyVersion,configRevision:pendingLaunch.configRevision}:null,launchCommitted}),
     getProtocolTrace:()=>protocolTrace.slice(),
     renderRemoteView,
     serialisePad
@@ -85,7 +103,7 @@
     if(!suspended)requestAnimationFrame(()=>window.FootballLegacyControllerUI?.focus());
   }
   function showOnly(target){[ui.entry,ui.waiting,ui.stage].forEach(element=>{element.hidden=element!==target});setOuterControllerSuspended(target===ui.stage)}
-  function clearTimers(){clearInterval(hostViewTimer);clearInterval(heartbeatTimer);clearInterval(reconnectTimer);clearInterval(launchTimer);hostViewTimer=heartbeatTimer=reconnectTimer=launchTimer=null}
+  function clearTimers(){clearInterval(hostViewTimer);clearInterval(heartbeatTimer);clearInterval(reconnectTimer);clearInterval(launchTimer);clearInterval(lobbyFrameRecoveryTimer);clearInterval(mediaStatsTimer);clearTimeout(mediaRecoveryTimer);hostViewTimer=heartbeatTimer=reconnectTimer=launchTimer=lobbyFrameRecoveryTimer=mediaStatsTimer=mediaRecoveryTimer=null}
   function fail(title,copy){
     clearTimers();
     setOuterControllerSuspended(false);
@@ -114,7 +132,10 @@
       else if(type==='unavailable-id'&&role==='host'&&!matchStarted)startHost(true);
       else if(!matchStarted)fail('Could not open the room',error&&error.message||'The connection service rejected the room.');
     });
-    instance.on('disconnected',()=>{if(!connection||!connection.open)setConnection('connecting','Reconnecting to room service')});
+    instance.on('disconnected',()=>{
+      if(!connection||!connection.open)setConnection('connecting','Reconnecting to room service');
+      if(!instance.destroyed&&typeof instance.reconnect==='function'){try{instance.reconnect()}catch{}}
+    });
     instance.on('call',handleMediaCall);
     return instance;
   }
@@ -138,10 +159,23 @@
     ui.networkRole.textContent=role==='host'?'Home · Host':'Away · Guest';
     ui.networkLatency.textContent=role==='host'?`Room ${roomCode}`:'Private peer link';
     childReady=false;
-    ui.frame.src=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=171-code-verification-1`;
+    const target=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=172-online-quality-1`;
     ui.frame.onload=()=>{
       try{ui.frame.focus()}catch{}
     };
+    ui.frame.src=target;
+    clearInterval(lobbyFrameRecoveryTimer);
+    let recoveries=0;
+    lobbyFrameRecoveryTimer=setInterval(()=>{
+      if(childReady||matchStarted||ui.frame.hidden){clearInterval(lobbyFrameRecoveryTimer);lobbyFrameRecoveryTimer=null;return}
+      let current='';
+      try{current=String(ui.frame.contentWindow&&ui.frame.contentWindow.location&&ui.frame.contentWindow.location.href||'')}catch{}
+      if(current&&current!=='about:blank')return;
+      recoveries+=1;
+      traceProtocol('frame','firefox-about-blank-recovery',{attempt:recoveries});
+      try{ui.frame.contentWindow.location.replace(target)}catch{ui.frame.src=target}
+      if(recoveries>=3){clearInterval(lobbyFrameRecoveryTimer);lobbyFrameRecoveryTimer=null}
+    },1200);
   }
   function rejectConnection(conn){try{conn.close()}catch{}}
   function acceptConnection(conn){
@@ -171,15 +205,21 @@
       if(conn!==connection){rejectConnection(conn);return}
       connectionPending=false;
       disconnectHandled=false;
+      clearInterval(reconnectTimer);
+      reconnectTimer=null;
       connectionEpoch+=1;
       latestRemoteInputSeq=-1;
       lastPongAt=Date.now();
       traceProtocol('connection','open',{peer:conn.peer});
-      setConnection('connected','Opponent connected');
-      if(ui.stage.hidden)loadLobby();
+      setConnection('connected',matchStarted?'Match link restored':'Opponent connected');
+      if(ui.stage.hidden&&!matchStarted)loadLobby();
       queueChild({type:'connection',connected:true,role,roomCode,connectionEpoch});
       send({type:'hello',role,roomCode});
       startHeartbeat();
+      if(matchStarted){
+        if(role==='host')scheduleHostMediaRecovery('peer-reconnected',120);
+        else requestGuestMediaRecovery('peer-reconnected');
+      }
     });
     conn.on('data',message=>{if(conn===connection)handleNetworkMessage(message)});
     conn.on('close',()=>handleDisconnect(conn));
@@ -247,7 +287,21 @@
     queueChild({type:'connection',connected:false,role,roomCode,connectionEpoch});
     if(role==='host')forwardRemoteInput(null);
     if(matchStarted){
-      fail('Match connection lost','This Online beta cannot safely resume a match after the peer link closes. Return to Online Versus and create a new room.');
+      if(role==='host'){
+        setConnection('connecting','Away reconnecting · match paused');
+        ui.networkLatency.textContent='Holding the match safely';
+        return;
+      }
+      setConnection('connecting','Reconnecting to Home · match paused');
+      ui.guestMessage.innerHTML='<strong>Restoring the match link</strong><span>Your controller will resume when Home reconnects.</span>';
+      ui.guestMessage.hidden=false;
+      reconnectDeadline=Date.now()+30000;
+      clearInterval(reconnectTimer);
+      reconnectTimer=setInterval(()=>{
+        if(connection&&connection.open){clearInterval(reconnectTimer);reconnectTimer=null;return}
+        if(Date.now()>reconnectDeadline){clearInterval(reconnectTimer);reconnectTimer=null;fail('Match link could not recover','Return to Online Versus and create a new room.');return}
+        connectGuest();
+      },1200);
       return;
     }
     showOnly(ui.waiting);
@@ -357,7 +411,7 @@
     if(!message||message.protocol!==PROTOCOL)return;
     if(message.build!==BUILD){
       const active=connection;
-      fail('Different game versions','Both players must open build 171 of Football Legacy.');
+      fail('Different game versions','Both players must open build 172 of Football Legacy.');
       try{active&&active.close()}catch{}
       return;
     }
@@ -366,9 +420,15 @@
     if(message.type==='ping'){send({type:'pong',sentAt:message.sentAt});return}
     if(message.type==='pong'){
       latencyMs=Math.max(0,Math.round((Date.now()-Number(message.sentAt||Date.now()))/2));
-      ui.networkLatency.textContent=`${latencyMs} ms · direct peer link`;
+      updateNetworkQualityLabel();
       return;
     }
+    if(message.type==='stream-quality'){
+      streamQuality={...streamQuality,...(message.quality||{})};
+      updateNetworkQualityLabel();
+      return;
+    }
+    if(message.type==='media-request'&&role==='host'&&matchStarted){scheduleHostMediaRecovery('away-requested',100);return}
     if(message.type==='media-playing'&&role==='host'&&matchStarted){setConnection('connected','Online match live');return}
     if(message.type==='input'&&role==='host'&&matchStarted){
       const sequence=Number(message.seq);
@@ -398,15 +458,37 @@
   function forwardRemoteInput(pad){
     try{ui.frame.contentWindow&&ui.frame.contentWindow.postMessage({source:'football-legacy-online-parent',type:'remote-input',pad,receivedAt:performance.now()},TARGET_ORIGIN)}catch{}
   }
+  function rawDualSenseDpad(gamepad,index){
+    const value=gamepad&&gamepad.axes&&gamepad.axes.length>9?Number(gamepad.axes[9]):null;
+    if(!Number.isFinite(value)||value>1.14)return false;
+    const sector=Math.round((value+1)*3.5)%8;
+    if(index===12)return sector===0||sector===1||sector===7;
+    if(index===13)return sector===3||sector===4||sector===5;
+    if(index===14)return sector===5||sector===6||sector===7;
+    if(index===15)return sector===1||sector===2||sector===3;
+    return false;
+  }
+  function normalisedRemoteButtons(gamepad){
+    const raw=/(dual\s?sense|ps5|(?:0?54c)[-:]0?ce6|wireless controller.*extended gamepad)/i.test(gamepad&&gamepad.id||'')&&gamepad.mapping!=='standard';
+    const rawMap={0:1,1:2,2:0,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,11:11};
+    const valueAt=index=>{const button=gamepad&&gamepad.buttons&&gamepad.buttons[index];return{pressed:!!(button&&(button.pressed||button.value>.5)),value:+Math.max(0,Math.min(1,Number(button&&button.value)||0)).toFixed(3)}};
+    if(!raw)return Array.from({length:20},(_,index)=>valueAt(index));
+    return Array.from({length:20},(_,index)=>{
+      const button=valueAt(index in rawMap?rawMap[index]:index);
+      if(index>=12&&index<=15&&rawDualSenseDpad(gamepad,index))return{pressed:true,value:1};
+      return button;
+    });
+  }
   function serialisePad(gamepad){
     if(!gamepad)return null;
+    const rawDualSense=/(dual\s?sense|ps5|(?:0?54c)[-:]0?ce6|wireless controller.*extended gamepad)/i.test(gamepad.id||'')&&gamepad.mapping!=='standard';
     return{
       index:99,
       id:String(gamepad.id||'Remote standard gamepad').slice(0,160),
-      mapping:String(gamepad.mapping||''),
+      mapping:rawDualSense?'standard':String(gamepad.mapping||''),
       connected:true,
-      axes:Array.from(gamepad.axes||[]).slice(0,10).map(value=>Math.max(-1,Math.min(1,Number(value)||0))),
-      buttons:Array.from(gamepad.buttons||[]).slice(0,20).map(button=>({pressed:!!(button&&button.pressed),value:Math.max(0,Math.min(1,Number(button&&button.value)||0))}))
+      axes:Array.from(gamepad.axes||[]).slice(0,10).map(value=>+Math.max(-1,Math.min(1,Number(value)||0)).toFixed(3)),
+      buttons:normalisedRemoteButtons(gamepad)
     };
   }
   function updateGuestNetworkStatus(){
@@ -419,6 +501,12 @@
     else if(videoPlaying)ui.networkStatus.textContent='Away controller connected';
     else ui.networkStatus.textContent='Controller ready · waiting for video';
   }
+  function updateNetworkQualityLabel(){
+    if(!ui.networkLatency)return;
+    const latency=Number.isFinite(latencyMs)?`${latencyMs} ms`:'Direct link';
+    const measured=Number.isFinite(streamQuality.measuredFps)?Math.round(streamQuality.measuredFps):streamQuality.fps;
+    ui.networkLatency.textContent=`${latency} · ${measured} fps · ${streamQuality.label||'Adaptive'}`;
+  }
   function pollGuestInput(now){
     let gamepad=null;
     try{gamepad=Array.from(navigator.getGamepads?navigator.getGamepads()||[]:[]).find(Boolean)||null}catch{}
@@ -429,7 +517,9 @@
     if(role==='guest'&&matchStarted&&connection&&connection.open){
       guestPadConnected=!!gamepad;
       const json=JSON.stringify(pad);
-      if(json!==lastInputJson||now-lastInputSentAt>90){
+      const changed=json!==lastInputJson,refresh=now-lastInputSentAt>90;
+      const buffered=Math.max(0,Number(connection.dataChannel&&connection.dataChannel.bufferedAmount)||0);
+      if((changed||refresh)&&buffered<65536){
         lastInputJson=json;
         lastInputSentAt=now;
         send({type:'input',seq:++inputFrame,pad});
@@ -448,6 +538,8 @@
     childReady=false;
     matchHomeName=message.homeName||'HOME';
     matchAwayName=message.awayName||'AWAY';
+    clearInterval(lobbyFrameRecoveryTimer);
+    lobbyFrameRecoveryTimer=null;
     ui.frame.src=appendOnlineParams(message.href,'host');
     ui.frame.hidden=false;
     ui.guestStage.hidden=true;
@@ -470,13 +562,14 @@
         const win=ui.frame.contentWindow;
         if(!win||!win.FLMatch||typeof win.FLMatch.getOnlineStream!=='function')throw new Error('Match loading');
         clearInterval(timer);
-        const stream=win.FLMatch.getOnlineStream(45);
+        const stream=win.FLMatch.getOnlineStream(60);
         if(!stream.getVideoTracks().length)throw new Error('Match video track unavailable');
         const audioState=typeof win.FLMatch.getAudioState==='function'?win.FLMatch.getAudioState():null;
         if(audioState&&audioState.requestedPercent>0&&!stream.getAudioTracks().length)throw new Error('Match audio track unavailable');
-        mediaCall=peer.call(opponentPeer,stream,{metadata:{protocol:PROTOCOL,build:BUILD,roomCode,homeName:matchHomeName,awayName:matchAwayName}});
-        if(!mediaCall)throw new Error('Video call could not be created');
-        mediaCall.on('error',()=>fail('Match video failed','Return to Online Versus and create a new room.'));
+        hostMatchStream=stream;
+        transportProfileIndex=0;
+        streamQuality={...STREAM_PROFILES[0],measuredFps:null,rtt:null,loss:null,availableBitrate:null,applied:false};
+        if(!placeHostMediaCall('initial'))throw new Error('Video call could not be created');
         setConnection('connecting','Match running · waiting for Away video');
         clearInterval(hostViewTimer);
         hostViewTimer=setInterval(()=>{
@@ -487,6 +580,107 @@
       }
     },125);
   }
+  function videoSender(call=mediaCall){
+    const pc=call&&call.peerConnection;
+    if(!pc||typeof pc.getSenders!=='function')return null;
+    return pc.getSenders().find(sender=>sender&&sender.track&&sender.track.kind==='video')||null;
+  }
+  async function applyStreamProfile(index,reason='adaptive'){
+    index=Math.max(0,Math.min(STREAM_PROFILES.length-1,Number(index)||0));
+    const profile=STREAM_PROFILES[index],sender=videoSender();
+    transportProfileIndex=index;
+    streamQuality={...streamQuality,...profile,applied:false};
+    if(sender&&typeof sender.getParameters==='function'&&typeof sender.setParameters==='function'){
+      try{
+        const parameters=sender.getParameters()||{};
+        parameters.encodings=parameters.encodings&&parameters.encodings.length?parameters.encodings:[{}];
+        parameters.encodings[0]={...parameters.encodings[0],maxBitrate:profile.bitrate,maxFramerate:profile.fps,scaleResolutionDownBy:profile.scale};
+        await sender.setParameters(parameters);
+        streamQuality.applied=true;
+      }catch(error){traceProtocol('media','profile-unsupported',{profile:profile.id,reason:String(error&&error.message||error)})}
+    }
+    transportChangedAt=Date.now();
+    transportBadSamples=transportGoodSamples=0;
+    traceProtocol('media','profile',{profile:profile.id,reason,applied:streamQuality.applied});
+    send({type:'stream-quality',quality:{id:profile.id,label:profile.label,fps:profile.fps,bitrate:profile.bitrate,scale:profile.scale,measuredFps:streamQuality.measuredFps}});
+    updateNetworkQualityLabel();
+    return streamQuality.applied;
+  }
+  function placeHostMediaCall(reason='recovery'){
+    if(role!=='host'||!matchStarted||!peer||!opponentPeer||!hostMatchStream)return false;
+    let next=null;
+    try{next=peer.call(opponentPeer,hostMatchStream,{metadata:{protocol:PROTOCOL,build:BUILD,roomCode,homeName:matchHomeName,awayName:matchAwayName,generation:++mediaGeneration}})}catch{}
+    if(!next)return false;
+    const previous=mediaCall;
+    mediaCall=next;
+    if(previous&&previous!==next){try{previous.close()}catch{}}
+    next.on('error',()=>{if(mediaCall===next)scheduleHostMediaRecovery('media-error')});
+    next.on('close',()=>{if(mediaCall===next)scheduleHostMediaRecovery('media-close')});
+    const pc=next.peerConnection;
+    if(pc&&typeof pc.addEventListener==='function')pc.addEventListener('connectionstatechange',()=>{if(mediaCall===next&&['failed','disconnected'].includes(pc.connectionState))scheduleHostMediaRecovery(`webrtc-${pc.connectionState}`)});
+    traceProtocol('media','host-dial',{reason,generation:mediaGeneration});
+    setTimeout(()=>applyStreamProfile(transportProfileIndex,reason),120);
+    startMediaStats();
+    return true;
+  }
+  function scheduleHostMediaRecovery(reason='interrupted',delay=700){
+    if(role!=='host'||!matchStarted||!connection||!connection.open||!hostMatchStream)return;
+    if(mediaRecoveryTimer)return;
+    setConnection('connecting','Restoring Away video · match paused');
+    forwardRemoteInput(null);
+    traceProtocol('media','recovery-scheduled',{reason});
+    mediaRecoveryTimer=setTimeout(()=>{
+      mediaRecoveryTimer=null;
+      if(!placeHostMediaCall(reason))fail('Match video could not recover','Return to Online Versus and create a new room.');
+    },delay);
+  }
+  function requestGuestMediaRecovery(reason='interrupted'){
+    if(role!=='guest'||!matchStarted||!connection||!connection.open)return;
+    videoPlaying=false;
+    setConnection('connecting','Restoring match video');
+    ui.guestMessage.innerHTML='<strong>Restoring the match picture</strong><span>The match is paused safely while the video link reconnects.</span>';
+    ui.guestMessage.hidden=false;
+    if(mediaRecoveryTimer)return;
+    mediaRecoveryDeadline=Date.now()+18000;
+    send({type:'media-request',reason});
+    mediaRecoveryTimer=setInterval(()=>{
+      if(videoPlaying){clearInterval(mediaRecoveryTimer);mediaRecoveryTimer=null;return}
+      if(Date.now()>mediaRecoveryDeadline){clearInterval(mediaRecoveryTimer);mediaRecoveryTimer=null;fail('Match video could not recover','Return to Online Versus and create a new room.');return}
+      send({type:'media-request',reason});
+    },1400);
+  }
+  function assessTransportSample(sample){
+    const profile=STREAM_PROFILES[transportProfileIndex];
+    const lowFps=Number.isFinite(sample.fps)&&sample.fps<profile.fps*.68;
+    const constrained=sample.qualityLimitationReason==='bandwidth'||sample.qualityLimitationReason==='cpu';
+    const bad=sample.rtt>.22||sample.loss>.05||(sample.availableBitrate>0&&sample.availableBitrate<profile.bitrate*.82)||(lowFps&&constrained);
+    const good=(sample.rtt===null||sample.rtt<.11)&&(sample.loss===null||sample.loss<.018)&&(!sample.availableBitrate||sample.availableBitrate>profile.bitrate*1.18)&&(!Number.isFinite(sample.fps)||sample.fps>profile.fps*.82);
+    if(bad){transportBadSamples+=1;transportGoodSamples=0}
+    else if(good){transportGoodSamples+=1;transportBadSamples=0}
+    else{transportBadSamples=Math.max(0,transportBadSamples-1);transportGoodSamples=0}
+    if(transportBadSamples>=2&&transportProfileIndex<STREAM_PROFILES.length-1)applyStreamProfile(transportProfileIndex+1,'congestion');
+    else if(transportGoodSamples>=6&&transportProfileIndex>0&&Date.now()-transportChangedAt>15000)applyStreamProfile(transportProfileIndex-1,'link-recovered');
+  }
+  async function sampleMediaStats(){
+    const pc=mediaCall&&mediaCall.peerConnection;
+    if(mediaStatsBusy||role!=='host'||!pc||typeof pc.getStats!=='function')return;
+    mediaStatsBusy=true;
+    try{
+      const reports=await pc.getStats(),sample={fps:null,rtt:null,loss:null,availableBitrate:null,qualityLimitationReason:null};
+      reports.forEach(report=>{
+        const video=report.kind==='video'||report.mediaType==='video';
+        if(report.type==='outbound-rtp'&&!report.isRemote&&video){if(Number.isFinite(report.framesPerSecond))sample.fps=report.framesPerSecond;if(report.qualityLimitationReason)sample.qualityLimitationReason=report.qualityLimitationReason}
+        if(report.type==='remote-inbound-rtp'&&video){if(Number.isFinite(report.roundTripTime))sample.rtt=report.roundTripTime;if(Number.isFinite(report.fractionLost))sample.loss=Math.max(0,report.fractionLost)}
+        if(report.type==='candidate-pair'&&report.state==='succeeded'&&(report.nominated||report.selected)){if(Number.isFinite(report.currentRoundTripTime)&&sample.rtt===null)sample.rtt=report.currentRoundTripTime;if(Number.isFinite(report.availableOutgoingBitrate))sample.availableBitrate=report.availableOutgoingBitrate}
+      });
+      streamQuality={...streamQuality,measuredFps:sample.fps,rtt:sample.rtt,loss:sample.loss,availableBitrate:sample.availableBitrate};
+      assessTransportSample(sample);
+      send({type:'stream-quality',quality:{id:streamQuality.id,label:streamQuality.label,fps:streamQuality.fps,bitrate:streamQuality.bitrate,scale:streamQuality.scale,measuredFps:sample.fps,rtt:sample.rtt,loss:sample.loss}});
+      updateNetworkQualityLabel();
+    }catch(error){traceProtocol('media','stats-unavailable',{reason:String(error&&error.message||error)})}
+    finally{mediaStatsBusy=false}
+  }
+  function startMediaStats(){clearInterval(mediaStatsTimer);mediaStatsTimer=setInterval(sampleMediaStats,2500)}
   function startGuestMatch(message={}){
     if(matchStarted)return;
     matchStarted=true;
@@ -556,6 +750,9 @@
   function markVideoLive(){
     const firstPlay=!videoPlaying;
     videoPlaying=true;
+    clearInterval(mediaRecoveryTimer);
+    mediaRecoveryTimer=null;
+    mediaRecoveryDeadline=0;
     ui.guestMessage.hidden=true;
     ui.videoGate.hidden=!ui.video.muted;
     setConnection('connected',ui.video.muted?'Video live · enable sound':'Online match live');
@@ -584,18 +781,20 @@
       return;
     }
     if(!matchStarted)startGuestMatch(metadata);
-    if(mediaCall&&mediaCall!==call){try{mediaCall.close()}catch{}}
+    const previous=mediaCall;
     mediaCall=call;
+    if(previous&&previous!==call){try{previous.close()}catch{}}
     call.answer();
     call.on('stream',stream=>{
+      if(mediaCall!==call)return;
       remoteAudioTrack=stream.getAudioTracks().length>0;
       ui.video.srcObject=stream;
       ui.video.addEventListener('playing',markVideoLive,{once:true});
       playGuestVideo();
     });
-    call.on('error',()=>fail('Match video failed','Return to Online Versus and create a new room.'));
+    call.on('error',()=>{if(mediaCall===call)requestGuestMediaRecovery('media-error')});
     call.on('close',()=>{
-      if(matchStarted)fail('Match video interrupted','This Online beta cannot safely resume the video stream. Return to Online Versus and create a new room.');
+      if(matchStarted&&mediaCall===call)requestGuestMediaRecovery('media-close');
     });
   }
 
@@ -605,6 +804,8 @@
     if(!data||data.source!=='football-legacy-online-child')return;
     if(data.type==='child-ready'){
       childReady=true;
+      clearInterval(lobbyFrameRecoveryTimer);
+      lobbyFrameRecoveryTimer=null;
       traceProtocol('child-in','child-ready');
       queueChild({type:'connection',connected:!!(connection&&connection.open),role,roomCode,connectionEpoch});
       return;

@@ -1,6 +1,6 @@
 # Football Legacy — Changelog
 
-Last reviewed: 10 August 2026 — build 171 Online code-verification hold
+Last reviewed: 10 August 2026 — build 172 Online quality freeze
 
 This file records the two source lines and the combined build produced from them:
 
@@ -18,6 +18,21 @@ Before any future GitHub publication, Connor's AI agent **must** verify that the
 4. Use the repository's normal branch, commit, push and draft-pull-request workflow. Do not silently replace it with manual website uploads or claim publication succeeded before the remote branch and pull request have been verified.
 
 This is a mandatory workstation prerequisite for Connor's AI agent, not an optional recommendation. It was added after build 166 was locally complete but the first publication attempt found that `gh` was absent.
+
+## Build 172 — Online quality and recovery freeze
+
+- Josh and Theo completed a full hosted two-machine Online match. The authoritative Home match, Away Controller 2 input and live picture were playable and broadly smooth enough for Josh to close the exploratory playtest stage. This is the first completed real remote-match evidence for the Online prototype.
+- The same session exposed one bounded controller defect: D-pad Down did not produce a dive for Away. The comparison log `FL-MSN757H7` records two local D-pad Down inputs followed by two dive events, isolating the failure to the browser/network controller boundary rather than the dive outcome system.
+- Firefox raw DualSense packets are now normalised on the sending machine before transmission. The raw Square/Cross layout becomes the standard logical layout and Firefox's hat-axis D-pad Down becomes standard button 13. Xbox One and already-standard browser mappings remain unchanged. D-pad Down is still dive; R3 is still flick-up.
+- Raises host capture from 45 to 60 fps and adds four bounded WebRTC profiles: 60 fps / 5 Mbps, 50 fps / 3.5 Mbps, 40 fps / 2.4 Mbps and 30 fps / 1.5 Mbps. The host reads measured output frame rate, round-trip time, packet loss, available outgoing bitrate and browser CPU/bandwidth limitation, degrades after repeated poor samples and recovers more cautiously after sustained good samples.
+- Caps reliable-channel controller backlog at 64 KiB and rounds analogue/button samples to three decimal places, preventing stale input packets from accumulating when the link is temporarily congested.
+- Repairs Firefox's observed `about:blank` Quick Play iframe failure with three bounded reload attempts that preserve the active room and stop as soon as the child setup confirms readiness.
+- Adds bounded signalling, data and media recovery. PeerJS signalling reconnects automatically; a lost data path gives Away 30 seconds to rejoin; an interrupted video path requests/redials the existing authoritative stream for 18 seconds. Home clears remote input so the match pauses safely, and never replaces Away with CPU control during recovery.
+- Advances the Online room namespace and Quick Play cache tokens to Build 172 so older scripts and rooms cannot mix with the new transport contract.
+- Preserves the frozen gameplay base. No locomotion, sprint speed, CPU tactics, positional contract, passing, shooting, defending, goalkeeper, animation, stadium, FLARE, replay, free-kick or difficulty value changes are included; the only match-engine change is the Online capture default from 45 to 60 fps.
+- Verification passes the correctly configured historic Quick Play browser gate **184/184**, Online controller **13/13**, lobby transaction **85/85**, connection gate and new quality/recovery gate **23/23**. Original names pass **5/5**, Player Career links **2/2**, Player Career **9/9** and Create-a-Club **2/2**. The first Create-a-Club run exceeded its time limit while the live browser/server were consuming resources, then passed unchanged after those were closed.
+- The exhaustive career-world audit was run but still reports four missing-fixture recovery errors across its 1888, 1950, 2000 and 2026 fixtures. Build 172 changes no career files and does not claim that separate existing gate.
+- Post-fix remote acceptance is intentionally small: confirm one Away D-pad Down dive and observe the adaptive quality label over a short two-machine session. The larger gameplay overhaul and Josh's new notes begin after this frozen release.
 
 ## Build 171 — Online code-verification hold
 

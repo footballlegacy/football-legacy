@@ -1,8 +1,34 @@
-# Football Legacy request log — build 171 Online code-verification truth
+# Football Legacy request log — build 172 Online quality freeze
 
-Updated 10 August 2026 after the Online room code appeared too briefly to hand to the other machine without recording the screen. Build 171 keeps both players at a visible verification boundary and supplies a copyable full join URL, without changing the match engine. Josh's current locomotion verdict remains explicit: “the game, the running, it feels amazing now. amazing.” This remains a playable development base and an early online prototype; local browser acceptance is not proof that Build 171 has passed its required fresh two-machine internet retest.
+Updated 10 August 2026 after Josh and Theo completed a full hosted Online match. The connection and remote Away control were broadly smooth; Josh then closed the exploratory playtest stage and asked for a bounded Online refinement/freeze before the next larger workflow. His current locomotion verdict remains explicit: “the game, the running, it feels amazing now. amazing.” Build 172 does not reopen or retune that accepted-feeling base.
 
 This log deliberately separates **code presence** from **playtest proof**. Josh's existing comments below remain the human acceptance authority; a browser check or CPU simulation cannot silently overwrite them.
+
+## Build 172 — completed remote-match diagnosis and Online freeze
+
+### Evidence-led diagnosis
+
+- **Real remote match:** Josh and Theo completed a hosted Online match with Home authoritative simulation, Away Controller 2 input and a playable live stream. Josh described it as “pretty fucking smooth” and asked for higher frame rate and greater connection stability rather than a new networking architecture.
+- **Specific failure:** Away's D-pad Down did not produce a dive during that match. It remains the agreed input; R3 remains flick-up.
+- **Control comparison:** local log `FL-MSN757H7` contains D-pad Down controller-input events for Thierry Henry at minute 29 and Freddie Ljungberg at minute 40, each immediately followed by a dive event. The local match action therefore works. The Online defect sat at Firefox's raw DualSense packet boundary.
+- **Live transport evidence:** the completed session proved remote Controller 2/Away input and a direct peer path, but the old stream was fixed at 45 fps and had no adaptive sender policy. The correction targets those observed boundaries rather than changing match gameplay.
+
+### Frozen implementation contract
+
+- **Controller truth:** raw Firefox DualSense input is standardised before peer transmission, including Square/Cross and hat-axis D-pad Down to logical button 13. Standard DualSense/Chrome and Xbox One packets retain their existing standard mapping.
+- **Adaptive picture:** capture begins at 60 fps. Sender profiles bound resolution, bitrate and frame rate together at 60/50/40/30 fps. Two poor samples trigger one downgrade; six sustained good samples plus a cooldown permit one recovery. Difficulty, player pace and simulation outcomes are never involved.
+- **Input stability:** analogue/button values are compacted and reliable-channel backlog is capped so congestion drops stale controller frames instead of replaying them late.
+- **Firefox setup recovery:** an Online Quick Play child that remains `about:blank` receives up to three room-preserving reload attempts and stops immediately once ready.
+- **Connection recovery:** signalling reconnects when possible. During a live data or media interruption, remote input is cleared and Home's authoritative engine pauses; Away is never silently replaced by CPU. Data recovery is bounded to 30 seconds and media replacement to 18 seconds before an honest failure screen.
+- **Version boundary:** Build 172 has its own peer room namespace and cache token.
+- **No gameplay drift:** the complete build-171 gameplay/request-log workflow remains. The only match-engine edit is Online capture's default 45-to-60-fps change.
+
+### Verification and remaining boundary
+
+- The intended Arsenal Invincibles v Conte Chelsea Quick Play route passes **184/184** in-browser engine checks, including full raw-Firefox D-pad Down dive and Xbox One movement/aim/sprint/dive routes.
+- Online connection, controller, lobby and quality/recovery gates pass: connection gate, **13/13**, **85/85** and **23/23** respectively. Original names pass **5/5**, Player Career links **2/2**, Player Career **9/9** and Create-a-Club **2/2**.
+- The exhaustive untouched career-world runner still reports four missing-fixture recovery errors; that separate career defect is not promoted as an Online regression or silently claimed complete.
+- One short post-fix remote confirmation remains useful for the exact D-pad Down route and real adaptive-profile behaviour. The playtest stage is otherwise closed; broader gameplay notes move into the next overhaul rather than expanding this release.
 
 ## Build 171 — persistent code verification and full join URL
 
