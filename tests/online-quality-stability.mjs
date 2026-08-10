@@ -7,6 +7,8 @@ import vm from 'node:vm';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const onlineApp = read('online/app.js');
 const matchHtml = read('match-engine/match.html');
+const protocol=onlineApp.match(/const PROTOCOL='([^']+)'/)?.[1];
+const release=onlineApp.match(/const RELEASE='([^']+)'/)?.[1];
 let passed = 0;
 const check = (condition, message) => { assert.ok(condition, message); passed += 1; };
 
@@ -41,6 +43,7 @@ class FakeElement {
   constructor(id,replacements){
     this.id=id;this.hidden=false;this.dataset={};this.style={};this.classList={toggle(){}};this.textContent='';this.value='';this.selectionStart=0;this.listeners=new Map();this.span={textContent:''};
     this.contentWindow={postMessage(){},location:{href:'about:blank',replace:value=>{replacements.push(String(value));this.contentWindow.location.href=String(value)}}};
+    this._src='';Object.defineProperty(this,'src',{get:()=>this._src,set:value=>{this._src=String(value);if(this._src.includes('frameRetry='))replacements.push(this._src)}});
   }
   addEventListener(type,listener){const list=this.listeners.get(type)||[];list.push(listener);this.listeners.set(type,list)}
   dispatch(type,event={}){event.preventDefault ||= ()=>{};for(const listener of this.listeners.get(type)||[])listener(event)}
@@ -84,12 +87,12 @@ check(normalisedPad.buttons[13].pressed, 'Remote Firefox hat-axis D-pad Down mus
 node('hostButton').dispatch('click');
 const peer=peers.at(-1);
 peer.emit('open');
-const connection=new FakeConnection('away',{protocol:'football-legacy-online-v1',build:'172',role:'guest'});
+const connection=new FakeConnection('away',{protocol,build:'172',release,role:'guest'});
 peer.emit('connection',connection);
 connection.emit('open');
 for(const callback of [...intervals.values()])callback();
 check(replacements.length===1, 'Firefox about:blank detection must retry the setup frame automatically');
-check(replacements[0].includes('build=172-controller-launch-3'), 'Firefox recovery must reload the exact current lobby build');
+check(replacements[0].includes('build=172-controller-launch-4'), 'Firefox recovery must reload the exact current lobby release');
 check(location.href==='https://example.test/football-legacy/online/index.html', 'Frame recovery must preserve the live room page');
 const frame=node('gameFrame');
 for(const listener of globalListeners.get('message')||[])listener({source:frame.contentWindow,origin:location.origin,data:{source:'football-legacy-online-child',type:'child-ready'}});

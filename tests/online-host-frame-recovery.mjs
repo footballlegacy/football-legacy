@@ -5,6 +5,9 @@ import { performance } from 'node:perf_hooks';
 import vm from 'node:vm';
 
 const onlineApp = readFileSync(new URL('../online/app.js', import.meta.url), 'utf8');
+const protocol=onlineApp.match(/const PROTOCOL='([^']+)'/)?.[1];
+const build=onlineApp.match(/const BUILD='([^']+)'/)?.[1];
+const release=onlineApp.match(/const RELEASE='([^']+)'/)?.[1];
 
 class Emitter {
   constructor(){this.listeners=new Map()}
@@ -114,14 +117,14 @@ function startCommittedHost(h){
   h.node('hostButton').dispatch('click');
   const peer=h.peers.at(-1);
   peer.emit('open');
-  const connection=new FakeConnection('away-peer',{protocol:'football-legacy-online-v1',build:'172',role:'guest'});
+  const connection=new FakeConnection('away-peer',{protocol,build,release,role:'guest'});
   peer.emit('connection',connection);
   connection.emit('open');
   windowMessage(h,{source:'football-legacy-online-child',type:'child-ready'});
   const launch={launchId:'launch-recovery-test',lobbyVersion:'ROOM|0:0:0',configRevision:'0:0:0',href:'../match-engine/match.html?quickPlay=1#flMatch=test',homeName:'HOME',awayName:'AWAY'};
   windowMessage(h,{source:'football-legacy-online-child',type:'launch-request',...launch});
-  connection.emit('data',{protocol:'football-legacy-online-v1',build:'172',type:'launch-ack',...launch});
-  connection.emit('data',{protocol:'football-legacy-online-v1',build:'172',type:'launch-committed',...launch});
+  connection.emit('data',{protocol,build,release,type:'launch-ack',...launch});
+  connection.emit('data',{protocol,build,release,type:'launch-committed',...launch});
   return{peer,connection,launch};
 }
 

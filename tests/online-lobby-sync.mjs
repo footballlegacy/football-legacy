@@ -20,7 +20,11 @@ const productionCheck = (condition, message) => {
 };
 
 check(onlineApp.includes("const BUILD='172'"), 'Peers must share the lobby-sync build');
-check(onlineApp.includes("const PEER_PREFIX='football-legacy-172-'"), 'Old and new peer rooms must not mix');
+check(onlineApp.includes("const PROTOCOL='football-legacy-online-v2'"), 'The controller bridge must use an incompatible peer protocol');
+check(onlineApp.includes("const RELEASE='172-controller-launch-4'"), 'The public build must expose an exact controller release');
+check(onlineApp.includes("const PEER_PREFIX='football-legacy-172-controller-launch-4-'"), 'Old and new peer rooms must not mix');
+check(onlineApp.includes('metadata.release!==RELEASE'), 'Incoming peer and media handshakes must reject a different release');
+check(onlineApp.includes('message.release!==RELEASE'), 'Every open peer link must keep validating the exact release');
 check(onlineApp.includes('peerConnected:!!(connection&&connection.open),connectionEpoch'), 'Continuous lobby packets must carry peer truth and epoch');
 check(onlineApp.includes('lastPongAt>24000'), 'A short browser stall must not kill the room');
 check(onlineApp.includes('existingHealthy=connection.open&&Date.now()-lastPongAt<9000'), 'A stale host connection must be replaceable');
@@ -36,8 +40,8 @@ check(quickApp.includes('reconcileOnlineConnection(data&&data.peerConnected,data
 check(quickApp.includes('getProtocolTrace:()=>onlineProtocolTrace.slice()'), 'Lobby protocol telemetry must be inspectable');
 check(!quickApp.match(/function applyOnlineSide\([^\n]+remoteReady=false/), 'Team replication must not silently erase Ready state');
 check(!quickApp.match(/function applyOnlineSettings\([^\n]+remoteReady=false/), 'Settings replication must not silently erase Ready state');
-check(onlineHtml.includes('app.js?v=172-controller-launch-3'), 'Online shell must bypass the old cached parent script');
-check(quickHtml.includes('app.js?v=172-controller-launch-3'), 'Quick Play must bypass the old cached lobby script');
+check(onlineHtml.includes('app.js?v=172-controller-launch-4'), 'Online shell must bypass the old cached parent script');
+check(quickHtml.includes('app.js?v=172-controller-launch-4'), 'Quick Play must bypass the old cached lobby script');
 
 class ReadyPeer {
   constructor(side) {

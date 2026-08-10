@@ -1,8 +1,9 @@
 'use strict';
 (() => {
-  const PROTOCOL='football-legacy-online-v1';
+  const PROTOCOL='football-legacy-online-v2';
   const BUILD='172';
-  const PEER_PREFIX='football-legacy-172-';
+  const RELEASE='172-controller-launch-4';
+  const PEER_PREFIX='football-legacy-172-controller-launch-4-';
   const TARGET_ORIGIN=location.origin==='null'?'*':location.origin;
   const $=id=>document.getElementById(id);
   const ui={
@@ -85,7 +86,7 @@
     if(protocolTrace.length>240)protocolTrace.splice(0,protocolTrace.length-240);
   }
   window.FLOnlineDebug={
-    getState:()=>({build:BUILD,role,roomCode,matchStarted,connectionOpen:!!(connection&&connection.open),connectionEpoch,connectionPending,lastPongAge:lastPongAt?Date.now()-lastPongAt:null,latestRemoteInputSeq,guestPadConnected,hostSeesAwayController,videoPlaying,streamQuality:{...streamQuality},pendingLaunch:pendingLaunch?{launchId:pendingLaunch.launchId,phase:pendingLaunch.phase,lobbyVersion:pendingLaunch.lobbyVersion,configRevision:pendingLaunch.configRevision}:null,launchCommitted}),
+    getState:()=>({build:BUILD,release:RELEASE,role,roomCode,matchStarted,connectionOpen:!!(connection&&connection.open),connectionEpoch,connectionPending,lastPongAge:lastPongAt?Date.now()-lastPongAt:null,latestRemoteInputSeq,guestPadConnected,hostSeesAwayController,videoPlaying,streamQuality:{...streamQuality},pendingLaunch:pendingLaunch?{launchId:pendingLaunch.launchId,phase:pendingLaunch.phase,lobbyVersion:pendingLaunch.lobbyVersion,configRevision:pendingLaunch.configRevision}:null,launchCommitted}),
     getProtocolTrace:()=>protocolTrace.slice(),
     renderRemoteView,
     serialisePad
@@ -151,7 +152,7 @@
   function send(message){
     const delivered=!!(connection&&connection.open);
     traceProtocol('peer-out',message&&message.type||'unknown',{delivered,revision:message&&message.revision,side:message&&message.side,launchId:message&&message.launchId});
-    if(delivered)connection.send({protocol:PROTOCOL,build:BUILD,...message});
+    if(delivered)connection.send({protocol:PROTOCOL,build:BUILD,release:RELEASE,...message});
     return delivered;
   }
   function childSend(message){
@@ -168,22 +169,29 @@
     ui.networkRole.textContent=role==='host'?'Home · Host':'Away · Guest';
     ui.networkLatency.textContent=role==='host'?`Room ${roomCode}`:'Private peer link';
     childReady=false;
-    const target=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=172-controller-launch-3`;
+    const target=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=${encodeURIComponent(RELEASE)}`;
     ui.frame.onload=()=>{
       try{ui.frame.focus()}catch{}
     };
     ui.frame.src=target;
     clearInterval(lobbyFrameRecoveryTimer);
-    let recoveries=0;
+    let recoveries=0,loadedChecks=0;
     lobbyFrameRecoveryTimer=setInterval(()=>{
       if(childReady||matchStarted||ui.frame.hidden){clearInterval(lobbyFrameRecoveryTimer);lobbyFrameRecoveryTimer=null;return}
       let current='';
       try{current=String(ui.frame.contentWindow&&ui.frame.contentWindow.location&&ui.frame.contentWindow.location.href||'')}catch{}
-      if(current&&current!=='about:blank')return;
+      if(current&&current!=='about:blank'){
+        loadedChecks+=1;
+        if(loadedChecks>=10)fail('Match setup did not finish loading','The Online setup page opened but did not become ready. Reload Online Versus and try again.');
+        return;
+      }
+      loadedChecks=0;
+      if(recoveries>=3){fail('Match setup stayed blank','Firefox could not open the Online setup page after three recovery attempts. Reload Online Versus and try again.');return}
       recoveries+=1;
       traceProtocol('frame','firefox-about-blank-recovery',{attempt:recoveries});
-      try{ui.frame.contentWindow.location.replace(target)}catch{ui.frame.src=target}
-      if(recoveries>=3){clearInterval(lobbyFrameRecoveryTimer);lobbyFrameRecoveryTimer=null}
+      const retryUrl=new URL(target,location.href);
+      retryUrl.searchParams.set('frameRetry',`${connectionEpoch}-${recoveries}`);
+      ui.frame.src=retryUrl.href;
     },1200);
   }
   function rejectConnection(conn){try{conn.close()}catch{}}
@@ -191,7 +199,7 @@
     if(!conn)return;
     if(role==='host'){
       const metadata=conn.metadata||{};
-      if(metadata.protocol!==PROTOCOL||metadata.build!==BUILD||metadata.role!=='guest'){
+      if(metadata.protocol!==PROTOCOL||metadata.build!==BUILD||metadata.release!==RELEASE||metadata.role!=='guest'){
         rejectConnection(conn);
         return;
       }
@@ -221,7 +229,7 @@
       lastPongAt=Date.now();
       traceProtocol('connection','open',{peer:conn.peer});
       setConnection('connected',matchStarted?'Match link restored':'Opponent connected');
-      if(ui.stage.hidden&&!matchStarted)loadLobby();
+      if(!matchStarted&&(ui.stage.hidden||!childReady))loadLobby();
       queueChild({type:'connection',connected:true,role,roomCode,connectionEpoch});
       send({type:'hello',role,roomCode});
       startHeartbeat();
@@ -257,7 +265,7 @@
   function connectGuest(){
     if(!peer||peer.destroyed||connectionPending||(connection&&connection.open))return;
     setConnection('connecting','Finding host');
-    const conn=peer.connect(peerIdFor(roomCode),{reliable:true,serialization:'json',metadata:{protocol:PROTOCOL,build:BUILD,role:'guest'}});
+    const conn=peer.connect(peerIdFor(roomCode),{reliable:true,serialization:'json',metadata:{protocol:PROTOCOL,build:BUILD,release:RELEASE,role:'guest'}});
     acceptConnection(conn);
   }
   function startGuest(code){
@@ -417,10 +425,10 @@
     startHostMatch(launch);
   }
   function handleNetworkMessage(message){
-    if(!message||message.protocol!==PROTOCOL)return;
-    if(message.build!==BUILD){
+    if(!message)return;
+    if(message.protocol!==PROTOCOL||message.build!==BUILD||message.release!==RELEASE){
       const active=connection;
-      fail('Different game versions','Both players must open build 172 of Football Legacy.');
+      fail('Different game versions','Both players must reopen the latest Online Versus link before connecting.');
       try{active&&active.close()}catch{}
       return;
     }
@@ -614,7 +622,7 @@
     const hash=hashIndex>=0?href.slice(hashIndex):'';
     const base=hashIndex>=0?href.slice(0,hashIndex):href;
     const separator=base.includes('?')?'&':'?';
-    return`${base}${separator}onlineRole=${side}&onlineRoom=${encodeURIComponent(roomCode)}&onlineBuild=${BUILD}&onlineRelease=172-controller-launch-3${hash}`;
+    return`${base}${separator}onlineRole=${side}&onlineRoom=${encodeURIComponent(roomCode)}&onlineBuild=${BUILD}&onlineRelease=${encodeURIComponent(RELEASE)}${hash}`;
   }
   function beginHostStream(target=hostMatchTarget){
     if(hostStreamTimer||hostMatchStream)return;
@@ -684,7 +692,7 @@
   function placeHostMediaCall(reason='recovery'){
     if(role!=='host'||!matchStarted||!peer||!opponentPeer||!hostMatchStream)return false;
     let next=null;
-    try{next=peer.call(opponentPeer,hostMatchStream,{metadata:{protocol:PROTOCOL,build:BUILD,roomCode,homeName:matchHomeName,awayName:matchAwayName,generation:++mediaGeneration}})}catch{}
+    try{next=peer.call(opponentPeer,hostMatchStream,{metadata:{protocol:PROTOCOL,build:BUILD,release:RELEASE,roomCode,homeName:matchHomeName,awayName:matchAwayName,generation:++mediaGeneration}})}catch{}
     if(!next)return false;
     const previous=mediaCall;
     mediaCall=next;
@@ -850,7 +858,7 @@
   }
   function handleMediaCall(call){
     const metadata=call&&call.metadata||{};
-    if(role!=='guest'||metadata.protocol!==PROTOCOL||metadata.build!==BUILD||cleanCode(metadata.roomCode)!==roomCode){
+    if(role!=='guest'||metadata.protocol!==PROTOCOL||metadata.build!==BUILD||metadata.release!==RELEASE||cleanCode(metadata.roomCode)!==roomCode){
       try{call.close()}catch{}
       if(role==='guest')fail('Rejected match video','The incoming video did not match this room and build.');
       return;

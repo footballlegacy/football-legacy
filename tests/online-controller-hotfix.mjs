@@ -15,8 +15,8 @@ const check = (condition, message) => {
   passed += 1;
 };
 
-check(onlineHtml.includes('../controller-ui.js?v=172-controller-launch-3'), 'Online shell must load the cache-busted shared controller UI');
-check(quickHtml.includes('../controller-ui.js?v=172-controller-launch-3'), 'Quick Play must load the same cache-busted controller UI');
+check(onlineHtml.includes('../controller-ui.js?v=172-controller-launch-4'), 'Online shell must load the cache-busted shared controller UI');
+check(quickHtml.includes('../controller-ui.js?v=172-controller-launch-4'), 'Quick Play must load the same cache-busted controller UI');
 check(onlineHtml.includes('id="hostButton" type="button" data-controller-default'), 'Host must be the default controller target');
 check(quickHtml.includes('id="startMatch" type="button" data-controller-default'), 'Ready must be the default controller target on confirmation');
 check(onlineApp.includes("const BUILD='172'"), 'The peer protocol build must remain compatible with the current room');

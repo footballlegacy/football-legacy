@@ -174,10 +174,15 @@ function createHarness({ href = 'https://example.test/football-legacy/online/ind
   return { clipboardWrites, elements, peerInstances };
 }
 
-const protocol = 'football-legacy-online-v1';
+const protocolMatch = onlineApp.match(/const PROTOCOL='([^']+)'/);
 const buildMatch = onlineApp.match(/const BUILD='([^']+)'/);
+const releaseMatch = onlineApp.match(/const RELEASE='([^']+)'/);
+assert.ok(protocolMatch, 'Online runtime must declare its protocol');
 assert.ok(buildMatch, 'Online runtime must declare its build');
+assert.ok(releaseMatch, 'Online runtime must declare its release');
+const protocol = protocolMatch[1];
 const build = buildMatch[1];
+const release = releaseMatch[1];
 
 {
   const { clipboardWrites, elements, peerInstances } = createHarness({
@@ -204,7 +209,7 @@ const build = buildMatch[1];
   assert.equal(elements.get('gameStage').hidden, true, 'PeerJS signalling open is not a verified opponent connection');
   assert.equal(elements.get('roomCode').textContent, roomCode, 'Home code must remain stable and visible after signalling opens');
 
-  const pending = new FakeConnection('away-peer', { protocol, build, role: 'guest' });
+  const pending = new FakeConnection('away-peer', { protocol, build, release, role: 'guest' });
   peer.emit('connection', pending);
   assert.equal(elements.get('waitingScreen').hidden, false, 'An incoming but pending DataConnection must not dismiss the code screen');
   assert.equal(elements.get('gameStage').hidden, true, 'Home stays gated until the incoming DataConnection emits open');
@@ -212,12 +217,30 @@ const build = buildMatch[1];
   pending.emit('open');
   assert.equal(elements.get('waitingScreen').hidden, true, 'Home leaves verification only after DataConnection open');
   assert.equal(elements.get('gameStage').hidden, false, 'Home lobby opens after verified DataConnection open');
+  assert.ok(pending.sent.some(message => message.protocol === protocol && message.build === build && message.release === release), 'Every peer packet carries the exact protocol, build and release');
 
   pending.emit('close');
   assert.equal(elements.get('waitingScreen').hidden, false, 'A pre-match Home disconnect returns to the waiting screen');
   assert.equal(elements.get('gameStage').hidden, true, 'A pre-match Home disconnect re-gates the lobby');
   assert.equal(elements.get('roomCodeBlock').hidden, false, 'The Home code remains visible while Away reconnects');
   assert.equal(elements.get('roomCode').textContent, roomCode, 'Home reconnect waiting preserves the exact room code');
+}
+
+{
+  const { elements, peerInstances } = createHarness();
+  elements.get('hostButton').dispatch('click');
+  const peer = peerInstances.at(-1);
+  peer.emit('open');
+  const stale = new FakeConnection('stale-away', {
+    protocol: 'football-legacy-online-v1',
+    build,
+    release: '172-controller-launch-3',
+    role: 'guest',
+  });
+  peer.emit('connection', stale);
+  stale.emit('open');
+  assert.equal(stale.closed, true, 'A cached client from the previous controller release is rejected before pairing');
+  assert.equal(elements.get('gameStage').hidden, true, 'A stale client cannot release the Home lobby gate');
 }
 
 {
