@@ -1,8 +1,41 @@
-# Football Legacy request log — build 169 Online controller truth
+# Football Legacy request log — build 170 Online lobby transaction truth
 
-Updated 10 August 2026 after repairing the published Online controller/setup blocker and retaining the clean **184/184** autonomous engine gate. Josh's current locomotion verdict remains explicit: “the game, the running, it feels amazing now. amazing.” This remains a playable development base and an early online prototype, not a claim that Josh has accepted every animation, control feel or art-direction choice or that the network route has passed its required two-Mac internet test.
+Updated 10 August 2026 after Josh and Connor's first real two-machine Online test proved the Build 169 controller repair but exposed a cross-machine Ready/launch desynchronisation. Build 170 repairs that exact protocol boundary without changing the match engine. Josh's current locomotion verdict remains explicit: “the game, the running, it feels amazing now. amazing.” This remains a playable development base and an early online prototype, not a claim that Josh has accepted every animation, control feel or art-direction choice or that Build 170 has passed its required fresh two-machine internet retest.
 
 This log deliberately separates **code presence** from **playtest proof**. Josh's existing comments below remain the human acceptance authority; a browser check or CPU simulation cannot silently overwrite them.
+
+## Build 170 — Online readiness and launch transaction repair
+
+### The real Build 169 evidence
+
+Josh and Connor both used the hosted build on separate machines. Controller navigation worked for both, the UI reported Connor connected and both reached Ready Up. Both pressed Ready and saw a local tick, but the shared state split:
+
+- Josh/Home saw **Home Ready / Waiting for Away**.
+- Connor/Away saw **Waiting for opponent**; beneath his settings the lobby package still said **Away not ready / Home not ready**, followed by the room code.
+- The match never launched.
+
+That evidence narrows the defect to cross-frame/cross-peer state delivery. It does not invalidate the Build 169 controller fix, and it does invalidate any earlier claim that one local Ready tick or a fire-and-forget launch was sufficient remote proof.
+
+### Build 170 protocol contract
+
+- **Self-healing connection truth:** the Online parent continuously supplies peer-connected truth plus a connection epoch. Quick Play reconciles that current truth, so losing the original connected event cannot strand Away at **Waiting for opponent**.
+- **Configuration-bound Ready:** Home, Away and shared settings carry a versioned lobby configuration. Ready is revisioned, acknowledged and retried; it counts only when both clients refer to the same current configuration.
+- **Deterministic invalidation:** changing either team, lineup, tactic or kit, or changing Home-owned match settings, invalidates both Ready states. Old or reordered Ready packets cannot approve the changed match.
+- **Explicit Home start:** Away readiness never auto-launches. Home must explicitly activate **Start Online Match** after both current Ready states are confirmed.
+- **Transactional launch:** launch now proceeds as a retried, idempotent **proposal -> ACK -> commit** sequence tied to the accepted lobby version. Home opens the authoritative match and Away opens the corresponding live-view route only after that shared transaction; duplicate packets do not create a second launch.
+- **Connection resilience:** heartbeat loss now allows **24 seconds** for browser throttling or a brief stall, and a legitimate fresh peer can replace a stale old connection during reconnect.
+- **Cache coherence:** Online and Quick Play use the Build 170 cache-bust/protocol identifier, preventing one machine from silently keeping the older Build 169 lobby code.
+- **Scope preserved:** controller navigation remains the accepted Build 169 DualSense/Xbox route. Build 170 removes no request-log workflow and changes no locomotion, CPU, positional, physics, finishing, defending, goalkeeper, animation, stadium, FLARE, replay, free-kick or difficulty values.
+
+### Build 170 evidence and acceptance boundary
+
+- **Loss-injected local acceptance:** a live two-tab run deliberately discarded the first Home Ready packet and the explicit connected event. Continuous connection reconciliation and Ready retry recovered without reloading.
+- **Ordering and invalidation:** both Home-first and Away-first readiness flows passed. A shared-settings change cleared both Ready states, required a fresh matching Ready transaction and did not permit stale packets to restore the old approval.
+- **Launch route:** explicit Home Start completed the proposal/ACK/commit exchange, then placed Home in the authoritative match and Away in its live-view transition.
+- **Focused gates:** the Online controller source gate passes **13/13** and the Online lobby-transaction gate passes **85/85**, including reordered configuration packets, dropped launch packets, commit-time revalidation, split-start prevention and reconnect recovery.
+- **Neighbour regressions:** original names pass **5/5**, player links **2/2**, Player Career **9/9** and Create-a-Club **1/1**.
+- **Honest unrun boundary:** the exhaustive career-world integrity suite was not rerun to completion because the career world is untouched by this Online-only change and its exhaustive build is expensive. No completion claim is made for that unrun gate.
+- **Still mandatory:** Josh and Connor must repeat the hosted two-machine flow on Build 170, including a configuration change followed by re-ready, Home's explicit Start, Home match control, Away live view/input, audio/video, and an intentional disconnect. The public signalling/no-dedicated-TURN limitation also remains.
 
 ## Build 169 — published Online controller blocker
 

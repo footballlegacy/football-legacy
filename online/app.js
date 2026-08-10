@@ -1,8 +1,8 @@
 'use strict';
 (() => {
   const PROTOCOL='football-legacy-online-v1';
-  const BUILD='169';
-  const PEER_PREFIX='football-legacy-169-';
+  const BUILD='170';
+  const PEER_PREFIX='football-legacy-170-';
   const TARGET_ORIGIN=location.origin==='null'?'*':location.origin;
   const $=id=>document.getElementById(id);
   const ui={
@@ -45,6 +45,24 @@
   let reconnectTimer=null;
   let reconnectDeadline=0;
   let disconnectHandled=false;
+  let connectionEpoch=0;
+  let pendingLaunch=null;
+  let proposedGuestLaunch=null;
+  let acceptedGuestLaunch=null;
+  let launchTimer=null;
+  let launchCommitted='';
+  const protocolTrace=[];
+
+  function traceProtocol(direction,type,detail={}){
+    protocolTrace.push({at:Date.now(),direction,type,connectionEpoch,connectionOpen:!!(connection&&connection.open),...detail});
+    if(protocolTrace.length>240)protocolTrace.splice(0,protocolTrace.length-240);
+  }
+  window.FLOnlineDebug={
+    getState:()=>({build:BUILD,role,roomCode,matchStarted,connectionOpen:!!(connection&&connection.open),connectionEpoch,connectionPending,lastPongAge:lastPongAt?Date.now()-lastPongAt:null,latestRemoteInputSeq,guestPadConnected,hostSeesAwayController,videoPlaying,pendingLaunch:pendingLaunch?{launchId:pendingLaunch.launchId,phase:pendingLaunch.phase,lobbyVersion:pendingLaunch.lobbyVersion,configRevision:pendingLaunch.configRevision}:null,launchCommitted}),
+    getProtocolTrace:()=>protocolTrace.slice(),
+    renderRemoteView,
+    serialisePad
+  };
 
   const randomCode=()=>{
     const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -67,7 +85,7 @@
     if(!suspended)requestAnimationFrame(()=>window.FootballLegacyControllerUI?.focus());
   }
   function showOnly(target){[ui.entry,ui.waiting,ui.stage].forEach(element=>{element.hidden=element!==target});setOuterControllerSuspended(target===ui.stage)}
-  function clearTimers(){clearInterval(hostViewTimer);clearInterval(heartbeatTimer);clearInterval(reconnectTimer);hostViewTimer=heartbeatTimer=reconnectTimer=null}
+  function clearTimers(){clearInterval(hostViewTimer);clearInterval(heartbeatTimer);clearInterval(reconnectTimer);clearInterval(launchTimer);hostViewTimer=heartbeatTimer=reconnectTimer=launchTimer=null}
   function fail(title,copy){
     clearTimers();
     setOuterControllerSuspended(false);
@@ -100,9 +118,15 @@
     instance.on('call',handleMediaCall);
     return instance;
   }
-  function send(message){if(connection&&connection.open)connection.send({protocol:PROTOCOL,build:BUILD,...message})}
+  function send(message){
+    const delivered=!!(connection&&connection.open);
+    traceProtocol('peer-out',message&&message.type||'unknown',{delivered,revision:message&&message.revision,side:message&&message.side,launchId:message&&message.launchId});
+    if(delivered)connection.send({protocol:PROTOCOL,build:BUILD,...message});
+    return delivered;
+  }
   function childSend(message){
     if(!ui.frame.contentWindow)return;
+    if(message.type!=='menu-input')traceProtocol('child-out',message.type,{connected:message.connected});
     ui.frame.contentWindow.postMessage({source:'football-legacy-online-parent',...message},TARGET_ORIGIN);
   }
   function flushChildMessages(){if(childReady)latestChildMessages.splice(0).forEach(childSend)}
@@ -114,12 +138,9 @@
     ui.networkRole.textContent=role==='host'?'Home · Host':'Away · Guest';
     ui.networkLatency.textContent=role==='host'?`Room ${roomCode}`:'Private peer link';
     childReady=false;
-    ui.frame.src=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=169-online-menu-hotfix`;
+    ui.frame.src=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=170-lobby-transaction-4`;
     ui.frame.onload=()=>{
-      childReady=true;
       try{ui.frame.focus()}catch{}
-      queueChild({type:'connection',connected:!!(connection&&connection.open),role,roomCode});
-      flushChildMessages();
     };
   }
   function rejectConnection(conn){try{conn.close()}catch{}}
@@ -133,22 +154,30 @@
       }
     }
     if(connection&&connection!==conn&&(connection.open||connectionPending)){
-      rejectConnection(conn);
-      return;
+      const existingHealthy=connection.open&&Date.now()-lastPongAt<9000;
+      if(connectionPending||existingHealthy){rejectConnection(conn);return}
+      const stale=connection;
+      connection=null;
+      try{stale.close()}catch{}
     }
     connection=conn;
     connectionPending=true;
+    // Each accepted DataConnection owns its own disconnect cycle. A replacement
+    // can fail before `open`, so do not inherit the previous connection's guard.
+    disconnectHandled=false;
     opponentPeer=conn.peer;
     setConnection('connecting','Joining room');
     conn.on('open',()=>{
       if(conn!==connection){rejectConnection(conn);return}
       connectionPending=false;
       disconnectHandled=false;
+      connectionEpoch+=1;
       latestRemoteInputSeq=-1;
       lastPongAt=Date.now();
+      traceProtocol('connection','open',{peer:conn.peer});
       setConnection('connected','Opponent connected');
       if(ui.stage.hidden)loadLobby();
-      queueChild({type:'connection',connected:true,role,roomCode});
+      queueChild({type:'connection',connected:true,role,roomCode,connectionEpoch});
       send({type:'hello',role,roomCode});
       startHeartbeat();
     });
@@ -206,7 +235,11 @@
     heartbeatTimer=null;
     if(connection===source||!source)connection=null;
     setConnection('lost','Opponent disconnected');
-    queueChild({type:'connection',connected:false,role,roomCode});
+    traceProtocol('connection','closed',{peer:source&&source.peer});
+    if(pendingLaunch){clearInterval(launchTimer);launchTimer=null;pendingLaunch=null;queueChild({type:'launch-failed',reason:'connection-lost'})}
+    proposedGuestLaunch=null;
+    acceptedGuestLaunch=null;
+    queueChild({type:'connection',connected:false,role,roomCode,connectionEpoch});
     if(role==='host')forwardRemoteInput(null);
     if(matchStarted){
       fail('Match connection lost','This Online beta cannot safely resume a match after the peer link closes. Return to Online Versus and create a new room.');
@@ -229,7 +262,7 @@
     clearInterval(heartbeatTimer);
     heartbeatTimer=setInterval(()=>{
       const now=Date.now();
-      if(lastPongAt&&now-lastPongAt>7000){
+      if(lastPongAt&&now-lastPongAt>24000){
         const active=connection;
         handleDisconnect(active);
         try{active&&active.close()}catch{}
@@ -240,15 +273,82 @@
       send({type:'ping',sentAt:lastPingAt});
     },2000);
   }
+  function validLaunch(message){return!!(message&&typeof message.launchId==='string'&&message.launchId.length>5&&typeof message.lobbyVersion==='string'&&message.lobbyVersion&&typeof message.configRevision==='string'&&message.configRevision)}
+  function clearLaunchHandshake(){clearInterval(launchTimer);launchTimer=null;pendingLaunch=null}
+  function launchPacket(type,data){return{type,launchId:data.launchId,lobbyVersion:data.lobbyVersion,configRevision:data.configRevision,homeName:data.homeName||'HOME',awayName:data.awayName||'AWAY'}}
+  function transmitPendingLaunch(){
+    if(!pendingLaunch)return;
+    // A proposal is still safe to abandon: Away has not committed to entering
+    // the match. Once the commit phase begins we must keep retrying until the
+    // reliable peer link confirms it (or the connection itself closes), because
+    // cancelling a delivered commit could start only one player.
+    if(pendingLaunch.phase==='proposal'&&Date.now()-pendingLaunch.startedAt>12000){
+      traceProtocol('launch','timeout',{launchId:pendingLaunch.launchId,phase:pendingLaunch.phase});
+      const cancelled={...pendingLaunch};
+      send(launchPacket('launch-cancel',cancelled));
+      clearLaunchHandshake();
+      queueChild({type:'launch-failed',reason:'opponent-did-not-confirm'});
+      return;
+    }
+    send(launchPacket(pendingLaunch.phase==='proposal'?'launch-proposal':'launch-commit',pendingLaunch));
+  }
+  function beginHostLaunch(message){
+    if(role!=='host'||matchStarted||!validLaunch(message)||!connection||!connection.open){queueChild({type:'launch-failed',reason:'connection-not-ready'});return}
+    if(pendingLaunch&&pendingLaunch.launchId===message.launchId){transmitPendingLaunch();return}
+    clearLaunchHandshake();
+    pendingLaunch={...message,phase:'proposal',startedAt:Date.now()};
+    traceProtocol('launch','proposal-started',{launchId:pendingLaunch.launchId,lobbyVersion:pendingLaunch.lobbyVersion,configRevision:pendingLaunch.configRevision});
+    transmitPendingLaunch();
+    launchTimer=setInterval(transmitPendingLaunch,500);
+  }
+  function acknowledgeHostLaunch(message){
+    if(!pendingLaunch||pendingLaunch.phase!=='proposal'||message.launchId!==pendingLaunch.launchId||message.lobbyVersion!==pendingLaunch.lobbyVersion||message.configRevision!==pendingLaunch.configRevision)return;
+    pendingLaunch.phase='commit';
+    traceProtocol('launch','proposal-acknowledged',{launchId:pendingLaunch.launchId});
+    transmitPendingLaunch();
+  }
+  function rejectHostLaunch(message){
+    if(!pendingLaunch||message.launchId!==pendingLaunch.launchId)return;
+    traceProtocol('launch','proposal-rejected',{launchId:pendingLaunch.launchId});
+    clearLaunchHandshake();
+    queueChild({type:'peer-message',message});
+  }
+  function cancelLocalLaunch(message){
+    if(!message||!message.launchId)return;
+    if(role==='host'&&pendingLaunch&&pendingLaunch.launchId===message.launchId){traceProtocol('launch','host-cancelled',{launchId:message.launchId});clearLaunchHandshake()}
+    if(role==='guest'){
+      if(proposedGuestLaunch&&proposedGuestLaunch.launchId===message.launchId)proposedGuestLaunch=null;
+      if(acceptedGuestLaunch&&acceptedGuestLaunch.launchId===message.launchId)acceptedGuestLaunch=null;
+    }
+  }
+  function commitGuestLaunch(message){
+    if(role!=='guest'||!validLaunch(message))return;
+    if(launchCommitted===message.launchId){send(launchPacket('launch-committed',message));return}
+    if(!acceptedGuestLaunch||message.launchId!==acceptedGuestLaunch.launchId||message.lobbyVersion!==acceptedGuestLaunch.lobbyVersion||message.configRevision!==acceptedGuestLaunch.configRevision)return;
+    const launch={...acceptedGuestLaunch,...message};
+    launchCommitted=message.launchId;
+    traceProtocol('launch','guest-committed',{launchId:launchCommitted});
+    send(launchPacket('launch-committed',launch));
+    startGuestMatch(launch);
+  }
+  function completeHostLaunch(message){
+    if(role!=='host'||!pendingLaunch||pendingLaunch.phase!=='commit'||message.launchId!==pendingLaunch.launchId||message.lobbyVersion!==pendingLaunch.lobbyVersion||message.configRevision!==pendingLaunch.configRevision)return;
+    const launch={...pendingLaunch};
+    launchCommitted=launch.launchId;
+    traceProtocol('launch','host-committed',{launchId:launchCommitted});
+    clearLaunchHandshake();
+    startHostMatch(launch);
+  }
   function handleNetworkMessage(message){
     if(!message||message.protocol!==PROTOCOL)return;
     if(message.build!==BUILD){
       const active=connection;
-      fail('Different game versions','Both players must open build 169 of Football Legacy.');
+      fail('Different game versions','Both players must open build 170 of Football Legacy.');
       try{active&&active.close()}catch{}
       return;
     }
     lastPongAt=Date.now();
+    if(!['ping','pong','input','view'].includes(message.type))traceProtocol('peer-in',message.type,{revision:message.revision,side:message.side,launchId:message.launchId});
     if(message.type==='ping'){send({type:'pong',sentAt:message.sentAt});return}
     if(message.type==='pong'){
       latencyMs=Math.max(0,Math.round((Date.now()-Number(message.sentAt||Date.now()))/2));
@@ -264,7 +364,21 @@
       return;
     }
     if(message.type==='view'&&role==='guest'&&matchStarted){renderRemoteView(message.view);return}
-    if(message.type==='launch'&&role==='guest'&&!matchStarted){startGuestMatch(message);return}
+    if(message.type==='launch-proposal'&&role==='guest'&&!matchStarted){proposedGuestLaunch={...message};queueChild({type:'peer-message',message});return}
+    if(message.type==='launch-ack'&&role==='host'&&!matchStarted){acknowledgeHostLaunch(message);return}
+    if(message.type==='launch-reject'&&role==='host'&&!matchStarted){rejectHostLaunch(message);return}
+    if(message.type==='launch-cancel'){
+      cancelLocalLaunch(message);
+      if(role==='host')queueChild({type:'launch-failed',reason:message.reason||'lobby-changed'});
+      else queueChild({type:'peer-message',message});
+      return;
+    }
+    if(message.type==='launch-commit'&&role==='guest'){
+      if(launchCommitted===message.launchId)send(launchPacket('launch-committed',message));
+      else queueChild({type:'peer-message',message});
+      return;
+    }
+    if(message.type==='launch-committed'&&role==='host'){completeHostLaunch(message);return}
     queueChild({type:'peer-message',message});
   }
   function forwardRemoteInput(pad){
@@ -296,7 +410,7 @@
     try{gamepad=Array.from(navigator.getGamepads?navigator.getGamepads()||[]:[]).find(Boolean)||null}catch{}
     const pad=serialisePad(gamepad);
     if(role&&!matchStarted&&childReady&&!ui.frame.hidden){
-      childSend({type:'menu-input',pad,connected:!!gamepad,sentAt:now});
+      childSend({type:'menu-input',pad,connected:!!gamepad,peerConnected:!!(connection&&connection.open),connectionEpoch,role,roomCode,sentAt:now});
     }
     if(role==='guest'&&matchStarted&&connection&&connection.open){
       guestPadConnected=!!gamepad;
@@ -312,11 +426,14 @@
   }
   function startHostMatch(message){
     if(matchStarted)return;
+    if(!connection||!connection.open){
+      queueChild({type:'connection',connected:false,role,roomCode,connectionEpoch});
+      return;
+    }
     matchStarted=true;
     childReady=false;
     matchHomeName=message.homeName||'HOME';
     matchAwayName=message.awayName||'AWAY';
-    send({type:'launch',homeName:matchHomeName,awayName:matchAwayName});
     ui.frame.src=appendOnlineParams(message.href,'host');
     ui.frame.hidden=false;
     ui.guestStage.hidden=true;
@@ -357,6 +474,7 @@
     },125);
   }
   function startGuestMatch(message={}){
+    if(matchStarted)return;
     matchStarted=true;
     videoPlaying=false;
     hostSeesAwayController=null;
@@ -473,11 +591,19 @@
     if(!data||data.source!=='football-legacy-online-child')return;
     if(data.type==='child-ready'){
       childReady=true;
-      queueChild({type:'connection',connected:!!(connection&&connection.open),role,roomCode});
+      traceProtocol('child-in','child-ready');
+      queueChild({type:'connection',connected:!!(connection&&connection.open),role,roomCode,connectionEpoch});
       return;
     }
-    if(data.type==='send'){send(data.message);return}
-    if(data.type==='launch'&&role==='host')startHostMatch(data);
+    if(data.type==='send'){
+      traceProtocol('child-in',data.message&&data.message.type||'send');
+      if(role==='guest'&&data.message&&data.message.type==='launch-ack'&&validLaunch(data.message)&&proposedGuestLaunch&&data.message.launchId===proposedGuestLaunch.launchId)acceptedGuestLaunch={...proposedGuestLaunch};
+      if(data.message&&data.message.type==='launch-cancel')cancelLocalLaunch(data.message);
+      if(role==='guest'&&data.message&&data.message.type==='launch-commit-ack'&&validLaunch(data.message)){commitGuestLaunch(data.message);return}
+      send(data.message);
+      return;
+    }
+    if(data.type==='launch-request'&&role==='host')beginHostLaunch(data);
   });
   $('hostButton').addEventListener('click',()=>startHost());
   $('showJoinButton').addEventListener('click',()=>{ui.joinForm.hidden=false;ui.roomInput.focus()});
@@ -495,10 +621,5 @@
   $('retryButton').addEventListener('click',reset);
   addEventListener('beforeunload',()=>{clearTimers();try{connection&&connection.close()}catch{}try{mediaCall&&mediaCall.close()}catch{}try{peer&&peer.destroy()}catch{}});
 
-  window.FLOnlineDebug={
-    getState:()=>({role,roomCode,matchStarted,connectionOpen:!!(connection&&connection.open),connectionPending,latestRemoteInputSeq,guestPadConnected,hostSeesAwayController,videoPlaying}),
-    renderRemoteView,
-    serialisePad
-  };
   requestAnimationFrame(pollGuestInput);
 })();
