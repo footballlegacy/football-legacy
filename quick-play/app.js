@@ -43,7 +43,27 @@ const state={mode:initialMode,step:'teams',homeLeague:'div1',homeTeamId:'woolwic
 const onlineState={connected:false,connectionEpoch:-1,sideRevisions:{home:ONLINE_OWNED_SIDE==='home'?0:-1,away:ONLINE_OWNED_SIDE==='away'?0:-1},settingsRevision:ONLINE_ROLE==='host'?0:-1,ownReady:false,remoteReady:false,ownReadyRevision:0,remoteReadyRevision:-1,readyAckRevision:-1,ownReadyVersion:'',remoteReadyVersion:'',lastReadySentAt:0,startIntent:false,launchRequested:false,launchId:'',roomCode:query.get('room')||'',applyingRemote:false,controllerKnown:false,controllerConnected:false};
 const onlineMenuPadState={previousSection:false,nextSection:false};
 const onlineProtocolTrace=[];
+let onlineNativePadSampleJson='',onlineNativePadSampleSentAt=0;
 function traceOnline(type,detail={}){onlineProtocolTrace.push({at:Date.now(),type,connected:onlineState.connected,epoch:onlineState.connectionEpoch,lobbyVersion:currentLobbyVersion(),ownReady:onlineState.ownReady,remoteReady:onlineState.remoteReady,...detail});if(onlineProtocolTrace.length>180)onlineProtocolTrace.splice(0,onlineProtocolTrace.length-180)}
+function serialiseOnlineNativePad(gamepad){
+  if(!gamepad)return null;
+  return{index:Number.isInteger(gamepad.index)?gamepad.index:0,id:String(gamepad.id||'Local gamepad').slice(0,160),mapping:String(gamepad.mapping||''),connected:gamepad.connected!==false,axes:Array.from(gamepad.axes||[]).slice(0,10).map(value=>+Math.max(-1,Math.min(1,Number(value)||0)).toFixed(3)),buttons:Array.from(gamepad.buttons||[]).slice(0,20).map(button=>({pressed:!!(button&&(button.pressed||button.value>.5)),value:+Math.max(0,Math.min(1,Number(button&&button.value)||0)).toFixed(3)}))};
+}
+function postOnlineNativeGamepadSample(now=performance.now(),force=false){
+  if(!ONLINE||window.parent===window)return;
+  let nativePad=null;
+  try{nativePad=Array.from(navigator.getGamepads?.()||[]).filter(gamepad=>gamepad&&gamepad.connected!==false).sort((a,b)=>a.index-b.index)[0]||null}catch{}
+  const pad=serialiseOnlineNativePad(nativePad),json=JSON.stringify(pad);
+  if(!force&&json===onlineNativePadSampleJson&&now-onlineNativePadSampleSentAt<250)return;
+  onlineNativePadSampleJson=json;
+  onlineNativePadSampleSentAt=now;
+  parent.postMessage({source:'football-legacy-online-child',type:'gamepad-sample',context:'setup',role:ONLINE_ROLE,pad,connected:!!pad,sampledAt:now},TARGET_ORIGIN);
+}
+function pollOnlineNativeGamepad(now){
+  if(!ONLINE)return;
+  postOnlineNativeGamepadSample(now);
+  requestAnimationFrame(pollOnlineNativeGamepad);
+}
 const ids=['modePill','carouselPosition','homeControlLabel','awayControlLabel','modeNote','homeLeague','awayLeague','homeTeam','awayTeam','homeCard','awayCard','confirmTeams','homeManagementTitle','awayManagementTitle','homeFormation','awayFormation','homeTactics','awayTactics','homeLineup','awayLineup','homeBench','awayBench','confirmManagement','setupMatchPreview','matchMode','stadiumSelect','matchTime','weather','matchLength','difficulty','camera','volume','homeKit','awayKit','homeKitLabel','awayKitLabel','controllerCard','controllerLayoutStatus','kitClash','confirmSetup','confirmControls','finalMatchCard','summaryGrid','stadiumPreview','previewKickoff','previewStadiumName','startMatch','readyScreen','readyTitle','editMatch'];
 const elements=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
@@ -387,9 +407,10 @@ function initialiseOnlineMode(){
     if(!onlineState.ownReady){onlineSetReady(true);return}
     onlineSetReady(false);
   },true);
-  addEventListener('gamepadconnected',updateOnlineReadyUI);
-  addEventListener('gamepaddisconnected',updateOnlineReadyUI);
+  addEventListener('gamepadconnected',()=>{postOnlineNativeGamepadSample(performance.now(),true);updateOnlineReadyUI()});
+  addEventListener('gamepaddisconnected',()=>{postOnlineNativeGamepadSample(performance.now(),true);updateOnlineReadyUI()});
   window.FLQuickPlayOnlineDebug={getState:()=>({...onlineState,sideRevisions:{...onlineState.sideRevisions},lobbyVersion:currentLobbyVersion(),lobbySynchronized:onlineLobbySynchronized()}),getProtocolTrace:()=>onlineProtocolTrace.slice(),resendReady:()=>onlineSendReady(true),broadcastLobby:onlineBroadcastCurrent};
+  requestAnimationFrame(pollOnlineNativeGamepad);
   parent.postMessage({source:'football-legacy-online-child',type:'child-ready'},TARGET_ORIGIN);
 }
 if(ONLINE){const onlineOption=document.createElement('option');onlineOption.value='online';onlineOption.textContent='Online Versus';elements.matchMode.appendChild(onlineOption)}

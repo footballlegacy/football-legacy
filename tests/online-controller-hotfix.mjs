@@ -6,6 +6,7 @@ const onlineHtml = read('online/index.html');
 const onlineApp = read('online/app.js');
 const quickHtml = read('quick-play/index.html');
 const quickApp = read('quick-play/app.js');
+const matchHtml = read('match-engine/match.html');
 const controllerUi = read('controller-ui.js');
 let passed = 0;
 
@@ -14,34 +15,46 @@ const check = (condition, message) => {
   passed += 1;
 };
 
-check(onlineHtml.includes('../controller-ui.js?v=172-ready-away-2'), 'Online shell must load the cache-busted shared controller UI');
-check(quickHtml.includes('../controller-ui.js?v=172-ready-away-2'), 'Quick Play must load the same cache-busted controller UI');
+check(onlineHtml.includes('../controller-ui.js?v=172-controller-launch-3'), 'Online shell must load the cache-busted shared controller UI');
+check(quickHtml.includes('../controller-ui.js?v=172-controller-launch-3'), 'Quick Play must load the same cache-busted controller UI');
 check(onlineHtml.includes('id="hostButton" type="button" data-controller-default'), 'Host must be the default controller target');
 check(quickHtml.includes('id="startMatch" type="button" data-controller-default'), 'Ready must be the default controller target on confirmation');
 check(onlineApp.includes("const BUILD='172'"), 'The peer protocol build must remain compatible with the current room');
 check(onlineApp.includes("childSend({type:'menu-input',pad,connected:!!gamepad"), 'Parent controller input must still reach the setup iframe');
+check(onlineApp.includes("if(data.type==='gamepad-sample')"), 'The parent must accept genuine samples from the active child frame');
+check(onlineApp.includes("type:'local-input',pad"), 'The parent must route the host controller back into the match frame');
+check(onlineApp.includes("if(role==='host'&&matchStarted)"), 'Host input forwarding must remain active after kickoff');
 check(onlineApp.includes("addEventListener('gamepadconnected',event=>observeGamepad(event.gamepad))"), 'A connected controller must still use the existing acquisition path');
 check(!onlineApp.includes('request-controller-activation'), 'The obsolete parent activation request path must be removed');
-check(!onlineApp.includes('gamepad-sample'), 'The Ready fix must not add a second controller path that could fail after kickoff');
 check(!onlineApp.includes('acceptancePad'), 'No synthetic controller may ship');
 
 const gamepadHelperSource = onlineApp.match(/  function gamepadsFrom\(navigatorLike\)\{[\s\S]*?(?=\n  function selectGamepad\(\))/)?.[0] || '';
 check(gamepadHelperSource, 'Controller discovery helpers must remain available');
-const runConnectedGamepads = new Function('navigator', 'ui', `${gamepadHelperSource};return connectedGamepads();`);
+const runConnectedGamepads = new Function('navigator', 'ui', 'childGamepadSample', 'childGamepadSampleAt', `${gamepadHelperSource};return connectedGamepads();`);
 const iframeDualSense = {index:0,id:'DualSense Wireless Controller',mapping:'',connected:true,axes:[],buttons:[]};
 const iframeOnlyPads = runConnectedGamepads(
   {getGamepads:()=>[]},
-  {frame:{contentWindow:{navigator:{getGamepads:()=>[iframeDualSense]}}}}
+  {frame:{contentWindow:{navigator:{getGamepads:()=>[iframeDualSense]}}}},
+  null,
+  0
 );
 check(iframeOnlyPads.length===1&&iframeOnlyPads[0]===iframeDualSense, 'Existing same-origin iframe controller discovery must remain intact');
 const duplicatePads = runConnectedGamepads(
   {getGamepads:()=>[{...iframeDualSense}]},
-  {frame:{contentWindow:{navigator:{getGamepads:()=>[{...iframeDualSense}]}}}}
+  {frame:{contentWindow:{navigator:{getGamepads:()=>[{...iframeDualSense}]}}}},
+  {...iframeDualSense},
+  performance.now()
 );
 check(duplicatePads.length===1, 'Existing controller sources must remain de-duplicated');
 
 check(quickApp.includes("document.body.dataset.controllerExternalGamepad='true'"), 'The parent must remain the sole controller UI authority');
 check(quickApp.includes("if(data.type==='menu-input'){handleOnlineMenuInput(data);return}"), 'Quick Play must still consume parent menu input');
+check(quickApp.includes("type:'gamepad-sample',context:'setup'"), 'Quick Play must forward genuine iframe controller samples to its online parent');
+check(quickApp.includes('navigator.getGamepads?.()'), 'Quick Play must sample the controller in the genuinely focused iframe context');
+check(matchHtml.includes("type:'gamepad-sample',context:'match'"), 'The match iframe must keep forwarding its native controller after kickoff');
+check(matchHtml.includes("else if(data.type==='local-input')acceptOnlineLocalPad(data.pad)"), 'The match must accept the parent-routed local controller sample');
+check(matchHtml.includes('gp1=localFresh?onlineLocalPad:nativeGp1'), 'The match must prefer fresh routed input while retaining native fallback');
+check(matchHtml.includes("if(data.type==='remote-input')acceptOnlineRemotePad(data.pad)"), 'The existing remote-input path must remain intact');
 check(controllerUi.includes('receiveGamepad:(gp,now)=>processGamepad(gp,now)'), 'The shared controller UI must still accept parent input');
 const controllerPollSource = controllerUi.match(/  const poll=now=>\{[\s\S]*?\n  \};/)?.[0] || '';
 check(controllerPollSource, 'Shared controller polling must remain testable');

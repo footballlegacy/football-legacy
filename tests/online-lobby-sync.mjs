@@ -36,8 +36,8 @@ check(quickApp.includes('reconcileOnlineConnection(data&&data.peerConnected,data
 check(quickApp.includes('getProtocolTrace:()=>onlineProtocolTrace.slice()'), 'Lobby protocol telemetry must be inspectable');
 check(!quickApp.match(/function applyOnlineSide\([^\n]+remoteReady=false/), 'Team replication must not silently erase Ready state');
 check(!quickApp.match(/function applyOnlineSettings\([^\n]+remoteReady=false/), 'Settings replication must not silently erase Ready state');
-check(onlineHtml.includes('app.js?v=172-ready-away-2'), 'Online shell must bypass the old cached parent script');
-check(quickHtml.includes('app.js?v=172-ready-away-2'), 'Quick Play must bypass the old cached lobby script');
+check(onlineHtml.includes('app.js?v=172-controller-launch-3'), 'Online shell must bypass the old cached parent script');
+check(quickHtml.includes('app.js?v=172-controller-launch-3'), 'Quick Play must bypass the old cached lobby script');
 
 class ReadyPeer {
   constructor(side) {

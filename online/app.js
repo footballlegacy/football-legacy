@@ -35,6 +35,10 @@
   let latestRemoteInputSeq=-1;
   let lastInputJson='';
   let lastInputSentAt=0;
+  let lastLocalInputJson='';
+  let lastLocalInputSentAt=0;
+  let childGamepadSample=null;
+  let childGamepadSampleAt=0;
   let guestPadConnected=false;
   let preferredGamepadIndex=null;
   let eventGamepad=null;
@@ -44,6 +48,7 @@
   let remoteAudioTrack=false;
   let videoPlaying=false;
   let hostViewTimer=null;
+  let hostStreamTimer=null;
   let heartbeatTimer=null;
   let reconnectTimer=null;
   let reconnectDeadline=0;
@@ -60,6 +65,8 @@
   let mediaRecoveryTimer=null;
   let mediaRecoveryDeadline=0;
   let mediaGeneration=0;
+  let hostMatchTarget='';
+  let hostMatchNavigationRecoveries=0;
   let transportProfileIndex=0;
   let transportBadSamples=0;
   let transportGoodSamples=0;
@@ -105,7 +112,7 @@
     if(!suspended)requestAnimationFrame(()=>window.FootballLegacyControllerUI?.focus());
   }
   function showOnly(target){[ui.entry,ui.waiting,ui.stage].forEach(element=>{element.hidden=element!==target});setOuterControllerSuspended(target===ui.stage)}
-  function clearTimers(){clearInterval(hostViewTimer);clearInterval(heartbeatTimer);clearInterval(reconnectTimer);clearInterval(launchTimer);clearInterval(lobbyFrameRecoveryTimer);clearInterval(mediaStatsTimer);clearTimeout(mediaRecoveryTimer);hostViewTimer=heartbeatTimer=reconnectTimer=launchTimer=lobbyFrameRecoveryTimer=mediaStatsTimer=mediaRecoveryTimer=null}
+  function clearTimers(){clearInterval(hostViewTimer);clearInterval(hostStreamTimer);clearInterval(heartbeatTimer);clearInterval(reconnectTimer);clearInterval(launchTimer);clearInterval(lobbyFrameRecoveryTimer);clearInterval(mediaStatsTimer);clearTimeout(mediaRecoveryTimer);hostViewTimer=hostStreamTimer=heartbeatTimer=reconnectTimer=launchTimer=lobbyFrameRecoveryTimer=mediaStatsTimer=mediaRecoveryTimer=null}
   function fail(title,copy){
     clearTimers();
     setOuterControllerSuspended(false);
@@ -161,7 +168,7 @@
     ui.networkRole.textContent=role==='host'?'Home · Host':'Away · Guest';
     ui.networkLatency.textContent=role==='host'?`Room ${roomCode}`:'Private peer link';
     childReady=false;
-    const target=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=172-ready-away-2`;
+    const target=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=172-controller-launch-3`;
     ui.frame.onload=()=>{
       try{ui.frame.focus()}catch{}
     };
@@ -460,6 +467,9 @@
   function forwardRemoteInput(pad){
     try{ui.frame.contentWindow&&ui.frame.contentWindow.postMessage({source:'football-legacy-online-parent',type:'remote-input',pad,receivedAt:performance.now()},TARGET_ORIGIN)}catch{}
   }
+  function forwardLocalInput(pad){
+    try{ui.frame.contentWindow&&ui.frame.contentWindow.postMessage({source:'football-legacy-online-parent',type:'local-input',pad,receivedAt:performance.now()},TARGET_ORIGIN)}catch{}
+  }
   function rawDualSenseDpad(gamepad,index){
     const value=gamepad&&gamepad.axes&&gamepad.axes.length>9?Number(gamepad.axes[9]):null;
     if(!Number.isFinite(value)||value>1.14)return false;
@@ -499,6 +509,7 @@
   function connectedGamepads(){
     const pads=gamepadsFrom(navigator);
     try{pads.push(...gamepadsFrom(ui.frame&&ui.frame.contentWindow&&ui.frame.contentWindow.navigator))}catch{}
+    if(childGamepadSample&&performance.now()-childGamepadSampleAt<1600)pads.push(childGamepadSample);
     const seen=new Set();
     return pads.filter(gamepad=>{
       const key=`${gamepad.index}:${gamepad.id||''}`;
@@ -565,6 +576,15 @@
         send({type:'input',seq:++inputFrame,pad});
       }
     }
+    if(role==='host'&&matchStarted){
+      const json=JSON.stringify(pad);
+      const changed=json!==lastLocalInputJson,refresh=now-lastLocalInputSentAt>90;
+      if(changed||refresh){
+        lastLocalInputJson=json;
+        lastLocalInputSentAt=now;
+        forwardLocalInput(pad);
+      }
+    }
     requestAnimationFrame(pollGuestInput);
   }
   function startHostMatch(message){
@@ -579,43 +599,59 @@
     matchAwayName=message.awayName||'AWAY';
     clearInterval(lobbyFrameRecoveryTimer);
     lobbyFrameRecoveryTimer=null;
-    ui.frame.src=appendOnlineParams(message.href,'host');
+    hostMatchTarget=appendOnlineParams(message.href,'host');
+    hostMatchNavigationRecoveries=0;
+    ui.frame.onload=()=>beginHostStream(hostMatchTarget);
+    ui.frame.src=hostMatchTarget;
     ui.frame.hidden=false;
     ui.guestStage.hidden=true;
     ui.networkRole.textContent='Home · Host';
     setConnection('connecting','Match running · opening Away video');
-    ui.frame.onload=()=>beginHostStream();
+    beginHostStream(hostMatchTarget);
   }
   function appendOnlineParams(href,side){
     const hashIndex=href.indexOf('#');
     const hash=hashIndex>=0?href.slice(hashIndex):'';
     const base=hashIndex>=0?href.slice(0,hashIndex):href;
     const separator=base.includes('?')?'&':'?';
-    return`${base}${separator}onlineRole=${side}&onlineRoom=${encodeURIComponent(roomCode)}&onlineBuild=${BUILD}${hash}`;
+    return`${base}${separator}onlineRole=${side}&onlineRoom=${encodeURIComponent(roomCode)}&onlineBuild=${BUILD}&onlineRelease=172-controller-launch-3${hash}`;
   }
-  function beginHostStream(){
+  function beginHostStream(target=hostMatchTarget){
+    if(hostStreamTimer||hostMatchStream)return;
     let attempts=0;
-    const timer=setInterval(()=>{
+    hostStreamTimer=setInterval(()=>{
       attempts++;
       try{
         const win=ui.frame.contentWindow;
+        const engineError=String(win&&win.document&&win.document.getElementById('errorBox')&&win.document.getElementById('errorBox').textContent||'').trim();
+        if(engineError&&!win.FLMatch){clearInterval(hostStreamTimer);hostStreamTimer=null;fail('Match engine could not start',engineError);return}
         if(!win||!win.FLMatch||typeof win.FLMatch.getOnlineStream!=='function')throw new Error('Match loading');
-        clearInterval(timer);
         const stream=win.FLMatch.getOnlineStream(60);
-        if(!stream.getVideoTracks().length)throw new Error('Match video track unavailable');
+        if(!stream.getVideoTracks().length){stream.getTracks().forEach(track=>track.stop());throw new Error('Match video track unavailable')}
         const audioState=typeof win.FLMatch.getAudioState==='function'?win.FLMatch.getAudioState():null;
-        if(audioState&&audioState.requestedPercent>0&&!stream.getAudioTracks().length)throw new Error('Match audio track unavailable');
+        if(audioState&&audioState.requestedPercent>0&&!stream.getAudioTracks().length){stream.getTracks().forEach(track=>track.stop());throw new Error('Match audio track unavailable')}
         hostMatchStream=stream;
         transportProfileIndex=0;
         streamQuality={...STREAM_PROFILES[0],measuredFps:null,rtt:null,loss:null,availableBitrate:null,applied:false};
-        if(!placeHostMediaCall('initial'))throw new Error('Video call could not be created');
+        if(!placeHostMediaCall('initial')){hostMatchStream=null;stream.getTracks().forEach(track=>track.stop());throw new Error('Video call could not be created')}
+        clearInterval(hostStreamTimer);
+        hostStreamTimer=null;
         setConnection('connecting','Match running · waiting for Away video');
         clearInterval(hostViewTimer);
         hostViewTimer=setInterval(()=>{
           try{send({type:'view',view:win.FLMatch.getOnlineViewState()})}catch{}
         },100);
       }catch(error){
-        if(attempts>80){clearInterval(timer);fail('Match stream did not start','Reload the room and try again.')}
+        if(target&&attempts%12===0&&hostMatchNavigationRecoveries<3){
+          let current='',stale=false;
+          try{current=String(ui.frame.contentWindow&&ui.frame.contentWindow.location&&ui.frame.contentWindow.location.href||'');const path=current&&current!=='about:blank'?new URL(current,location.href).pathname:'';stale=!current||current==='about:blank'||/(^|\/)quick-play(?:\/index\.html)?$/.test(path)}catch{stale=true}
+          if(stale){
+            hostMatchNavigationRecoveries+=1;
+            traceProtocol('frame','host-match-navigation-recovery',{attempt:hostMatchNavigationRecoveries,current});
+            try{ui.frame.contentWindow.location.replace(target)}catch{ui.frame.src=target}
+          }
+        }
+        if(attempts>80){clearInterval(hostStreamTimer);hostStreamTimer=null;fail('Match stream did not start',String(error&&error.message||'Reload the room and try again.'))}
       }
     },125);
   }
@@ -841,6 +877,15 @@
     if(event.source!==ui.frame.contentWindow||!validMessageOrigin(event))return;
     const data=event.data;
     if(!data||data.source!=='football-legacy-online-child')return;
+    if(data.type==='gamepad-sample'){
+      if(data.role&&data.role!==role)return;
+      const candidate=data.connected&&data.pad&&Array.isArray(data.pad.axes)&&Array.isArray(data.pad.buttons)?data.pad:null;
+      childGamepadSample=candidate;
+      childGamepadSampleAt=performance.now();
+      if(role==='guest')guestPadConnected=!!selectGamepad();
+      if(!matchStarted&&childReady)sendCurrentMenuInput(performance.now());
+      return;
+    }
     if(data.type==='child-ready'){
       childReady=true;
       clearInterval(lobbyFrameRecoveryTimer);
