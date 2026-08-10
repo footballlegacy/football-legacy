@@ -89,7 +89,7 @@ peer.emit('connection',connection);
 connection.emit('open');
 for(const callback of [...intervals.values()])callback();
 check(replacements.length===1, 'Firefox about:blank detection must retry the setup frame automatically');
-check(replacements[0].includes('build=172-online-quality-1'), 'Firefox recovery must reload the exact current lobby build');
+check(replacements[0].includes('build=172-away-controller-1'), 'Firefox recovery must reload the exact current lobby build');
 check(location.href==='https://example.test/football-legacy/online/index.html', 'Frame recovery must preserve the live room page');
 const frame=node('gameFrame');
 for(const listener of globalListeners.get('message')||[])listener({source:frame.contentWindow,origin:location.origin,data:{source:'football-legacy-online-child',type:'child-ready'}});

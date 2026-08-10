@@ -36,6 +36,9 @@
   let lastInputJson='';
   let lastInputSentAt=0;
   let guestPadConnected=false;
+  let preferredGamepadIndex=null;
+  let eventGamepad=null;
+  let controllerActivationUntil=0;
   let hostSeesAwayController=null;
   let remoteAudioMuted=false;
   let remoteAudioReady=false;
@@ -159,7 +162,7 @@
     ui.networkRole.textContent=role==='host'?'Home · Host':'Away · Guest';
     ui.networkLatency.textContent=role==='host'?`Room ${roomCode}`:'Private peer link';
     childReady=false;
-    const target=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=172-online-quality-1`;
+    const target=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=172-away-controller-1`;
     ui.frame.onload=()=>{
       try{ui.frame.focus()}catch{}
     };
@@ -491,9 +494,57 @@
       buttons:normalisedRemoteButtons(gamepad)
     };
   }
+  function gamepadsFrom(navigatorLike){
+    try{return Array.from(navigatorLike&&navigatorLike.getGamepads?navigatorLike.getGamepads()||[]:[]).filter(gamepad=>gamepad&&gamepad.connected!==false)}catch{return[]}
+  }
+  function connectedGamepads(){
+    const pads=gamepadsFrom(navigator);
+    try{pads.push(...gamepadsFrom(ui.frame&&ui.frame.contentWindow&&ui.frame.contentWindow.navigator))}catch{}
+    const seen=new Set();
+    return pads.filter(gamepad=>{
+      const key=`${gamepad.index}:${gamepad.id||''}`;
+      if(seen.has(key))return false;
+      seen.add(key);
+      return true;
+    });
+  }
+  function selectGamepad(){
+    const pads=connectedGamepads();
+    const preferred=pads.find(gamepad=>gamepad.index===preferredGamepadIndex);
+    if(preferred)return preferred;
+    if(eventGamepad&&eventGamepad.connected!==false){
+      const refreshed=pads.find(gamepad=>gamepad.index===eventGamepad.index);
+      return refreshed||eventGamepad;
+    }
+    return pads[0]||null;
+  }
+  function sendCurrentMenuInput(now=performance.now(),gamepad=selectGamepad()){
+    if(!role||matchStarted||!childReady||ui.frame.hidden)return;
+    const pad=serialisePad(gamepad);
+    childSend({type:'menu-input',pad,connected:!!gamepad,peerConnected:!!(connection&&connection.open),connectionEpoch,role,roomCode,sentAt:now});
+  }
+  function observeGamepad(gamepad){
+    if(!gamepad||gamepad.connected===false)return;
+    preferredGamepadIndex=gamepad.index;
+    eventGamepad=gamepad;
+    guestPadConnected=true;
+    controllerActivationUntil=0;
+    sendCurrentMenuInput(performance.now(),gamepad);
+    updateGuestNetworkStatus();
+  }
+  function requestGuestControllerActivation(){
+    if(role!=='guest'||matchStarted)return;
+    controllerActivationUntil=performance.now()+8000;
+    try{window.focus()}catch{}
+    const gamepad=selectGamepad();
+    if(gamepad){observeGamepad(gamepad);return}
+    if(ui.networkStatus)ui.networkStatus.textContent='Press Cross / A on the Away controller';
+    sendCurrentMenuInput();
+  }
   function updateGuestNetworkStatus(){
     if(role!=='guest'||!connection||!connection.open)return;
-    if(!guestPadConnected)ui.networkStatus.textContent='Connect Away controller';
+    if(!guestPadConnected&&performance.now()<controllerActivationUntil)ui.networkStatus.textContent='Press Cross / A on the Away controller';
+    else if(!guestPadConnected)ui.networkStatus.textContent='Activate Away controller';
     else if(hostSeesAwayController===false)ui.networkStatus.textContent='Away input reaching host…';
     else if(videoPlaying&&remoteAudioMuted)ui.networkStatus.textContent='Live · match sound muted from pause menu';
     else if(videoPlaying&&!remoteAudioTrack)ui.networkStatus.textContent='Live video · host audio unavailable';
@@ -508,11 +559,12 @@
     ui.networkLatency.textContent=`${latency} · ${measured} fps · ${streamQuality.label||'Adaptive'}`;
   }
   function pollGuestInput(now){
-    let gamepad=null;
-    try{gamepad=Array.from(navigator.getGamepads?navigator.getGamepads()||[]:[]).find(Boolean)||null}catch{}
+    const gamepad=selectGamepad();
     const pad=serialisePad(gamepad);
-    if(role&&!matchStarted&&childReady&&!ui.frame.hidden){
-      childSend({type:'menu-input',pad,connected:!!gamepad,peerConnected:!!(connection&&connection.open),connectionEpoch,role,roomCode,sentAt:now});
+    if(role==='guest')guestPadConnected=!!gamepad;
+    if(role&&!matchStarted&&childReady&&!ui.frame.hidden)sendCurrentMenuInput(now,gamepad);
+    if(role==='guest'&&connection&&connection.open){
+      updateGuestNetworkStatus();
     }
     if(role==='guest'&&matchStarted&&connection&&connection.open){
       guestPadConnected=!!gamepad;
@@ -524,7 +576,6 @@
         lastInputSentAt=now;
         send({type:'input',seq:++inputFrame,pad});
       }
-      updateGuestNetworkStatus();
     }
     requestAnimationFrame(pollGuestInput);
   }
@@ -810,6 +861,11 @@
       queueChild({type:'connection',connected:!!(connection&&connection.open),role,roomCode,connectionEpoch});
       return;
     }
+    if(data.type==='request-controller-activation'&&role==='guest'){
+      traceProtocol('child-in','request-controller-activation');
+      requestGuestControllerActivation();
+      return;
+    }
     if(data.type==='send'){
       traceProtocol('child-in',data.message&&data.message.type||'send');
       if(role==='guest'&&data.message&&data.message.type==='launch-ack'&&validLaunch(data.message)&&proposedGuestLaunch&&data.message.launchId===proposedGuestLaunch.launchId)acceptedGuestLaunch={...proposedGuestLaunch};
@@ -835,6 +891,17 @@
   ui.videoGate.addEventListener('click',playGuestVideo);
   $('cancelButton').addEventListener('click',reset);
   $('retryButton').addEventListener('click',reset);
+  addEventListener('gamepadconnected',event=>observeGamepad(event.gamepad));
+  addEventListener('gamepaddisconnected',event=>{
+    if(event.gamepad&&event.gamepad.index===preferredGamepadIndex){
+      preferredGamepadIndex=null;
+      eventGamepad=null;
+      guestPadConnected=false;
+      sendCurrentMenuInput(performance.now(),null);
+      updateGuestNetworkStatus();
+    }
+  });
+  addEventListener('focus',()=>{const gamepad=selectGamepad();if(gamepad)observeGamepad(gamepad)});
   addEventListener('beforeunload',()=>{clearTimers();try{connection&&connection.close()}catch{}try{mediaCall&&mediaCall.close()}catch{}try{peer&&peer.destroy()}catch{}});
 
   const invitedRoom=cleanCode(new URLSearchParams(location.search).get('join'));
