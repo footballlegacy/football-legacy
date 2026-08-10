@@ -14,45 +14,91 @@ const check = (condition, message) => {
   passed += 1;
 };
 
-check(onlineHtml.includes('../controller-ui.js?v=172-away-controller-1'), 'Online shell must load the cache-busted shared controller UI');
+check(onlineHtml.includes('../controller-ui.js?v=172-ready-away-2'), 'Online shell must load the cache-busted shared controller UI');
+check(quickHtml.includes('../controller-ui.js?v=172-ready-away-2'), 'Quick Play must load the same cache-busted controller UI');
 check(onlineHtml.includes('id="hostButton" type="button" data-controller-default'), 'Host must be the default controller target');
-check(onlineApp.includes("const BUILD='172'"), 'Online peers must reject pre-hotfix builds');
-check(onlineApp.includes("childSend({type:'menu-input',pad,connected:!!gamepad"), 'Top-level pad state must reach the setup iframe');
-check(onlineApp.includes("addEventListener('gamepadconnected',event=>observeGamepad(event.gamepad))"), 'A newly exposed browser gamepad must be acquired immediately');
-check(onlineApp.includes("if(data.type==='request-controller-activation'&&role==='guest')"), 'The setup button must be able to request top-level controller activation');
-check(onlineApp.includes("if(role==='guest')guestPadConnected=!!gamepad"), 'Guest controller status must update before the match starts');
+check(quickHtml.includes('id="startMatch" type="button" data-controller-default'), 'Ready must be the default controller target on confirmation');
+check(onlineApp.includes("const BUILD='172'"), 'The peer protocol build must remain compatible with the current room');
+check(onlineApp.includes("childSend({type:'menu-input',pad,connected:!!gamepad"), 'Parent controller input must still reach the setup iframe');
+check(onlineApp.includes("addEventListener('gamepadconnected',event=>observeGamepad(event.gamepad))"), 'A connected controller must still use the existing acquisition path');
+check(!onlineApp.includes('request-controller-activation'), 'The obsolete parent activation request path must be removed');
+check(!onlineApp.includes('gamepad-sample'), 'The Ready fix must not add a second controller path that could fail after kickoff');
+check(!onlineApp.includes('acceptancePad'), 'No synthetic controller may ship');
+
 const gamepadHelperSource = onlineApp.match(/  function gamepadsFrom\(navigatorLike\)\{[\s\S]*?(?=\n  function selectGamepad\(\))/)?.[0] || '';
-check(gamepadHelperSource, 'Controller discovery helpers must be available for runtime regression coverage');
+check(gamepadHelperSource, 'Controller discovery helpers must remain available');
 const runConnectedGamepads = new Function('navigator', 'ui', `${gamepadHelperSource};return connectedGamepads();`);
 const iframeDualSense = {index:0,id:'DualSense Wireless Controller',mapping:'',connected:true,axes:[],buttons:[]};
 const iframeOnlyPads = runConnectedGamepads(
   {getGamepads:()=>[]},
   {frame:{contentWindow:{navigator:{getGamepads:()=>[iframeDualSense]}}}}
 );
-check(iframeOnlyPads.length===1&&iframeOnlyPads[0]===iframeDualSense, 'Firefox iframe-only controller exposure must unblock Away readiness');
-const noPads = runConnectedGamepads(
-  {getGamepads:()=>[]},
-  {frame:{contentWindow:{navigator:{getGamepads:()=>[]}}}}
-);
-check(noPads.length===0, 'Away readiness must stay blocked when both controller navigators are empty');
-const outerCopy = {...iframeDualSense};
-const iframeCopy = {...iframeDualSense};
+check(iframeOnlyPads.length===1&&iframeOnlyPads[0]===iframeDualSense, 'Existing same-origin iframe controller discovery must remain intact');
 const duplicatePads = runConnectedGamepads(
-  {getGamepads:()=>[outerCopy]},
-  {frame:{contentWindow:{navigator:{getGamepads:()=>[iframeCopy]}}}}
+  {getGamepads:()=>[{...iframeDualSense}]},
+  {frame:{contentWindow:{navigator:{getGamepads:()=>[{...iframeDualSense}]}}}}
 );
-check(duplicatePads.length===1, 'The same controller exposed by both navigators must be de-duplicated');
-check(!onlineApp.includes('acceptancePad'), 'No synthetic acceptance pad may ship');
-check(quickApp.includes("document.body.dataset.controllerExternalGamepad='true'"), 'Online Quick Play must disable duplicate iframe polling');
-check(quickApp.includes("if(data.type==='menu-input'){handleOnlineMenuInput(data);return}"), 'Online Quick Play must consume parent menu input');
-check(quickApp.includes('if(onlineState.controllerKnown)return onlineState.controllerConnected'), 'Readiness must use parent-observed controller truth');
-check(quickApp.includes("type:'request-controller-activation'"), 'Missing Away controller action must ask the parent to reacquire the real pad');
-check(quickApp.includes("elements.startMatch.disabled=!onlineState.connected||!lobbySynchronized||onlineState.launchRequested"), 'Controller activation action must remain clickable without weakening the Ready gate');
-check(quickApp.includes('Press Cross / A Now'), 'Away must receive a concrete browser activation prompt');
-check(quickApp.indexOf("if(ONLINE_ROLE==='host'&&onlineState.remoteReady)") < quickApp.indexOf("if(!onlineState.ownReady){onlineSetReady(true);return}"), 'Ready Away must allow one host Start activation');
-check(quickApp.includes("startWasDisabled&&!elements.startMatch.disabled&&state.step==='confirm'"), 'Start must gain controller focus when connection enables it on the final stage');
-check((quickHtml.match(/data-controller-default/g) || []).length >= 5, 'Every Quick Play stage must expose a default Continue or Start target');
-check(controllerUi.includes("dataset.controllerUiSuspended==='true'"), 'Outer controller navigation must suspend while the iframe owns input');
-check(controllerUi.includes('receiveGamepad:(gp,now)=>processGamepad(gp,now)'), 'Shared controller UI must accept bridged standard or raw packets');
+check(duplicatePads.length===1, 'Existing controller sources must remain de-duplicated');
+
+check(quickApp.includes("document.body.dataset.controllerExternalGamepad='true'"), 'The parent must remain the sole controller UI authority');
+check(quickApp.includes("if(data.type==='menu-input'){handleOnlineMenuInput(data);return}"), 'Quick Play must still consume parent menu input');
+check(controllerUi.includes('receiveGamepad:(gp,now)=>processGamepad(gp,now)'), 'The shared controller UI must still accept parent input');
+const controllerPollSource = controllerUi.match(/  const poll=now=>\{[\s\S]*?\n  \};/)?.[0] || '';
+check(controllerPollSource, 'Shared controller polling must remain testable');
+const buildControllerPoll = new Function('document', 'navigator', 'processGamepad', 'requestAnimationFrame', `${controllerPollSource};return poll;`);
+const directlyProcessed = [];
+buildControllerPoll(
+  {body:{dataset:{controllerExternalGamepad:'true'}}},
+  {getGamepads:()=>[iframeDualSense]},
+  gamepad=>directlyProcessed.push(gamepad),
+  ()=>{}
+)(1);
+check(directlyProcessed.length===0, 'The iframe must not double-process a controller while parent authority is active');
+
+const sourceBetween = (source, start, end) => {
+  const from = source.indexOf(start);
+  const to = source.indexOf(end, from + start.length);
+  return from >= 0 && to > from ? source.slice(from, to) : '';
+};
+const readyUiSource = sourceBetween(quickApp, 'function updateOnlineReadyUI(){', 'function reconcileOnlineConnection(');
+check(readyUiSource, 'Online Ready UI must remain available');
+check(readyUiSource.includes("elements.startMatch.disabled=!onlineState.connected||!lobbySynchronized||onlineState.launchRequested"), 'Ready may depend only on connection, lobby sync and launch state');
+check(readyUiSource.includes('Ready ${own}'), 'The enabled guest action must clearly read Ready Away');
+check(!readyUiSource.includes('controllerKnown')&&!readyUiSource.includes('controllerConnected'), 'Controller telemetry must not gate Ready');
+for(const obsolete of ['function onlineHasController','guestMissingController','controllerPromptUntil','Activate Away Controller','Connect Away Controller','Press Cross / A Now',"type:'request-controller-activation'"]){
+  check(!quickApp.includes(obsolete), `Obsolete Ready activation path must be absent: ${obsolete}`);
+}
+
+const handleMenuInputSource = sourceBetween(quickApp, 'function handleOnlineMenuInput(data){', 'function onlineSetReady(');
+check(handleMenuInputSource, 'Parent menu input handler must remain available');
+check(!handleMenuInputSource.includes('onlineSetReady('), 'A transient controller miss must never retract Away readiness');
+const makeMenuHandler = new Function(
+  'ONLINE','reconcileOnlineConnection','onlineState','window','onlineMenuPadState','updateControllerCard','updateOnlineReadyUI','performance',
+  `${handleMenuInputSource};return handleOnlineMenuInput;`
+);
+const readyState={controllerKnown:true,controllerConnected:true,ownReady:true};
+const receivedPads=[];
+const menuHandler=makeMenuHandler(
+  true,()=>{},readyState,
+  {FootballLegacyControllerUI:{forgetGamepad:()=>{},receiveGamepad:pad=>{receivedPads.push(pad);return null}}},
+  {previousSection:false,nextSection:false},()=>{},()=>{},{now:()=>100}
+);
+menuHandler({pad:null,connected:false});
+check(readyState.ownReady===true, 'Away must stay ready when controller telemetry briefly reports no pad');
+menuHandler({pad:iframeDualSense,connected:true});
+check(receivedPads.length===1&&receivedPads[0]===iframeDualSense, 'A connected controller must still enter the existing controller UI path');
+
+const clickBody = quickApp.match(/document\.addEventListener\('click',event=>\{([\s\S]*?)\n  \},true\);/)?.[1] || '';
+check(clickBody, 'Online confirmation click handler must remain available');
+const runReadyClick = new Function('event','onlineState','ONLINE_ROLE','onlineSetReady','traceOnline','currentLobbyVersion','updateOnlineReadyUI','tryOnlineLaunch',clickBody);
+const readyCalls=[];
+const clickEvent={target:{closest:selector=>selector==='#startMatch'?{}:null},preventDefault:()=>{},stopImmediatePropagation:()=>{}};
+runReadyClick(clickEvent,{connected:true,ownReady:false,remoteReady:false},'guest',ready=>readyCalls.push(ready),()=>{},()=>'',()=>{},()=>{});
+check(readyCalls.length===1&&readyCalls[0]===true, 'One mouse or controller click on Ready Away must produce exactly one ready intent');
+
+check(quickApp.indexOf("if(ONLINE_ROLE==='host'&&onlineState.remoteReady)") < quickApp.indexOf("if(!onlineState.ownReady){onlineSetReady(true);return}"), 'Ready Away must preserve the later explicit Home Start action');
+check(quickApp.includes("startWasDisabled&&!elements.startMatch.disabled&&state.step==='confirm'"), 'Ready must gain controller focus when it becomes available');
+check((quickHtml.match(/data-controller-default/g) || []).length >= 5, 'Every setup stage must retain its default controller target');
+check(controllerUi.includes("dataset.controllerUiSuspended==='true'"), 'Outer controller navigation must stay suspended while the iframe owns input');
 
 console.log(`online controller hotfix: ${passed}/${passed} checks passed`);

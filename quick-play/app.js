@@ -40,7 +40,7 @@ const defaultTactics=()=>({mentality:'balanced',width:'balanced',support:'balanc
 const managementSide=()=>({formation:'4-3-3',lineup:[],bench:[],tactics:defaultTactics()});
 const CAROUSEL_STEPS=['teams','management','setup','controls','confirm'];
 const state={mode:initialMode,step:'teams',homeLeague:'div1',homeTeamId:'woolwich-arsenal',awayLeague:'div1',awayTeamId:'west-london-blues',management:{home:managementSide(),away:managementSide()},setup:{stadiumValue:'',matchTime:'night',weather:'clear',matchLength:Number(query.get('matchMinutes'))||4,difficulty:'ultimate',camera:preferences.camera||'broadcast',volume:70,homeKit:'home',awayKit:'away'}};
-const onlineState={connected:false,connectionEpoch:-1,sideRevisions:{home:ONLINE_OWNED_SIDE==='home'?0:-1,away:ONLINE_OWNED_SIDE==='away'?0:-1},settingsRevision:ONLINE_ROLE==='host'?0:-1,ownReady:false,remoteReady:false,ownReadyRevision:0,remoteReadyRevision:-1,readyAckRevision:-1,ownReadyVersion:'',remoteReadyVersion:'',lastReadySentAt:0,startIntent:false,launchRequested:false,launchId:'',roomCode:query.get('room')||'',applyingRemote:false,controllerKnown:false,controllerConnected:false,controllerPromptUntil:0};
+const onlineState={connected:false,connectionEpoch:-1,sideRevisions:{home:ONLINE_OWNED_SIDE==='home'?0:-1,away:ONLINE_OWNED_SIDE==='away'?0:-1},settingsRevision:ONLINE_ROLE==='host'?0:-1,ownReady:false,remoteReady:false,ownReadyRevision:0,remoteReadyRevision:-1,readyAckRevision:-1,ownReadyVersion:'',remoteReadyVersion:'',lastReadySentAt:0,startIntent:false,launchRequested:false,launchId:'',roomCode:query.get('room')||'',applyingRemote:false,controllerKnown:false,controllerConnected:false};
 const onlineMenuPadState={previousSection:false,nextSection:false};
 const onlineProtocolTrace=[];
 function traceOnline(type,detail={}){onlineProtocolTrace.push({at:Date.now(),type,connected:onlineState.connected,epoch:onlineState.connectionEpoch,lobbyVersion:currentLobbyVersion(),ownReady:onlineState.ownReady,remoteReady:onlineState.remoteReady,...detail});if(onlineProtocolTrace.length>180)onlineProtocolTrace.splice(0,onlineProtocolTrace.length-180)}
@@ -173,32 +173,27 @@ function applyOnlineSettings(message){
   applyOnlineOwnership();updateOnlineReadyUI();
 }
 function applyOnlineOwnership(){if(!ONLINE)return;const ownHome=ONLINE_OWNED_SIDE==='home',launchLocked=onlineState.launchRequested;const setDisabled=(nodes,disabled)=>nodes.filter(Boolean).forEach(node=>{node.disabled=disabled;node.setAttribute('aria-disabled',String(disabled))});setDisabled([elements.homeLeague,elements.homeTeam,elements.homeFormation,...elements.homeTactics.querySelectorAll('select'),...elements.homeLineup.querySelectorAll('select'),...elements.homeBench.querySelectorAll('select')],launchLocked||!ownHome);setDisabled([elements.awayLeague,elements.awayTeam,elements.awayFormation,...elements.awayTactics.querySelectorAll('select'),...elements.awayLineup.querySelectorAll('select'),...elements.awayBench.querySelectorAll('select')],launchLocked||ownHome);setDisabled([elements.matchMode],true);setDisabled([elements.stadiumSelect,elements.matchTime,elements.weather,elements.matchLength,elements.difficulty,elements.camera,elements.volume,elements.homeKit],launchLocked||ONLINE_ROLE!=='host');setDisabled([elements.awayKit],launchLocked||ONLINE_ROLE!=='guest');document.querySelector('.team-selector.home-side')?.classList.toggle('online-locked',!ownHome);document.querySelector('.team-selector.away-side')?.classList.toggle('online-locked',ownHome);document.querySelectorAll('.management-panel').forEach((panel,index)=>panel.classList.toggle('online-locked',ownHome?index===1:index===0))}
-function onlineHasController(){if(onlineState.controllerKnown)return onlineState.controllerConnected;try{return!![...(navigator.getGamepads?.()||[])].find(Boolean)}catch{return false}}
 function updateOnlineReadyUI(){
   if(!ONLINE)return;
   applyOnlineOwnership();
   const startWasDisabled=elements.startMatch.disabled;
   const own=ONLINE_ROLE==='host'?'Home':'Away',other=ONLINE_ROLE==='host'?'Away':'Home';
   const connection=onlineState.connected?'Connected':'Waiting for opponent',room=onlineState.roomCode?` Room ${onlineState.roomCode}.`:'';
-  const guestMissingController=ONLINE_ROLE==='guest'&&!onlineHasController();
-  const promptingForController=guestMissingController&&Date.now()<onlineState.controllerPromptUntil;
   const lobbySynchronized=onlineLobbySynchronized(),lobbyVersion=currentLobbyVersion();
   const ownReadyAcknowledged=onlineState.ownReady&&onlineState.readyAckRevision===onlineState.ownReadyRevision&&onlineState.ownReadyVersion===lobbyVersion;
-  elements.modeNote.innerHTML=`<strong>Online Versus · ${own}:</strong> ${connection}.${room} You control only ${own}; ${other} belongs to the other player. ${ONLINE_ROLE==='host'?'You also choose the shared match settings.':'A connected DualSense or Xbox controller is required before Away can ready.'}`;
+  elements.modeNote.innerHTML=`<strong>Online Versus · ${own}:</strong> ${connection}.${room} You control only ${own}; ${other} belongs to the other player. ${ONLINE_ROLE==='host'?'You also choose the shared match settings.':'Press Ready when your Away setup is complete.'}`;
   if(state.step==='confirm'){
     const packageNote=document.querySelector('.package-note');
-    if(packageNote)packageNote.textContent=`${own}: ${ownReadyAcknowledged?'ready':onlineState.ownReady?'syncing':'not ready'} · ${other}: ${onlineState.remoteReady?'ready':'not ready'} · ${onlineState.roomCode}${!lobbySynchronized?' · syncing lobby':promptingForController?' · press Cross / A now':guestMissingController?' · activate Away controller':''}`;
+    if(packageNote)packageNote.textContent=`${own}: ${ownReadyAcknowledged?'ready':onlineState.ownReady?'syncing':'not ready'} · ${other}: ${onlineState.remoteReady?'ready':'not ready'} · ${onlineState.roomCode}${!lobbySynchronized?' · syncing lobby':''}`;
   }
   elements.startMatch.disabled=!onlineState.connected||!lobbySynchronized||onlineState.launchRequested;
   if(!onlineState.connected)elements.startMatch.innerHTML='<span class="button-glyph">…</span> Waiting for Opponent';
   else if(!lobbySynchronized)elements.startMatch.innerHTML='<span class="button-glyph">↻</span> Syncing Lobby';
-  else if(promptingForController)elements.startMatch.innerHTML='<span class="button-glyph">!</span> Press Cross / A Now';
-  else if(guestMissingController)elements.startMatch.innerHTML='<span class="button-glyph">!</span> Activate Away Controller';
   else if(onlineState.launchRequested)elements.startMatch.innerHTML='<span class="button-glyph">…</span> Starting Online Match';
   else if(onlineState.ownReady&&!ownReadyAcknowledged)elements.startMatch.innerHTML=`<span class="button-glyph">↻</span> Syncing ${own} Ready`;
   else if(ONLINE_ROLE==='host'&&onlineState.remoteReady&&onlineState.ownReady)elements.startMatch.innerHTML='<span class="button-glyph">×</span> Start Online Match';
   else if(ONLINE_ROLE==='host'&&onlineState.remoteReady)elements.startMatch.innerHTML='<span class="button-glyph">×</span> Ready & Start Match';
-  else if(!onlineState.ownReady)elements.startMatch.innerHTML='<span class="button-glyph">×</span> Ready Up';
+  else if(!onlineState.ownReady)elements.startMatch.innerHTML=`<span class="button-glyph">×</span> Ready ${own}`;
   else elements.startMatch.innerHTML=`<span class="button-glyph">✓</span> ${ONLINE_ROLE==='guest'?'Away Ready · Waiting for Home':'Home Ready · Waiting for Away'}`;
   if(startWasDisabled&&!elements.startMatch.disabled&&state.step==='confirm'&&document.body.classList.contains('controller-navigation'))requestAnimationFrame(()=>window.FootballLegacyControllerUI?.focus(elements.startMatch));
 }
@@ -225,13 +220,11 @@ function handleOnlineMenuInput(data){
   const pad=data&&data.pad||null,connected=!!(data&&data.connected&&pad),changed=!onlineState.controllerKnown||onlineState.controllerConnected!==connected;
   onlineState.controllerKnown=true;
   onlineState.controllerConnected=connected;
-  if(connected)onlineState.controllerPromptUntil=0;
   if(!pad){
     window.FootballLegacyControllerUI?.forgetGamepad(99);
     onlineMenuPadState.previousSection=false;
     onlineMenuPadState.nextSection=false;
-    if(changed&&ONLINE_ROLE==='guest'&&onlineState.ownReady)onlineSetReady(false);
-    else if(changed){updateControllerCard();updateOnlineReadyUI()}
+    if(changed){updateControllerCard();updateOnlineReadyUI()}
     return;
   }
   const contract=window.FootballLegacyControllerUI?.receiveGamepad(pad,performance.now());
@@ -372,13 +365,6 @@ function initialiseOnlineMode(){
     event.preventDefault();
     event.stopImmediatePropagation();
     if(!onlineState.connected)return;
-    if(ONLINE_ROLE==='guest'&&!onlineHasController()){
-      onlineSetReady(false);
-      onlineState.controllerPromptUntil=Date.now()+8000;
-      parent.postMessage({source:'football-legacy-online-child',type:'request-controller-activation'},TARGET_ORIGIN);
-      updateOnlineReadyUI();
-      return;
-    }
     if(ONLINE_ROLE==='host'){
       if(!onlineState.ownReady){
         const startWhenAcknowledged=onlineState.remoteReady;
@@ -402,7 +388,7 @@ function initialiseOnlineMode(){
     onlineSetReady(false);
   },true);
   addEventListener('gamepadconnected',updateOnlineReadyUI);
-  addEventListener('gamepaddisconnected',()=>{if(ONLINE_ROLE==='guest'&&onlineState.ownReady)onlineSetReady(false);else updateOnlineReadyUI()});
+  addEventListener('gamepaddisconnected',updateOnlineReadyUI);
   window.FLQuickPlayOnlineDebug={getState:()=>({...onlineState,sideRevisions:{...onlineState.sideRevisions},lobbyVersion:currentLobbyVersion(),lobbySynchronized:onlineLobbySynchronized()}),getProtocolTrace:()=>onlineProtocolTrace.slice(),resendReady:()=>onlineSendReady(true),broadcastLobby:onlineBroadcastCurrent};
   parent.postMessage({source:'football-legacy-online-child',type:'child-ready'},TARGET_ORIGIN);
 }

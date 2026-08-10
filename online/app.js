@@ -38,7 +38,6 @@
   let guestPadConnected=false;
   let preferredGamepadIndex=null;
   let eventGamepad=null;
-  let controllerActivationUntil=0;
   let hostSeesAwayController=null;
   let remoteAudioMuted=false;
   let remoteAudioReady=false;
@@ -162,7 +161,7 @@
     ui.networkRole.textContent=role==='host'?'Home · Host':'Away · Guest';
     ui.networkLatency.textContent=role==='host'?`Room ${roomCode}`:'Private peer link';
     childReady=false;
-    const target=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=172-away-controller-1`;
+    const target=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=172-ready-away-2`;
     ui.frame.onload=()=>{
       try{ui.frame.focus()}catch{}
     };
@@ -528,23 +527,12 @@
     preferredGamepadIndex=gamepad.index;
     eventGamepad=gamepad;
     guestPadConnected=true;
-    controllerActivationUntil=0;
     sendCurrentMenuInput(performance.now(),gamepad);
     updateGuestNetworkStatus();
   }
-  function requestGuestControllerActivation(){
-    if(role!=='guest'||matchStarted)return;
-    controllerActivationUntil=performance.now()+8000;
-    try{window.focus()}catch{}
-    const gamepad=selectGamepad();
-    if(gamepad){observeGamepad(gamepad);return}
-    if(ui.networkStatus)ui.networkStatus.textContent='Press Cross / A on the Away controller';
-    sendCurrentMenuInput();
-  }
   function updateGuestNetworkStatus(){
     if(role!=='guest'||!connection||!connection.open)return;
-    if(!guestPadConnected&&performance.now()<controllerActivationUntil)ui.networkStatus.textContent='Press Cross / A on the Away controller';
-    else if(!guestPadConnected)ui.networkStatus.textContent='Activate Away controller';
+    if(!guestPadConnected)ui.networkStatus.textContent='Opponent connected';
     else if(hostSeesAwayController===false)ui.networkStatus.textContent='Away input reaching host…';
     else if(videoPlaying&&remoteAudioMuted)ui.networkStatus.textContent='Live · match sound muted from pause menu';
     else if(videoPlaying&&!remoteAudioTrack)ui.networkStatus.textContent='Live video · host audio unavailable';
@@ -859,11 +847,6 @@
       lobbyFrameRecoveryTimer=null;
       traceProtocol('child-in','child-ready');
       queueChild({type:'connection',connected:!!(connection&&connection.open),role,roomCode,connectionEpoch});
-      return;
-    }
-    if(data.type==='request-controller-activation'&&role==='guest'){
-      traceProtocol('child-in','request-controller-activation');
-      requestGuestControllerActivation();
       return;
     }
     if(data.type==='send'){
