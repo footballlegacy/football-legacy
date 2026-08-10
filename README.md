@@ -1,4 +1,4 @@
-# Football Legacy — Build 169 Online controller hotfix
+# Football Legacy — Build 170 Online lobby transaction fix
 
 Football Legacy is a browser football game prototype with Quick Play, local controller multiplayer, an early friends-only Online Versus mode, creation tools, Career Mode and Grassroots to Glory.
 
@@ -13,13 +13,18 @@ Online Versus must be launched from the hosted HTTPS version:
 3. One player chooses **Host** and sends the displayed room code to the other player.
 4. The other player chooses **Join**, enters the room code and occupies the Away slot. The host occupies Home.
 5. Each player chooses their own team, lineup, tactics and kit. The host chooses the shared match settings.
-6. The Away player selects **Ready**. When Away is ready, the host presses **Start Online Match** once to ready Home and launch.
+6. Both players select **Ready** for the exact teams, lineups, tactics, kits and shared settings shown on screen.
+7. Once both matching Ready states are confirmed, Home explicitly presses **Start Online Match**. Away becoming ready never starts the match by itself. If either player changes a team, tactic or kit, or Home changes a shared match setting, both players must ready again before Home can start.
 
 The Online shell and all five setup stages support D-pad/left-stick navigation, Cross/A selection, Circle/B back, and L1/LB or R1/RB carousel movement.
 
 Match sound starts on. If Chrome or Firefox requests a first interaction, click **Enable match sound** once. After that, pause the match and use **Match sound** to mute or restore audio.
 
-The host runs the authoritative match and the joining player's controller operates Away. This is an early friends-only prototype: the first real two-Mac internet test between Josh and Connor is still required. It currently uses public peer signalling without a dedicated TURN relay, so some restrictive school, office, carrier or symmetric-NAT networks may not connect.
+The host runs the authoritative match and the joining player's controller operates Away. Josh and Connor's first real two-machine Build 169 test connected both controllers and reached Ready Up, but their readiness displays disagreed and launch stalled. Build 170 repairs that exact failure with acknowledged, retried Ready state tied to the current lobby configuration; continuously reconciled peer connection state; and a retried proposal -> acknowledgement -> commit launch transaction. A fresh Josh/Connor Build 170 internet retest is still required before this early friends-only prototype can be called remotely accepted.
+
+Build 170 also tolerates a missed one-shot connection event by continuously publishing peer truth with a connection epoch, allows 24 seconds for heartbeat recovery, replaces stale connections during reconnect, and rejects readiness after any relevant lobby change. Controller navigation remains the working Build 169 DualSense/Xbox route. Online files carry the Build 170 cache-bust token so both machines load the same protocol revision.
+
+The local two-tab acceptance deliberately dropped the first Home Ready packet and the explicit connected event, then passed Home-first and Away-first readiness, settings-change invalidation, explicit Home Start, and the Home-match/Away-live-view transition. The focused gates pass **13/13** controller checks and **85/85** lobby-transaction checks. The additional unchanged-area checks pass original names **5/5**, player links **2/2**, Player Career **9/9** and Create-a-Club **1/1**. The exhaustive career-world integrity suite was not rerun to completion because that expensive area is untouched by this Online-only repair.
 
 Do not use a downloaded `file://` ZIP for Online Versus. Local-file browser origin and media restrictions make that route unsupported and unreliable. Downloaded copies remain suitable for offline Quick Play.
 

@@ -1,6 +1,6 @@
 # Football Legacy — Changelog
 
-Last reviewed: 10 August 2026 — build 169 prepared on `agent/build-169-online-menu-hotfix`
+Last reviewed: 10 August 2026 — build 170 Online lobby transaction fix
 
 This file records the two source lines and the combined build produced from them:
 
@@ -18,6 +18,22 @@ Before any future GitHub publication, Connor's AI agent **must** verify that the
 4. Use the repository's normal branch, commit, push and draft-pull-request workflow. Do not silently replace it with manual website uploads or claim publication succeeded before the remote branch and pull request have been verified.
 
 This is a mandatory workstation prerequisite for Connor's AI agent, not an optional recommendation. It was added after build 166 was locally complete but the first publication attempt found that `gh` was absent.
+
+## Build 170 — Online lobby transaction fix
+
+- Josh and Connor's real two-machine Build 169 test established the exact failure boundary: controller navigation worked on both machines, the peer connected and both players reached Ready Up, but Home showed **Home Ready / Waiting for Away** while Away showed **Waiting for opponent** and its package reported Home and Away not ready. No match launched. This was a readiness/connection state desynchronisation, not another controller-navigation failure.
+- Retains the working Build 169 DualSense/Xbox Online controller navigation unchanged.
+- Continuously sends the authoritative peer-connected truth and a connection epoch into Quick Play, so a missed one-shot connected event heals instead of leaving one client permanently stale.
+- Replaces one-shot readiness with a revisioned **Ready -> ACK** transaction that retries until acknowledged and is bound to the same versioned Home, Away and shared-settings configuration on both machines.
+- Any team, lineup, tactic, kit or shared match-setting change advances that configuration and invalidates both Ready states. A stale Ready packet cannot authorise a changed fixture.
+- Keeps launch under explicit Home control. Away becoming ready never starts a match by itself; Home must activate **Start Online Match** against the current matching Ready state.
+- Replaces the fire-and-forget launch with a retried, idempotent **proposal -> ACK -> commit** transaction. Home enters the authoritative match and Away enters the live-view route only for the same accepted launch/configuration, while duplicate launch packets are safe.
+- Extends the heartbeat tolerance to **24 seconds** for brief browser throttling and permits a fresh peer connection to replace a stale old connection rather than rejecting a legitimate reconnect.
+- Advances the Online/Quick Play cache-bust and peer protocol to Build 170 so a machine cannot silently retain the Build 169 lobby scripts.
+- A live two-tab local acceptance deliberately dropped the first Home Ready packet and the explicit connected event. It then passed both Home-first and Away-first readiness ordering, shared-settings invalidation and re-ready, explicit Home Start, and the Home-match/Away-live-view transition.
+- Focused validation passes **13/13** Online controller checks and **85/85** Online lobby-transaction checks, including reordered configuration packets, dropped launch packets, commit-time revalidation, split-start prevention and reconnect recovery. Unchanged-area regression checks pass original names **5/5**, player links **2/2**, Player Career **9/9** and Create-a-Club **1/1**.
+- The exhaustive career-world integrity suite was not rerun to completion: that area is untouched by this narrowly scoped Online protocol repair and the exhaustive world build is expensive. This release does not claim that unrun gate.
+- A fresh Josh/Connor two-machine Build 170 test remains required. This repair changes no match gameplay, locomotion, CPU tactics, positional contracts, physics, shooting, defending, goalkeeper, animation, stadium, FLARE, replay, free-kick or difficulty values.
 
 ## Build 169 — Online controller and Start hotfix
 
