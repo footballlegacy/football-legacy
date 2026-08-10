@@ -1,6 +1,6 @@
 # Football Legacy — Changelog
 
-Last reviewed: 10 August 2026 — build 166 prepared on `agent/build-165-match-loop`
+Last reviewed: 10 August 2026 — build 167 prepared on `agent/build-167-offline-quick-play`
 
 This file records the two source lines and the combined build produced from them:
 
@@ -18,6 +18,14 @@ Before any future GitHub publication, Connor's AI agent **must** verify that the
 4. Use the repository's normal branch, commit, push and draft-pull-request workflow. Do not silently replace it with manual website uploads or claim publication succeeded before the remote branch and pull request have been verified.
 
 This is a mandatory workstation prerequisite for Connor's AI agent, not an optional recommendation. It was added after build 166 was locally complete but the first publication attempt found that `gh` was absent.
+
+## Build 167 — offline Quick Play roster handoff
+
+- Fixes the downloaded-ZIP route that could show Arsenal Invincibles and Conte Chelsea in Quick Play but load generic `HOME` and `AWAY` footballers in the match.
+- Mirrors the complete selected teams, lineups, benches, tactics, kits and controller assignments into a validated local URL fragment, while retaining browser storage for normal served play and reload continuity.
+- Adds `matchConfigSource` telemetry and corrects the playtest engine label to `0.167`, making URL, browser-storage and fallback launches distinguishable in future logs.
+- Is supported by the contrasting logs `FL-MSN7AWXB` (generic fallback) and `FL-MSN757H7` (correct historic rosters), an end-to-end five-stage Quick Play launch, and a clean **182/182** engine gate.
+- Changes no locomotion, CPU tactics, positional contracts, physics, shooting, defending, goalkeeper, animation, stadium, FLARE, replay, free-kick or difficulty values.
 
 ## Build 166 — controller publication hotfix
 

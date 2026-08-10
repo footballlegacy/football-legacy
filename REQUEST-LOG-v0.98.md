@@ -1,8 +1,25 @@
-# Football Legacy request log — build 166 controller-hotfix truth
+# Football Legacy request log — build 167 offline Quick Play truth
 
-Updated 10 August 2026 after Josh's physical DualSense playtest `FL-MSN4HN8T`, the narrowly scoped build-166 controller repair, the added Xbox One compatibility gate and a clean **181/181** autonomous gate. Josh's current locomotion verdict is explicit: “the game, the running, it feels amazing now. amazing.” This remains a playable development base rather than a claim that Josh has accepted every animation, control feel or art-direction choice.
+Updated 10 August 2026 after comparing Josh's downloaded-file failure `FL-MSN7AWXB` with Connor's working historic-roster log `FL-MSN757H7`, repairing the offline Quick Play handoff and passing a clean **182/182** autonomous gate. Josh's current locomotion verdict remains explicit: “the game, the running, it feels amazing now. amazing.” This remains a playable development base rather than a claim that Josh has accepted every animation, control feel or art-direction choice.
 
 This log deliberately separates **code presence** from **playtest proof**. Josh's existing comments below remain the human acceptance authority; a browser check or CPU simulation cannot silently overwrite them.
+
+## Build 167 — downloaded-ZIP Quick Play roster handoff
+
+This release repair preserves the complete build-166 controller hotfix and every earlier football-model workflow. It changes only how Quick Play carries the selected match package into the match engine when the game is opened directly from a downloaded ZIP.
+
+- **Failure isolated:** Josh's `FL-MSN7AWXB` loaded generic `HOME` and `AWAY` configuration with fallback footballers such as Harper, Wright and Mensah, even though the Quick Play screen showed Arsenal Invincibles and Conte Chelsea. Connor's `FL-MSN757H7` loaded `Arsenal Invincibles`, `Conte Chelsea`, `ars-henry` and the intended historic rosters correctly. The contrasting logs prove that the team data and selectors were sound and that the failure depended on the launch route.
+- **Cause:** Quick Play previously placed the full team, lineup, bench, tactics, kit and controller package only in browser storage before opening `match-engine/match.html`. Firefox does not reliably share that storage between separate local `file://` documents/directories, so a double-clicked downloaded copy could reach the match engine with no package and silently activate generic fallback teams.
+- **Offline-safe handoff:** Quick Play now mirrors the same complete package into a base64url URL fragment named `flMatch`. The match engine validates and prioritises that package, while keeping browser storage as the normal served-origin fallback and retaining the decoded package for reload/restart continuity. The fragment is local to the page and is not sent to a web server.
+- **Telemetry truth:** reports now identify engine `0.167` and record `matchConfigSource` as `url-fragment`, `browser-storage` or `fallback`, so this class of failure can no longer masquerade as a valid historic-team test.
+
+### Build 167 evidence
+
+- **Contrasting source logs:** `FL-MSN7AWXB` proves the downloaded-file generic fallback; `FL-MSN757H7` proves that Connor's route preserved the correct roster package.
+- **End-to-end Quick Play smoke test:** the actual five-stage menu launched Arsenal Invincibles v Conte Chelsea, produced a URL containing the complete `flMatch` package and rendered `ARS 03/04`, `CHE 16/17`, Thierry Henry and Diego Costa in the match.
+- **Autonomous gate:** **182/182** checks pass with no browser console errors. The new regression round-trips the complete offline-safe package, including Arsenal, Chelsea, Thierry Henry and the Unicode name César Azpilicueta, without relying on shared browser storage.
+- **File-route limitation:** the Codex in-app browser security policy does not permit direct `file://` navigation, so the double-clicked-file path itself still needs one physical acceptance launch after publication. The codec and full menu-to-match boundary are directly covered.
+- **Scope preserved:** no locomotion, sprint-speed, CPU tactics, positional contract, physics, shooting, defending, goalkeeper, animation, stadium, FLARE, replay, free-kick or difficulty value changed in build 167.
 
 ## Build 166 — three-fix controller release
 
