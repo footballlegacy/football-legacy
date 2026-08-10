@@ -1,8 +1,30 @@
-# Football Legacy request log — build 167 offline Quick Play truth
+# Football Legacy request log — build 168 Online Versus truth
 
-Updated 10 August 2026 after comparing Josh's downloaded-file failure `FL-MSN7AWXB` with Connor's working historic-roster log `FL-MSN757H7`, repairing the offline Quick Play handoff and passing a clean **182/182** autonomous gate. Josh's current locomotion verdict remains explicit: “the game, the running, it feels amazing now. amazing.” This remains a playable development base rather than a claim that Josh has accepted every animation, control feel or art-direction choice.
+Updated 10 August 2026 after adding a separate friends-only Online Versus route and passing a clean **184/184** autonomous gate. Josh's current locomotion verdict remains explicit: “the game, the running, it feels amazing now. amazing.” This remains a playable development base and an early online prototype, not a claim that Josh has accepted every animation, control feel or art-direction choice or that the network route has passed its required two-Mac internet test.
 
 This log deliberately separates **code presence** from **playtest proof**. Josh's existing comments below remain the human acceptance authority; a browser check or CPU simulation cannot silently overwrite them.
+
+## Build 168 — Online Versus prototype
+
+This addition preserves the complete build-167 offline roster handoff, build-166 controller release and every earlier football-model workflow. It adds a separate **Online** main-menu route for Josh and Connor to play the existing match against one another.
+
+- **Role contract:** the room host is Home and the authoritative match machine; the joining player is Away. The Away controller is normalised and delivered into the existing Controller 2/Away route, so online control does not create a second gameplay implementation.
+- **Quick Play ownership:** both players use the same five-stage Quick Play structure. Each owns their respective team, lineup, bench, tactics and kit. The host owns the shared difficulty, stadium, weather, match length, camera and other match-wide settings.
+- **Room and readiness:** the host creates a short room code for the guest to enter. Both sides see connection status and must mark themselves ready; only the host can launch after both readiness states are true.
+- **Authoritative presentation:** the Home machine runs the match once and streams it to Away. Essential Away play information is mirrored alongside the stream, including scoreboard/state and the actionable HUD required to read the controlled footballer and charged action. This deliberately avoids trying to keep two independently randomised engines in deterministic lockstep.
+- **Audio contract:** Quick Play and Online always request normal match sound at 70%; an old saved `0` value can no longer silently mute a new match. The setup Off control is removed, a dedicated pause-menu toggle owns mute/unmute, and Chrome/Firefox get a browser-neutral one-click sound fallback when autoplay policy requires it. The Away shell distinguishes live video, a present audio track, host audio activation and an intentional pause-menu mute.
+- **Safeguards:** the shell validates that both players use the same build, orders remote input packets and uses heartbeat/disconnect detection so a lost opponent is reported instead of leaving a falsely live room.
+- **Launch contract:** both players must open the hosted HTTPS build at [footballlegacy.github.io/football-legacy](https://footballlegacy.github.io/football-legacy/) and choose **Online**. The downloaded `file://` ZIP route remains valid for offline Quick Play but is unsupported and unreliable for Online Versus because the browser's local-file origin and media rules do not provide a dependable shared online shell.
+- **Network limitation:** this friends-only prototype uses the public PeerJS signalling service and has no dedicated TURN relay. Direct peer connection can therefore fail on restrictive school, office, mobile-carrier or symmetric-NAT networks. That is a network-path limitation, not permission to report a failed connection as successful.
+
+### Build 168 evidence and acceptance boundary
+
+- **Clean local two-client flow:** a fresh host and guest completed room join, Home/Away slot assignment, team synchronisation, lineup/bench synchronisation, tactics/kit ownership, shared-setting authority, dual ready and match launch without browser console errors.
+- **Match delivery:** the guest received the live host match at **960×486**, essential HUD state was mirrored, and the guest's input reached the host's Controller 2/Away path.
+- **Connection failure:** heartbeat expiry produced an explicit opponent-disconnected state rather than leaving the match apparently connected.
+- **Autonomous gate:** **184/184** engine checks pass, including the normalised remote Xbox/standard-gamepad packet entering Controller 2/Away and the new default-on/pause-menu audio contract.
+- **Still mandatory:** Josh and Connor must complete a real two-Mac test over the internet, each with the intended physical controller, before this can move beyond exercised prototype status. That test must cover room join, team and lineup changes, both ready states, Away movement/passing/shooting, Home movement, HUD readability, audio/video start, a completed half and an intentional disconnect.
+- **Scope preserved:** no locomotion, sprint-speed, CPU tactics, positional contract, physics, shooting, defending, goalkeeper, animation, stadium, FLARE, replay, free-kick or difficulty value changed in build 168.
 
 ## Build 167 — downloaded-ZIP Quick Play roster handoff
 

@@ -1,6 +1,6 @@
 # Football Legacy — Changelog
 
-Last reviewed: 10 August 2026 — build 167 prepared on `agent/build-167-offline-quick-play`
+Last reviewed: 10 August 2026 — build 168 prepared on `agent/build-168-online-versus`
 
 This file records the two source lines and the combined build produced from them:
 
@@ -18,6 +18,22 @@ Before any future GitHub publication, Connor's AI agent **must** verify that the
 4. Use the repository's normal branch, commit, push and draft-pull-request workflow. Do not silently replace it with manual website uploads or claim publication succeeded before the remote branch and pull request have been verified.
 
 This is a mandatory workstation prerequisite for Connor's AI agent, not an optional recommendation. It was added after build 166 was locally complete but the first publication attempt found that `gh` was absent.
+
+## Build 168 — Online Versus prototype
+
+- Adds **Online** as a separate main-menu mode, using the established Quick Play setup rather than replacing or reducing any offline, career or local multiplayer route.
+- The host occupies **Home** and runs the authoritative match; the joining player occupies **Away**, with their controller delivered to the existing Controller 2/Away input path.
+- Each player owns their team, lineup, bench, tactics and kit selections. The host owns the shared match settings, including difficulty, stadium, weather, match length and camera.
+- Adds short room-code hosting/joining, explicit connection state and a dual-ready gate before the host can start the match.
+- Streams the host's authoritative match to the Away player and mirrors the essential playable HUD, rather than attempting a second independently randomised simulation that could desynchronise.
+- Match sound now always launches at the normal 70% level instead of inheriting a stale saved `0` value. The setup-screen Off option has been removed; sound is muted and restored from a dedicated pause-menu toggle.
+- Chrome and Firefox retain a visible, browser-neutral **Enable match sound** fallback when autoplay policy requires one click. Online now reports whether the host audio context is running and rejects a stream that has no required audio track.
+- Adds same-build validation, ordered remote-input handling, heartbeat/disconnect detection and honest connection-loss presentation.
+- Online play requires the hosted HTTPS build at [footballlegacy.github.io/football-legacy](https://footballlegacy.github.io/football-legacy/). A downloaded `file://` ZIP is unsupported and unreliable for this mode because browser origin and media restrictions prevent a dependable online shell.
+- Uses the public PeerJS signalling service for the friends-only prototype. No dedicated TURN relay is configured, so restrictive school, office, carrier or symmetric-NAT networks may fail to establish the peer connection even when the room code is correct.
+- A clean local two-client full flow passed: host/join, Home/Away ownership, team and lineup/bench synchronisation, dual ready, launch, remote Controller 2 delivery, a live **960×486** match stream with the browser sound gate, mirrored essential HUD and connection-loss handling. The engine gate passes **184/184**.
+- A real two-Mac internet test between Josh and Connor remains mandatory before Online Versus can be called accepted or generally reliable.
+- Changes no locomotion, CPU tactics, positional contracts, physics, shooting, defending, goalkeeper, animation, stadium, FLARE, replay, free-kick or difficulty values.
 
 ## Build 167 — offline Quick Play roster handoff
 

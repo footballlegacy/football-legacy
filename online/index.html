@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Football Legacy private online versus">
+  <title>Online Versus | Football Legacy</title>
+  <link rel="stylesheet" href="styles.css?v=168-online-versus">
+  <style>[hidden]{display:none!important}</style>
+</head>
+<body>
+  <main class="online-shell" id="onlineShell">
+    <header class="online-topbar">
+      <a class="brand" href="../index.html"><span class="brand-mark">FL</span><span><strong>Football Legacy</strong><small>Online Versus</small></span></a>
+      <div class="connection-pill" id="connectionPill" data-state="idle"><i></i><span>Not connected</span></div>
+    </header>
+
+    <section class="entry-screen" id="entryScreen">
+      <div class="entry-card">
+        <span class="eyebrow">Private head-to-head</span>
+        <h1>Online Versus</h1>
+        <p>One player hosts Home. The other joins Away. You each choose your own team, line-up and tactics before the host starts the same match for both of you.</p>
+        <div class="role-grid">
+          <button class="role-card home" id="hostButton" type="button"><span>Home</span><strong>Host Match</strong><small>Create a private room code</small></button>
+          <button class="role-card away" id="showJoinButton" type="button"><span>Away</span><strong>Join Match</strong><small>Enter your friend's room code</small></button>
+        </div>
+        <form class="join-form" id="joinForm" hidden>
+          <label for="roomInput">Room code</label>
+          <div><input id="roomInput" autocomplete="off" maxlength="14" placeholder="ABCDE-FGHIJ" spellcheck="false"><button type="submit">Join Away</button></div>
+        </form>
+        <p class="online-note">Prototype connection: the host runs the authoritative match and the Away controller is sent directly to it. Both players need internet access and the same build.</p>
+        <a class="back-link" href="../index.html">Back to Main Menu</a>
+      </div>
+    </section>
+
+    <section class="waiting-screen" id="waitingScreen" hidden>
+      <div class="waiting-card">
+        <span class="eyebrow" id="waitingEyebrow">Creating room</span>
+        <h1 id="waitingTitle">Connecting…</h1>
+        <p id="waitingCopy">Opening the private connection.</p>
+        <div class="room-code" id="roomCodeBlock" hidden><span>Room code</span><strong id="roomCode"></strong><button id="copyCode" type="button">Copy code</button></div>
+        <button class="cancel-button" id="cancelButton" type="button">Cancel</button>
+      </div>
+    </section>
+
+    <section class="game-stage" id="gameStage" hidden>
+      <iframe id="gameFrame" title="Football Legacy online match setup" allow="autoplay; gamepad"></iframe>
+      <div class="guest-stage" id="guestStage" hidden>
+        <video id="matchVideo" autoplay playsinline></video>
+        <button class="video-gate" id="videoGate" type="button" hidden>Enable Match Sound</button>
+        <div class="remote-scoreboard" id="remoteScoreboard">
+          <div><span id="remoteHomeName">HOME</span><strong id="remoteHomeScore">0</strong></div>
+          <time id="remoteClock">00:00</time>
+          <div class="away"><strong id="remoteAwayScore">0</strong><span id="remoteAwayName">AWAY</span></div>
+        </div>
+        <div class="remote-event" id="remoteEvent" hidden></div>
+        <div class="remote-official" id="remoteOfficial" hidden><small id="remoteOfficialDecision">Referee decision</small><strong id="remoteOfficialHeadline"></strong><span id="remoteOfficialDetail"></span></div>
+        <div class="remote-var" id="remoteVar" hidden><small id="remoteVarLabel">VAR checking</small><strong id="remoteVarHeadline"></strong><span id="remoteVarDetail"></span></div>
+        <div class="remote-set-piece" id="remoteSetPiece" hidden><strong id="remoteSetPieceClock"></strong><span id="remoteSetPieceHint"></span></div>
+        <div class="remote-player-card" id="remotePlayerCard" hidden>
+          <div class="remote-card-top"><b id="remotePlayerNumber">–</b><span><small id="remotePlayerSide">Away</small><strong id="remotePlayerName">No footballer</strong></span><em id="remotePlayerAction">Ready</em></div>
+          <div class="remote-power-track"><i id="remotePowerFill"></i><b id="remotePowerIdeal" hidden></b></div>
+        </div>
+        <div class="remote-state-overlay" id="remoteStateOverlay" hidden><small id="remoteOverlayTitle"></small><strong id="remoteOverlayScore"></strong><span id="remoteOverlayMessage"></span></div>
+        <div class="guest-message" id="guestMessage"><strong>Host is starting the match</strong><span>The live pitch will appear here.</span></div>
+      </div>
+      <div class="network-strip" id="networkStrip"><span id="networkRole">Online</span><strong id="networkStatus">Connected</strong><small id="networkLatency">Direct link</small></div>
+    </section>
+
+    <div class="fatal-card" id="fatalCard" hidden>
+      <span class="eyebrow">Online connection</span>
+      <h2 id="fatalTitle">Could not connect</h2>
+      <p id="fatalCopy"></p>
+      <button id="retryButton" type="button">Return to Online Menu</button>
+    </div>
+  </main>
+  <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+  <script src="app.js?v=168-online-versus"></script>
+</body>
+</html>
