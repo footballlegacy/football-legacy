@@ -19,8 +19,8 @@ const productionCheck = (condition, message) => {
   else passed += 1;
 };
 
-check(onlineApp.includes("const BUILD='170'"), 'Peers must share the lobby-sync build');
-check(onlineApp.includes("const PEER_PREFIX='football-legacy-170-'"), 'Old and new peer rooms must not mix');
+check(onlineApp.includes("const BUILD='171'"), 'Peers must share the lobby-sync build');
+check(onlineApp.includes("const PEER_PREFIX='football-legacy-171-'"), 'Old and new peer rooms must not mix');
 check(onlineApp.includes('peerConnected:!!(connection&&connection.open),connectionEpoch'), 'Continuous lobby packets must carry peer truth and epoch');
 check(onlineApp.includes('lastPongAt>24000'), 'A short browser stall must not kill the room');
 check(onlineApp.includes('existingHealthy=connection.open&&Date.now()-lastPongAt<9000'), 'A stale host connection must be replaceable');
@@ -36,8 +36,8 @@ check(quickApp.includes('reconcileOnlineConnection(data&&data.peerConnected,data
 check(quickApp.includes('getProtocolTrace:()=>onlineProtocolTrace.slice()'), 'Lobby protocol telemetry must be inspectable');
 check(!quickApp.match(/function applyOnlineSide\([^\n]+remoteReady=false/), 'Team replication must not silently erase Ready state');
 check(!quickApp.match(/function applyOnlineSettings\([^\n]+remoteReady=false/), 'Settings replication must not silently erase Ready state');
-check(onlineHtml.includes('app.js?v=170-lobby-transaction-4'), 'Online shell must bypass the old cached parent script');
-check(quickHtml.includes('app.js?v=170-lobby-transaction-4'), 'Quick Play must bypass the old cached lobby script');
+check(onlineHtml.includes('app.js?v=171-code-verification-1'), 'Online shell must bypass the old cached parent script');
+check(quickHtml.includes('app.js?v=171-code-verification-1'), 'Quick Play must bypass the old cached lobby script');
 
 class ReadyPeer {
   constructor(side) {

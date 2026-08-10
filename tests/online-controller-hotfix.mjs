@@ -14,9 +14,9 @@ const check = (condition, message) => {
   passed += 1;
 };
 
-check(onlineHtml.includes('../controller-ui.js?v=170-lobby-transaction-4'), 'Online shell must load the shared controller UI');
+check(onlineHtml.includes('../controller-ui.js?v=171-code-verification-1'), 'Online shell must load the shared controller UI');
 check(onlineHtml.includes('id="hostButton" type="button" data-controller-default'), 'Host must be the default controller target');
-check(onlineApp.includes("const BUILD='170'"), 'Online peers must reject pre-hotfix builds');
+check(onlineApp.includes("const BUILD='171'"), 'Online peers must reject pre-hotfix builds');
 check(onlineApp.includes("childSend({type:'menu-input',pad,connected:!!gamepad"), 'Top-level pad state must reach the setup iframe');
 check(!onlineApp.includes('acceptancePad'), 'No synthetic acceptance pad may ship');
 check(quickApp.includes("document.body.dataset.controllerExternalGamepad='true'"), 'Online Quick Play must disable duplicate iframe polling');

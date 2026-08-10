@@ -1,6 +1,6 @@
 # Football Legacy — Changelog
 
-Last reviewed: 10 August 2026 — build 170 Online lobby transaction fix
+Last reviewed: 10 August 2026 — build 171 Online code-verification hold
 
 This file records the two source lines and the combined build produced from them:
 
@@ -18,6 +18,17 @@ Before any future GitHub publication, Connor's AI agent **must** verify that the
 4. Use the repository's normal branch, commit, push and draft-pull-request workflow. Do not silently replace it with manual website uploads or claim publication succeeded before the remote branch and pull request have been verified.
 
 This is a mandatory workstation prerequisite for Connor's AI agent, not an optional recommendation. It was added after build 166 was locally complete but the first publication attempt found that `gh` was absent.
+
+## Build 171 — Online code-verification hold
+
+- Keeps Home on the room-code verification screen until Away opens the peer connection, removing the previous one-frame code flash.
+- Shows a copyable full join URL on Home so the host can send one complete link instead of asking Away to remember or retype a briefly displayed code.
+- Keeps the entered room code visible on Away's verification screen while the connection is being established.
+- Holds both sides at the verification boundary until the peer opens; Quick Play setup does not replace the code screen early.
+- Advances the Online cache-bust and room namespace to Build 171 so old cached clients and older-build room names do not silently mix with this flow.
+- Retains Build 170's connection, Ready and launch transactions and Build 169's controller navigation. It changes no match gameplay, locomotion, CPU tactics, positional contracts, physics, shooting, defending, goalkeeper, animation, stadium, FLARE, replay, free-kick or difficulty values.
+- A local two-browser acceptance held Home at the code screen before connection, prefilled Away from the complete join URL, and released both clients into Quick Play only after the DataConnection opened. The focused gate passes **27/27**, the Online controller gate **13/13**, and the retained lobby-transaction gate **85/85**.
+- This is not a remote-acceptance claim. A fresh hosted two-machine test must still prove the full-link handoff, both verification screens and the subsequent setup/launch route.
 
 ## Build 170 — Online lobby transaction fix
 
