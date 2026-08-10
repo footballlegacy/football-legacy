@@ -17,6 +17,7 @@
     return found.length?found[found.length-1]:null;
   };
   const activeScope=()=>{
+    if(document.body?.dataset.controllerUiSuspended==='true')return null;
     const overlay=openOverlay();if(overlay)return overlay;
     if(document.querySelector('#c'))return null;
     return document.body;
@@ -118,13 +119,18 @@
     return buttonPressed(gp,rawIndex,threshold);
   };
   const directionFor=gp=>{if(pressed(gp,12))return'up';if(pressed(gp,13))return'down';if(pressed(gp,14))return'left';if(pressed(gp,15))return'right';const x=gp.axes&&gp.axes.length>1?gp.axes[0]:0,y=gp.axes&&gp.axes.length>1?gp.axes[1]:0;if(Math.abs(x)>.66||Math.abs(y)>.66)return Math.abs(x)>Math.abs(y)?(x>0?'right':'left'):(y>0?'down':'up');return null;};
-  const poll=now=>{
-    let pads=[];try{pads=typeof navigator.getGamepads==='function'?[...(navigator.getGamepads()||[])].filter(Boolean):[];}catch(e){}
-    for(const gp of pads){let state=padStates.get(gp.index);if(!state){state={buttons:[],direction:null,nextMove:0};padStates.set(gp.index,state);}
+  const processGamepad=(gp,now=performance.now())=>{
+    if(!gp)return null;
+    let state=padStates.get(gp.index);if(!state){state={buttons:[],direction:null,nextMove:0};padStates.set(gp.index,state);}
       const scope=activeScope(),uiActive=!!scope;if(uiActive){const cross=pressed(gp,0),circle=pressed(gp,1);if(cross&&!state.buttons[0]){controllerMode=true;ensureFocus();activate();}if(circle&&!state.buttons[1]){controllerMode=true;back();}
         const direction=directionFor(gp);if(direction!==state.direction){state.direction=direction;if(direction){controllerMode=true;ensureFocus();navigate(direction);state.nextMove=now+310;}}else if(direction&&now>=state.nextMove){navigate(direction);state.nextMove=now+135;}
       }else state.direction=null;
-      for(const i of [0,1,12,13,14,15])state.buttons[i]=pressed(gp,i);
+      for(const i of [0,1,4,5,12,13,14,15])state.buttons[i]=pressed(gp,i);
+    return{select:pressed(gp,0),back:pressed(gp,1),previousSection:pressed(gp,4),nextSection:pressed(gp,5),direction:directionFor(gp)};
+  };
+  const poll=now=>{
+    let pads=[];if(document.body?.dataset.controllerExternalGamepad!=='true'){try{pads=typeof navigator.getGamepads==='function'?[...(navigator.getGamepads()||[])].filter(Boolean):[];}catch(e){}}
+    for(const gp of pads){processGamepad(gp,now);
     }
     requestAnimationFrame(poll);
   };
@@ -137,5 +143,5 @@
   addEventListener('gamepadconnected',event=>{controllerMode=true;ensureFocus();showHint(isXboxDevice(event.gamepad)?'Xbox controller connected · D-pad / Left stick navigate · A select · B back':'DualSense connected · D-pad / Left stick navigate · × select · ○ back');});
   addEventListener('pointerdown',()=>{controllerMode=false;document.body.classList.remove('controller-navigation');clearFocus();},{passive:true});
   addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Escape'].includes(e.key)){controllerMode=false;document.body.classList.remove('controller-navigation');}});
-  window.FootballLegacyControllerUI={focus:()=>ensureFocus(),navigate,activate,back,debugGamepadDirection:gp=>directionFor(gp),debugGamepadContract:gp=>({xbox:isXboxDevice(gp),dualSense:isDualSenseDevice(gp),standard:gp&&gp.mapping==='standard',select:pressed(gp,0),back:pressed(gp,1),dpadDown:pressed(gp,13),direction:directionFor(gp)}),debugSelectSteppers:()=>({selects:document.querySelectorAll('select').length,enhanced:document.querySelectorAll('.controller-select-stepper>select').length,visibleArrows:[...document.querySelectorAll('.controller-select-arrow')].filter(visible).length})};requestAnimationFrame(poll);
+  window.FootballLegacyControllerUI={focus:target=>target?setFocus(target,false):ensureFocus(),navigate,activate,back,receiveGamepad:(gp,now)=>processGamepad(gp,now),forgetGamepad:index=>padStates.delete(index),debugGamepadDirection:gp=>directionFor(gp),debugGamepadContract:gp=>({xbox:isXboxDevice(gp),dualSense:isDualSenseDevice(gp),standard:gp&&gp.mapping==='standard',select:pressed(gp,0),back:pressed(gp,1),previousSection:pressed(gp,4),nextSection:pressed(gp,5),dpadDown:pressed(gp,13),direction:directionFor(gp)}),debugSelectSteppers:()=>({selects:document.querySelectorAll('select').length,enhanced:document.querySelectorAll('.controller-select-stepper>select').length,visibleArrows:[...document.querySelectorAll('.controller-select-arrow')].filter(visible).length})};requestAnimationFrame(poll);
 })();

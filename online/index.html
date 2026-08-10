@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Football Legacy private online versus">
   <title>Online Versus | Football Legacy</title>
-  <link rel="stylesheet" href="styles.css?v=168-online-versus">
+  <link rel="stylesheet" href="styles.css?v=169-online-menu-hotfix">
   <style>[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -21,7 +21,7 @@
         <h1>Online Versus</h1>
         <p>One player hosts Home. The other joins Away. You each choose your own team, line-up and tactics before the host starts the same match for both of you.</p>
         <div class="role-grid">
-          <button class="role-card home" id="hostButton" type="button"><span>Home</span><strong>Host Match</strong><small>Create a private room code</small></button>
+          <button class="role-card home" id="hostButton" type="button" data-controller-default><span>Home</span><strong>Host Match</strong><small>Create a private room code</small></button>
           <button class="role-card away" id="showJoinButton" type="button"><span>Away</span><strong>Join Match</strong><small>Enter your friend's room code</small></button>
         </div>
         <form class="join-form" id="joinForm" hidden>
@@ -75,6 +75,7 @@
     </div>
   </main>
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-  <script src="app.js?v=168-online-versus"></script>
+  <script src="app.js?v=169-online-menu-hotfix"></script>
+  <script src="../controller-ui.js?v=169-online-menu-hotfix"></script>
 </body>
 </html>

@@ -1,8 +1,8 @@
 'use strict';
 (() => {
   const PROTOCOL='football-legacy-online-v1';
-  const BUILD='168';
-  const PEER_PREFIX='football-legacy-168-';
+  const BUILD='169';
+  const PEER_PREFIX='football-legacy-169-';
   const TARGET_ORIGIN=location.origin==='null'?'*':location.origin;
   const $=id=>document.getElementById(id);
   const ui={
@@ -62,10 +62,15 @@
     ui.pill.querySelector('span').textContent=label;
     if(ui.networkStatus)ui.networkStatus.textContent=label;
   }
-  function showOnly(target){[ui.entry,ui.waiting,ui.stage].forEach(element=>{element.hidden=element!==target})}
+  function setOuterControllerSuspended(suspended){
+    document.body.dataset.controllerUiSuspended=suspended?'true':'false';
+    if(!suspended)requestAnimationFrame(()=>window.FootballLegacyControllerUI?.focus());
+  }
+  function showOnly(target){[ui.entry,ui.waiting,ui.stage].forEach(element=>{element.hidden=element!==target});setOuterControllerSuspended(target===ui.stage)}
   function clearTimers(){clearInterval(hostViewTimer);clearInterval(heartbeatTimer);clearInterval(reconnectTimer);hostViewTimer=heartbeatTimer=reconnectTimer=null}
   function fail(title,copy){
     clearTimers();
+    setOuterControllerSuspended(false);
     setConnection('lost','Connection failed');
     ui.fatalTitle.textContent=title;
     ui.fatalCopy.textContent=copy;
@@ -109,9 +114,10 @@
     ui.networkRole.textContent=role==='host'?'Home · Host':'Away · Guest';
     ui.networkLatency.textContent=role==='host'?`Room ${roomCode}`:'Private peer link';
     childReady=false;
-    ui.frame.src=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=168-online-versus`;
+    ui.frame.src=`../quick-play/index.html?mode=online&onlineRole=${role}&room=${encodeURIComponent(roomCode)}&build=169-online-menu-hotfix`;
     ui.frame.onload=()=>{
       childReady=true;
+      try{ui.frame.focus()}catch{}
       queueChild({type:'connection',connected:!!(connection&&connection.open),role,roomCode});
       flushChildMessages();
     };
@@ -238,7 +244,7 @@
     if(!message||message.protocol!==PROTOCOL)return;
     if(message.build!==BUILD){
       const active=connection;
-      fail('Different game versions','Both players must open build 168 of Football Legacy.');
+      fail('Different game versions','Both players must open build 169 of Football Legacy.');
       try{active&&active.close()}catch{}
       return;
     }
@@ -286,11 +292,14 @@
     else ui.networkStatus.textContent='Controller ready · waiting for video';
   }
   function pollGuestInput(now){
+    let gamepad=null;
+    try{gamepad=Array.from(navigator.getGamepads?navigator.getGamepads()||[]:[]).find(Boolean)||null}catch{}
+    const pad=serialisePad(gamepad);
+    if(role&&!matchStarted&&childReady&&!ui.frame.hidden){
+      childSend({type:'menu-input',pad,connected:!!gamepad,sentAt:now});
+    }
     if(role==='guest'&&matchStarted&&connection&&connection.open){
-      let gamepad=null;
-      try{gamepad=Array.from(navigator.getGamepads?navigator.getGamepads()||[]:[]).find(Boolean)||null}catch{}
       guestPadConnected=!!gamepad;
-      const pad=serialisePad(gamepad);
       const json=JSON.stringify(pad);
       if(json!==lastInputJson||now-lastInputSentAt>90){
         lastInputJson=json;

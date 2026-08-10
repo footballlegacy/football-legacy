@@ -66,7 +66,7 @@
       <div class="mode-note" id="modeNote"></div>
       <div class="page-actions">
         <a class="secondary-button" href="../index.html">Main Menu</a>
-        <button class="primary-button" id="confirmTeams" type="button"><span class="button-glyph">×</span> Team Settings</button>
+        <button class="primary-button" id="confirmTeams" type="button" data-controller-default><span class="button-glyph">×</span> Team Settings</button>
       </div>
     </section>
 
@@ -80,7 +80,7 @@
         <article class="management-panel"><header><span>Home</span><strong id="homeManagementTitle"></strong></header><label class="formation-field"><span>Formation</span><select id="homeFormation"></select></label><div class="tactic-controls" id="homeTactics"></div><div class="lineup-list" id="homeLineup"></div><div class="bench-list" id="homeBench"></div></article>
         <article class="management-panel"><header><span>Away</span><strong id="awayManagementTitle"></strong></header><label class="formation-field"><span>Formation</span><select id="awayFormation"></select></label><div class="tactic-controls" id="awayTactics"></div><div class="lineup-list" id="awayLineup"></div><div class="bench-list" id="awayBench"></div></article>
       </div>
-      <div class="page-actions"><button class="secondary-button" data-back="teams" type="button">Back to Teams</button><button class="primary-button" id="confirmManagement" type="button"><span class="button-glyph">×</span> Match Settings</button></div>
+      <div class="page-actions"><button class="secondary-button" data-back="teams" type="button">Back to Teams</button><button class="primary-button" id="confirmManagement" type="button" data-controller-default><span class="button-glyph">×</span> Match Settings</button></div>
     </section>
 
     <section class="step-page" data-page="setup">
@@ -111,7 +111,7 @@
 
       <div class="page-actions">
         <button class="secondary-button" data-back="management" type="button">Back to Team Management</button>
-        <button class="primary-button" id="confirmSetup" type="button"><span class="button-glyph">×</span> Controller Layout</button>
+        <button class="primary-button" id="confirmSetup" type="button" data-controller-default><span class="button-glyph">×</span> Controller Layout</button>
       </div>
     </section>
 
@@ -147,7 +147,7 @@
         </div>
       </div>
       <div class="controller-card" id="controllerLayoutStatus">Checking connected controllers…</div>
-      <div class="page-actions"><button class="secondary-button" data-back="setup" type="button">Back to Match Settings</button><button class="primary-button" id="confirmControls" type="button"><span class="button-glyph">×</span> Match Preview</button></div>
+      <div class="page-actions"><button class="secondary-button" data-back="setup" type="button">Back to Match Settings</button><button class="primary-button" id="confirmControls" type="button" data-controller-default><span class="button-glyph">×</span> Match Preview</button></div>
     </section>
 
     <section class="step-page" data-page="confirm">
@@ -161,7 +161,7 @@
       <div class="package-note">Everything selected above will be carried into the match.</div>
       <div class="page-actions">
         <button class="secondary-button" data-back="controls" type="button">Back to Controls</button>
-        <button class="primary-button start-match-button" id="startMatch" type="button"><span class="button-glyph">×</span> Start Match</button>
+        <button class="primary-button start-match-button" id="startMatch" type="button" data-controller-default><span class="button-glyph">×</span> Start Match</button>
       </div>
     </section>
 
@@ -183,7 +183,7 @@
   <script src="teams.js"></script>
   <script src="original-names.js"></script>
   <script src="historic-playtest-squads.js"></script>
-  <script src="app.js?v=168-online-versus"></script>
-  <script src="../controller-ui.js?v=166-controller-hotfix"></script>
+  <script src="app.js?v=169-online-menu-hotfix"></script>
+  <script src="../controller-ui.js?v=169-online-menu-hotfix"></script>
 </body>
 </html>
