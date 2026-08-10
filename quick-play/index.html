@@ -5,32 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Football Legacy standalone Quick Play team selector and match setup">
   <title>Quick Play | Football Legacy</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=098a">
 </head>
 <body>
   <main class="page-shell">
     <header class="topbar">
       <a class="brand" href="../index.html" aria-label="Back to Football Legacy main menu">
         <span class="brand-mark">FL</span>
-        <span><strong>Football Legacy</strong><small>Quick Play · 2026/27</small></span>
+        <span><strong>Football Legacy</strong><small>Quick Play</small></span>
       </a>
       <div class="mode-pill" id="modePill">Single Player</div>
     </header>
 
     <section class="hero">
       <div>
-        <span class="eyebrow">Standalone Match Setup</span>
+        <span class="eyebrow">Match Centre</span>
         <h1>Quick Play</h1>
-        <p>Choose both teams from the current English divisions, confirm the matchup, then set the stadium, kits and match conditions.</p>
+        <p>Build the match, check the controls and walk into the stadium. Use L1 and R1 to move through the setup carousel.</p>
       </div>
       <div class="season-card"><strong>2026/27</strong><span>Current-season snapshot</span></div>
     </section>
 
-    <nav class="step-tabs" aria-label="Quick Play setup steps">
+    <div class="carousel-shoulders" aria-hidden="true"><span><b>L1</b> Previous</span><strong id="carouselPosition">1 / 5</strong><span>Next <b>R1</b></span></div>
+    <nav class="step-tabs" aria-label="Quick Play setup carousel">
       <button class="step-tab active" data-step="teams" type="button"><span>1</span> Teams</button>
-      <button class="step-tab" data-step="management" type="button" disabled><span>2</span> Team Management</button>
-      <button class="step-tab" data-step="setup" type="button" disabled><span>3</span> Match Setup</button>
-      <button class="step-tab" data-step="confirm" type="button" disabled><span>4</span> Confirm</button>
+      <button class="step-tab" data-step="management" type="button"><span>2</span> Team Settings</button>
+      <button class="step-tab" data-step="setup" type="button"><span>3</span> Match Settings</button>
+      <button class="step-tab" data-step="controls" type="button"><span>4</span> Controls</button>
+      <button class="step-tab" data-step="confirm" type="button"><span>5</span> Match Preview</button>
     </nav>
 
     <section class="step-page active" data-page="teams">
@@ -64,7 +66,7 @@
       <div class="mode-note" id="modeNote"></div>
       <div class="page-actions">
         <a class="secondary-button" href="../index.html">Main Menu</a>
-        <button class="primary-button" id="confirmTeams" type="button">Confirm Teams</button>
+        <button class="primary-button" id="confirmTeams" type="button"><span class="button-glyph">×</span> Team Settings</button>
       </div>
     </section>
 
@@ -78,7 +80,7 @@
         <article class="management-panel"><header><span>Home</span><strong id="homeManagementTitle"></strong></header><label class="formation-field"><span>Formation</span><select id="homeFormation"></select></label><div class="tactic-controls" id="homeTactics"></div><div class="lineup-list" id="homeLineup"></div><div class="bench-list" id="homeBench"></div></article>
         <article class="management-panel"><header><span>Away</span><strong id="awayManagementTitle"></strong></header><label class="formation-field"><span>Formation</span><select id="awayFormation"></select></label><div class="tactic-controls" id="awayTactics"></div><div class="lineup-list" id="awayLineup"></div><div class="bench-list" id="awayBench"></div></article>
       </div>
-      <div class="page-actions"><button class="secondary-button" data-back="teams" type="button">Back to Team Selection</button><button class="primary-button" id="confirmManagement" type="button">Continue to Match Setup</button></div>
+      <div class="page-actions"><button class="secondary-button" data-back="teams" type="button">Back to Teams</button><button class="primary-button" id="confirmManagement" type="button"><span class="button-glyph">×</span> Match Settings</button></div>
     </section>
 
     <section class="step-page" data-page="setup">
@@ -91,11 +93,12 @@
         <article class="match-preview" id="setupMatchPreview"></article>
         <div class="settings-panel">
           <div class="settings-grid">
+            <label><span>Match Mode</span><select id="matchMode"><option value="single-player">Single Player</option><option value="free-kick-suite">Free Kick Practice</option><option value="co-op">Co-op / Local 2P</option><option value="home-co-op">Same-Team Co-op</option><option value="spectator">CPU vs CPU</option></select></label>
             <label><span>Stadium</span><select id="stadiumSelect"></select></label>
             <label><span>Match Time</span><select id="matchTime"><option value="afternoon">Afternoon</option><option value="evening">Evening</option><option value="night">Night</option></select></label>
             <label><span>Weather</span><select id="weather"><option value="clear">Clear</option><option value="overcast">Overcast</option><option value="rain">Rain</option></select></label>
-            <label><span>Match Length</span><select id="matchLength"><option value="4">4 minutes</option><option value="6" selected>6 minutes</option><option value="8">8 minutes</option><option value="10">10 minutes</option></select></label>
-            <label><span>Difficulty</span><select id="difficulty"><option value="amateur">Amateur</option><option value="semi-pro">Semi-Pro</option><option value="professional">Professional</option><option value="world-class">World Class</option><option value="legendary" selected>Legendary</option></select></label>
+            <label><span>Match Length</span><select id="matchLength"><option value="3">3 minutes</option><option value="4" selected>4 minutes</option><option value="6">6 minutes</option><option value="8">8 minutes</option><option value="10">10 minutes</option></select></label>
+            <label><span>Difficulty</span><select id="difficulty"><option value="amateur">Amateur</option><option value="semi-pro">Semi-Pro</option><option value="professional">Professional</option><option value="world-class">World Class</option><option value="legendary">Legendary</option><option value="ultimate" selected>Ultimate</option></select></label>
             <label><span>Camera</span><select id="camera"><option value="broadcast" selected>Broadcast</option><option value="classic">Classic</option><option value="dynamic">Dynamic</option><option value="tactical">Tactical Wide</option></select></label>
             <label><span id="homeKitLabel">Home Kit</span><select id="homeKit"><option value="home">Home</option><option value="away">Away</option><option value="third">Third</option></select></label>
             <label><span id="awayKitLabel">Away Kit</span><select id="awayKit"><option value="away" selected>Away</option><option value="home">Home</option><option value="third">Third</option></select></label>
@@ -107,8 +110,42 @@
 
       <div class="page-actions">
         <button class="secondary-button" data-back="management" type="button">Back to Team Management</button>
-        <button class="primary-button" id="confirmSetup" type="button">Confirm Match Setup</button>
+        <button class="primary-button" id="confirmSetup" type="button"><span class="button-glyph">×</span> Controller Layout</button>
       </div>
+    </section>
+
+    <section class="step-page" data-page="controls">
+      <div class="section-heading">
+        <div><span class="eyebrow">Controller Layout</span><h2>Match controls</h2></div>
+        <p>The same layout is used by both connected DualSense controllers. Local 2P places the pads on opposite sides; Same-Team Co-op shares Home. L1 and R1 continue through this setup carousel.</p>
+      </div>
+      <div class="controller-layout">
+        <div class="controller-silhouette" aria-label="DualSense-style controller diagram">
+          <div class="controller-centre"><span>OPTIONS</span><strong>FL</strong><small>Pause</small></div>
+          <div class="stick left-stick"><b>LS</b><span>Move</span></div>
+          <div class="stick right-stick"><b>RS</b><span>Skills</span></div>
+          <div class="face-buttons"><i class="triangle">△</i><i class="circle">○</i><i class="cross">×</i><i class="square">□</i></div>
+          <div class="shoulder left-shoulder"><b>L1</b><span>Switch</span></div>
+          <div class="shoulder right-shoulder"><b>R1</b><span>Modifier</span></div>
+        </div>
+        <div class="control-map">
+          <div><b>×</b><span>Pass · combine after ○ or □ for a fake shot</span></div>
+          <div><b>○</b><span>Shoot / standing tackle · double-tap for one shirt pull</span></div>
+          <div><b>□</b><span>Lob pass / slide tackle · aerial clear when defending</span></div>
+          <div><b>△</b><span>Through ball · L1 over the top · L2 stats-sensitive flair pass</span></div>
+          <div><b>R2</b><span>Analogue sprint</span></div>
+          <div><b>L2 + RS ↑/↓</b><span>Individual or chained stepovers (maximum six) · left stick selects the exit touch</span></div>
+          <div><b>○ / L2 + ○</b><span>Contextual header or volley / overhead or scissor attempt</span></div>
+          <div><b>L2 + □</b><span>Flair modifier for aerial clearances</span></div>
+          <div><b>R3</b><span>Flick the ball up</span></div>
+          <div><b>D↓</b><span>Contextual dive</span></div>
+          <div><b>D↑</b><span>In Free Kick Practice: place a free kick at the footballer's current position</span></div>
+          <div><b>L1+R1+□</b><span>Driven lob pass</span></div>
+          <div><b>OPTIONS</b><span>Pause and match tools</span></div>
+        </div>
+      </div>
+      <div class="controller-card" id="controllerLayoutStatus">Checking connected controllers…</div>
+      <div class="page-actions"><button class="secondary-button" data-back="setup" type="button">Back to Match Settings</button><button class="primary-button" id="confirmControls" type="button"><span class="button-glyph">×</span> Match Preview</button></div>
     </section>
 
     <section class="step-page" data-page="confirm">
@@ -116,12 +153,13 @@
         <div><span class="eyebrow">Ready to Play</span><h2>Final confirmation</h2></div>
         <p>Check both sides and the match settings before creating the shared match package.</p>
       </div>
+      <div class="stadium-preview" id="stadiumPreview"><div class="stadium-preview-shade"></div><div class="stadium-preview-copy"><span id="previewKickoff">Night · North London</span><strong id="previewStadiumName">North London</strong><small>Matchday</small></div></div>
       <article class="final-match-card" id="finalMatchCard"></article>
       <div class="summary-grid" id="summaryGrid"></div>
-      <div class="package-note">Start Match saves the complete setup under <code>footballLegacyPendingMatchDataV1</code>. The selected squads, lineups and kits will now be handed directly to the Quick Play match engine.</div>
+      <div class="package-note">Everything selected above will be carried into the match.</div>
       <div class="page-actions">
-        <button class="secondary-button" data-back="setup" type="button">Back to Setup</button>
-        <button class="primary-button" id="startMatch" type="button">Start Match</button>
+        <button class="secondary-button" data-back="controls" type="button">Back to Controls</button>
+        <button class="primary-button start-match-button" id="startMatch" type="button"><span class="button-glyph">×</span> Start Match</button>
       </div>
     </section>
 
@@ -136,14 +174,14 @@
       </div>
     </section>
 
-    <footer class="footer"><span>Football Legacy Quick Play</span><span>Single Player · Co-op · CPU Spectator · 2026/27 English divisions</span></footer>
+    <footer class="footer"><span>Football Legacy Quick Play</span><span><b>L1</b> Previous · <b>R1</b> Next · <b>×</b> Select · <b>○</b> Back</span></footer>
   </main>
   <script src="../career-mode/js/club-database.js"></script>
   <script src="../career-mode/js/original-names.js"></script>
   <script src="teams.js"></script>
   <script src="original-names.js"></script>
   <script src="historic-playtest-squads.js"></script>
-  <script src="app.js"></script>
-  <script src="../controller-ui.js"></script>
+  <script src="app.js?v=165-release"></script>
+  <script src="../controller-ui.js?v=165-release"></script>
 </body>
 </html>
