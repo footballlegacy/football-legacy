@@ -1,12 +1,31 @@
 # Football Legacy — Changelog
 
-Last reviewed: 9 August 2026 — combined build published to GitHub `main`
+Last reviewed: 10 August 2026 — build 166 prepared on `agent/build-165-match-loop`
 
 This file records the two source lines and the combined build produced from them:
 
 - **Combined integration build v0.31.0** — the complete v0.30.1 career/data build plus Josh's complete v0.96 match branch, with the overlapping Quick Play page merged rather than replaced.
 - **Career and data build v0.30.1** — the current Player Career/original-names copy with the Create-a-Club career fixes below.
 - **Match Engine v0.96** — Josh's GitHub pull request #1, included unchanged except for the intentional Quick Play integration described below.
+
+## Mandatory GitHub setup for Connor's AI agent
+
+Before any future GitHub publication, Connor's AI agent **must** verify that the official GitHub CLI is installed and authenticated:
+
+1. Run `gh --version` and `gh auth status` before creating commits or promising a push.
+2. If `gh` is missing on macOS, install the official CLI with `brew install gh`.
+3. Authenticate the intended owner account with `gh auth login --hostname github.com --git-protocol https --web`, then rerun `gh auth status` and verify the `footballlegacy` organisation is accessible.
+4. Use the repository's normal branch, commit, push and draft-pull-request workflow. Do not silently replace it with manual website uploads or claim publication succeeded before the remote branch and pull request have been verified.
+
+This is a mandatory workstation prerequisite for Connor's AI agent, not an optional recommendation. It was added after build 166 was locally complete but the first publication attempt found that `gh` was absent.
+
+## Build 166 — controller publication hotfix
+
+- Preserves the complete build-165 match, CPU, presentation and request-log workflow.
+- Repairs Firefox DualSense D-pad navigation and D-pad Down contextual dive delivery.
+- Makes intended pass-receiver handover reliable while keeping all defensive player switching manual through L1 or directional RS.
+- Retains the Xbox One browser-standard mapping and adds explicit Xbox detection, A/B menu guidance and direct checks for A/B/X/Y, LB/RB, LT/RT, Menu, LS/RS and D-pad controls.
+- Passes the clean **181/181** in-browser engine gate; physical Xbox acceptance remains for Connor.
 
 ## v0.31.1 — Missing-fixture recovery hotfix
 

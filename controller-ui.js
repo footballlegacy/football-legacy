@@ -95,6 +95,7 @@
     hint.textContent=message||'D-pad / Left stick · Navigate    × · Select    ○ · Back';hint.classList.add('show');clearTimeout(hintTimer);hintTimer=setTimeout(()=>hint.classList.remove('show'),4200);
   };
   const isDualSenseDevice=gp=>!!gp&&/(dual\s?sense|ps5|(?:0?54c)[-:]0?ce6|wireless controller.*extended gamepad)/i.test(gp.id||'');
+  const isXboxDevice=gp=>!!gp&&/(xbox|xinput|microsoft.*(?:controller|gamepad)|(?:0?45e)[-:](?:0?2d1|0?2dd|0?2ea|0?2fd|0?b12|0?b13))/i.test(gp.id||'');
   const isRawDualSense=gp=>isDualSenseDevice(gp)&&gp.mapping!=='standard';
   const rawDualSenseButton={0:1,1:2,2:0,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,11:11};
   const rawDualSenseDpad=(gp,index)=>{
@@ -133,8 +134,8 @@
     #controllerUiHint{position:fixed;right:16px;bottom:16px;z-index:99999;max-width:calc(100% - 32px);padding:9px 13px;border:1px solid rgba(232,120,36,.65);border-left:4px solid #e87824;background:rgba(3,16,31,.95);color:#f7f1e7;font:800 11px/1.35 Arial,sans-serif;letter-spacing:.07em;text-transform:uppercase;opacity:0;transform:translateY(8px);pointer-events:none;transition:.16s}#controllerUiHint.show{opacity:1;transform:none}`;document.head.appendChild(style);
   enhanceSelects(document);
   new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(enhanceSelects))).observe(document.documentElement,{childList:true,subtree:true});
-  addEventListener('gamepadconnected',()=>{controllerMode=true;ensureFocus();showHint('Controller connected · D-pad / Left stick to navigate');});
+  addEventListener('gamepadconnected',event=>{controllerMode=true;ensureFocus();showHint(isXboxDevice(event.gamepad)?'Xbox controller connected · D-pad / Left stick navigate · A select · B back':'DualSense connected · D-pad / Left stick navigate · × select · ○ back');});
   addEventListener('pointerdown',()=>{controllerMode=false;document.body.classList.remove('controller-navigation');clearFocus();},{passive:true});
   addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Escape'].includes(e.key)){controllerMode=false;document.body.classList.remove('controller-navigation');}});
-  window.FootballLegacyControllerUI={focus:()=>ensureFocus(),navigate,activate,back,debugGamepadDirection:gp=>directionFor(gp),debugSelectSteppers:()=>({selects:document.querySelectorAll('select').length,enhanced:document.querySelectorAll('.controller-select-stepper>select').length,visibleArrows:[...document.querySelectorAll('.controller-select-arrow')].filter(visible).length})};requestAnimationFrame(poll);
+  window.FootballLegacyControllerUI={focus:()=>ensureFocus(),navigate,activate,back,debugGamepadDirection:gp=>directionFor(gp),debugGamepadContract:gp=>({xbox:isXboxDevice(gp),dualSense:isDualSenseDevice(gp),standard:gp&&gp.mapping==='standard',select:pressed(gp,0),back:pressed(gp,1),dpadDown:pressed(gp,13),direction:directionFor(gp)}),debugSelectSteppers:()=>({selects:document.querySelectorAll('select').length,enhanced:document.querySelectorAll('.controller-select-stepper>select').length,visibleArrows:[...document.querySelectorAll('.controller-select-arrow')].filter(visible).length})};requestAnimationFrame(poll);
 })();
