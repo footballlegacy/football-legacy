@@ -1,6 +1,6 @@
 # Football Legacy — Changelog
 
-Last reviewed: 10 August 2026 — build 168 prepared on `agent/build-168-online-versus`
+Last reviewed: 10 August 2026 — build 169 prepared on `agent/build-169-online-menu-hotfix`
 
 This file records the two source lines and the combined build produced from them:
 
@@ -18,6 +18,18 @@ Before any future GitHub publication, Connor's AI agent **must** verify that the
 4. Use the repository's normal branch, commit, push and draft-pull-request workflow. Do not silently replace it with manual website uploads or claim publication succeeded before the remote branch and pull request have been verified.
 
 This is a mandatory workstation prerequisite for Connor's AI agent, not an optional recommendation. It was added after build 166 was locally complete but the first publication attempt found that `gh` was absent.
+
+## Build 169 — Online controller and Start hotfix
+
+- Repairs the published Online shell's missing controller navigation. Host, Join, Cancel and retry screens now use the shared DualSense/Xbox menu system.
+- Makes the top-level Online page the single source for local controller discovery during setup, then bridges normalised D-pad/left-stick, Cross/A, Circle/B and L1/LB/R1/RB input into the Quick Play iframe.
+- Prevents duplicate input by suspending the outer controller menu while the iframe owns setup and disabling the iframe's unreliable physical-pad poll in favour of the bridged packet.
+- Uses the top-level controller-presence result for Away readiness, so an iframe that reports no gamepads no longer leaves **Ready/Start** permanently disabled.
+- Moves controller focus to the active page's Continue/Start action after every carousel change instead of retaining focus on a still-visible tab.
+- When Away is already ready, the host's visible **Start Online Match** action now readies Home and launches with the same Cross/A press.
+- The exact published failure was reproduced and passed with the controller exposed only to the outer page: Xbox and DualSense packets moved through all five stages, Away readied, and one host activation opened the match. A final disabled-to-enabled focus gate also covers Home reaching Match Preview before Away connects. The dedicated static gate passes **13/13**, the focused regression suites pass **16/16**, and the match engine remains **184/184**.
+- Removes the synthetic acceptance hook before publication and changes no locomotion, CPU tactics, positional contracts, physics, shooting, defending, goalkeeper, animation, stadium, FLARE, replay, free-kick or difficulty values.
+- Physical Chrome/Firefox DualSense, Connor Xbox One and real two-Mac internet acceptance remain mandatory.
 
 ## Build 168 — Online Versus prototype
 

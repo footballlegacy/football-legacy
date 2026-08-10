@@ -1,8 +1,22 @@
-# Football Legacy request log — build 168 Online Versus truth
+# Football Legacy request log — build 169 Online controller truth
 
-Updated 10 August 2026 after adding a separate friends-only Online Versus route and passing a clean **184/184** autonomous gate. Josh's current locomotion verdict remains explicit: “the game, the running, it feels amazing now. amazing.” This remains a playable development base and an early online prototype, not a claim that Josh has accepted every animation, control feel or art-direction choice or that the network route has passed its required two-Mac internet test.
+Updated 10 August 2026 after repairing the published Online controller/setup blocker and retaining the clean **184/184** autonomous engine gate. Josh's current locomotion verdict remains explicit: “the game, the running, it feels amazing now. amazing.” This remains a playable development base and an early online prototype, not a claim that Josh has accepted every animation, control feel or art-direction choice or that the network route has passed its required two-Mac internet test.
 
 This log deliberately separates **code presence** from **playtest proof**. Josh's existing comments below remain the human acceptance authority; a browser check or CPU simulation cannot silently overwrite them.
+
+## Build 169 — published Online controller blocker
+
+Josh's first hosted test found that the mouse could traverse the Online Quick Play setup but the controller could not move between sections and the final **Start Match** action did not respond. The fault was in the Online wrapper, not the established match controls:
+
+- **Outer shell repaired:** the Online Host/Join/Cancel/retry screens now load the shared DualSense/Xbox controller-navigation system, with Host as the initial controller target.
+- **One controller authority during setup:** the top-level Online page discovers the physical pad and sends its normalised menu packet to the embedded Quick Play screen. The child no longer depends on browser-specific iframe gamepad visibility or polls the same pad a second time.
+- **Readiness repaired:** Away controller presence comes from the top-level observation. An empty `navigator.getGamepads()` inside the iframe therefore cannot permanently disable Ready/Start.
+- **Focus repaired:** every Quick Play section has an explicit controller-default Continue/Start action, carousel changes actively move focus into the current page, and a Start button that becomes enabled after Away connects takes controller focus instead of leaving Cross/A on a persistent step tab.
+- **Launch repaired:** once Away is ready, one host Cross/A on **Start Online Match** both confirms Home and launches. The parent launch route itself was already correct.
+- **Direct reproduction:** a two-client test deliberately exposed Xbox/DualSense input only to the outer pages while the Quick Play iframes had no physical controller. R1/RB changed stages exactly once, Cross/A advanced the focused actions, Away readied, and one Home activation opened Arsenal Invincibles v Conte Chelsea in the match engine.
+- **Gates:** the dedicated source contract passes **13/13**, the focused original-name/Player Career regressions pass **16/16**, and the unchanged match engine passes **184/184** with zero failures.
+- **Acceptance still required:** Josh should verify the repaired hosted build with his wired DualSense; Connor should verify Xbox One. The existing real two-Mac/NAT/audio/video test remains mandatory.
+- **Scope preserved:** this is an Online menu/input/readiness hotfix only. It removes no request-log workflow and changes no locomotion, CPU, positional, physics, finishing, defending, goalkeeper, animation, stadium, FLARE, replay, free-kick or difficulty values.
 
 ## Build 168 — Online Versus prototype
 

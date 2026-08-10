@@ -1,4 +1,4 @@
-# Football Legacy — Build 168 Online Versus prototype
+# Football Legacy — Build 169 Online controller hotfix
 
 Football Legacy is a browser football game prototype with Quick Play, local controller multiplayer, an early friends-only Online Versus mode, creation tools, Career Mode and Grassroots to Glory.
 
@@ -13,7 +13,9 @@ Online Versus must be launched from the hosted HTTPS version:
 3. One player chooses **Host** and sends the displayed room code to the other player.
 4. The other player chooses **Join**, enters the room code and occupies the Away slot. The host occupies Home.
 5. Each player chooses their own team, lineup, tactics and kit. The host chooses the shared match settings.
-6. Both players select **Ready**. The host then starts the match.
+6. The Away player selects **Ready**. When Away is ready, the host presses **Start Online Match** once to ready Home and launch.
+
+The Online shell and all five setup stages support D-pad/left-stick navigation, Cross/A selection, Circle/B back, and L1/LB or R1/RB carousel movement.
 
 Match sound starts on. If Chrome or Firefox requests a first interaction, click **Enable match sound** once. After that, pause the match and use **Match sound** to mute or restore audio.
 
