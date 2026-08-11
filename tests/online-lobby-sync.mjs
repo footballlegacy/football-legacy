@@ -20,11 +20,7 @@ const productionCheck = (condition, message) => {
 };
 
 check(onlineApp.includes("const BUILD='172'"), 'Peers must share the lobby-sync build');
-check(onlineApp.includes("const PROTOCOL='football-legacy-online-v2'"), 'The controller bridge must use an incompatible peer protocol');
-check(onlineApp.includes("const RELEASE='172-controller-launch-6'"), 'The public build must expose an exact controller release');
-check(onlineApp.includes("const PEER_PREFIX='football-legacy-172-controller-launch-6-'"), 'Old and new peer rooms must not mix');
-check(onlineApp.includes('metadata.release!==RELEASE'), 'Incoming peer and media handshakes must reject a different release');
-check(onlineApp.includes('message.release!==RELEASE'), 'Every open peer link must keep validating the exact release');
+check(onlineApp.includes("const PEER_PREFIX='football-legacy-172-'"), 'Old and new peer rooms must not mix');
 check(onlineApp.includes('peerConnected:!!(connection&&connection.open),connectionEpoch'), 'Continuous lobby packets must carry peer truth and epoch');
 check(onlineApp.includes('lastPongAt>24000'), 'A short browser stall must not kill the room');
 check(onlineApp.includes('existingHealthy=connection.open&&Date.now()-lastPongAt<9000'), 'A stale host connection must be replaceable');
@@ -40,8 +36,8 @@ check(quickApp.includes('reconcileOnlineConnection(data&&data.peerConnected,data
 check(quickApp.includes('getProtocolTrace:()=>onlineProtocolTrace.slice()'), 'Lobby protocol telemetry must be inspectable');
 check(!quickApp.match(/function applyOnlineSide\([^\n]+remoteReady=false/), 'Team replication must not silently erase Ready state');
 check(!quickApp.match(/function applyOnlineSettings\([^\n]+remoteReady=false/), 'Settings replication must not silently erase Ready state');
-check(onlineHtml.includes('app.js?v=172-controller-launch-6'), 'Online shell must bypass the old cached parent script');
-check(quickHtml.includes('app.js?v=172-controller-launch-6'), 'Quick Play must bypass the old cached lobby script');
+check(onlineHtml.includes('app.js?v=172-online-quality-1'), 'Online shell must bypass the old cached parent script');
+check(quickHtml.includes('app.js?v=172-online-quality-1'), 'Quick Play must bypass the old cached lobby script');
 
 class ReadyPeer {
   constructor(side) {
@@ -111,68 +107,9 @@ productionCheck(/message\.type==='launch-commit'&&role==='guest'[\s\S]{0,260}que
 productionCheck(/connection=conn;\s*connectionPending=true;[\s\S]{0,260}disconnectHandled=false;[\s\S]{0,500}conn\.on\('open'/.test(onlineApp), 'Every accepted DataConnection must reset its disconnect guard before it can fail during opening');
 productionCheck(/pendingLaunch\.phase==='proposal'&&Date\.now\(\)-pendingLaunch\.startedAt>12000[\s\S]{0,380}launchPacket\('launch-cancel',cancelled\)[\s\S]{0,300}clearLaunchHandshake/.test(onlineApp), 'A proposal timeout must send launch-cancel before abandoning the safe pre-commit transaction');
 productionCheck(/if\(pendingLaunch\.phase==='proposal'&&Date\.now\(\)-pendingLaunch\.startedAt>12000\)/.test(onlineApp) && !/if\(Date\.now\(\)-pendingLaunch\.startedAt>12000\)/.test(onlineApp), 'Commit retry must not inherit the proposal timeout and strand one player after a delivered commit');
-productionCheck(/transaction-suspended/.test(onlineApp) && /transaction-resumed/.test(onlineApp), 'A transient disconnect must suspend and resume the same launch transaction');
-productionCheck(/role==='host'&&!matchStarted&&pendingLaunch[\s\S]{0,260}transmitPendingLaunch\(\)/.test(onlineApp), 'A replacement peer link must immediately resume either pending launch phase');
-productionCheck(/preserveLaunch=onlineState\.launchRequested&&!!onlineState\.launchId[\s\S]{0,360}!preserveLaunch/.test(quickApp), 'The setup child must retain its accepted launch identity and Ready revisions across transient reconnect');
 productionCheck(/const ownHome=ONLINE_OWNED_SIDE==='home',launchLocked=onlineState\.launchRequested/.test(quickApp) && (quickApp.match(/launchLocked\|\|/g)||[]).length>=4, 'Team, tactics, kit and shared settings controls must lock while a launch transaction is in flight');
 productionCheck(/function onlineLocalChange\(target\)\{\s*if\(!ONLINE\|\|onlineState\.applyingRemote\|\|onlineState\.launchRequested\)return/.test(quickApp), 'Programmatic or late change events must not mutate configuration while launch is in flight');
 productionCheck(/!onlineState\.launchRequested\|\|onlineState\.launchId===message\.launchId/.test(quickApp), 'Away must reject a different concurrent proposal while retaining the accepted launch identity');
-
-const reconcileStart = quickApp.indexOf('function reconcileOnlineConnection(connected,epoch){');
-const reconcileEnd = quickApp.indexOf('function handleOnlineMenuInput(data){', reconcileStart);
-check(reconcileStart >= 0 && reconcileEnd > reconcileStart, 'The live connection reconciler must remain directly testable');
-const reconcileSource = quickApp.slice(reconcileStart, reconcileEnd);
-const createReconciler = new Function(
-  'onlineState', 'ONLINE_OWNED_SIDE', 'ONLINE_ROLE', 'invalidateOnlineLobby', 'traceOnline',
-  'updateOnlineReadyUI', 'requestAnimationFrame', 'onlineBroadcastCurrent',
-  `${reconcileSource}; return reconcileOnlineConnection;`,
-);
-const preservedState = {
-  connected: true,
-  connectionEpoch: 1,
-  launchRequested: true,
-  launchId: 'launch-preserve',
-  sideRevisions: { home: 0, away: 0 },
-  settingsRevision: 0,
-  ownReady: true,
-  remoteReady: true,
-  ownReadyVersion: 'ROOM|0:0:0',
-  remoteReadyVersion: 'ROOM|0:0:0',
-  ownReadyRevision: 1,
-  remoteReadyRevision: 1,
-  readyAckRevision: 1,
-};
-let preserveInvalidations = 0;
-const reconcilePreserved = createReconciler(
-  preservedState, 'away', 'guest', () => { preserveInvalidations += 1; }, () => {}, () => {},
-  callback => { callback(); return 1; }, () => {},
-);
-reconcilePreserved(false, 1);
-reconcilePreserved(true, 2);
-check(
-  preserveInvalidations === 0 && preservedState.launchId === 'launch-preserve' &&
-    preservedState.ownReady && preservedState.remoteReady && preservedState.settingsRevision === 0 &&
-    preservedState.sideRevisions.home === 0,
-  'Away must retain the accepted launch identity, Ready state and exact revisions through disconnect and replacement',
-);
-const ordinaryState = {
-  connected: true,
-  connectionEpoch: 1,
-  launchRequested: false,
-  launchId: null,
-  sideRevisions: { home: 0, away: 0 },
-  settingsRevision: 0,
-};
-let ordinaryInvalidations = 0;
-const reconcileOrdinary = createReconciler(
-  ordinaryState, 'away', 'guest', () => { ordinaryInvalidations += 1; }, () => {}, () => {},
-  callback => { callback(); return 1; }, () => {},
-);
-reconcileOrdinary(false, 1);
-check(
-  ordinaryInvalidations === 1 && ordinaryState.sideRevisions.home === -1 && ordinaryState.settingsRevision === -1,
-  'An ordinary non-launch disconnect must still invalidate stale peer revisions',
-);
 
 class LobbyPeer {
   constructor(side) {

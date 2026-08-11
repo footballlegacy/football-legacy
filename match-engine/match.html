@@ -102,7 +102,7 @@
 <output id="automationTelemetry" hidden aria-hidden="true"></output>
 <div id="errorBox"></div>
 
-<script src="vendor/three.min.js?v=r128-local-2"></script>
+<script src="vendor/three.min.js?v=r128-local"></script>
 <script src="instant-result.js"></script>
 <script>if(!window.THREE){document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')}</script>
 <script>
@@ -116,14 +116,9 @@
   const ONLINE_HOST=ONLINE_ROLE==='host';
   const ONLINE_PARENT_ORIGIN=location.origin==='null'?'*':location.origin;
   const ONLINE_REMOTE_INPUT_TIMEOUT=1600;
-  const ONLINE_LOCAL_INPUT_TIMEOUT=1600;
-  let onlineRemotePad=null,onlineRemotePadAt=0,onlineLocalPad=null,onlineLocalPadAt=0,onlinePausedForRemote=false,onlineNativePadSampleJson='',onlineNativePadSampleSentAt=0;
-  function normaliseOnlinePad(pad,fallbackId){if(!pad||!Array.isArray(pad.axes)||!Array.isArray(pad.buttons))return null;return{index:99,id:String(pad.id||fallbackId).slice(0,160),mapping:String(pad.mapping||''),connected:true,axes:pad.axes.slice(0,10).map(value=>clamp(Number(value)||0,-1,1)),buttons:pad.buttons.slice(0,20).map(button=>({pressed:!!(button&&button.pressed),value:clamp(Number(button&&button.value)||0,0,1)}))}}
-  function acceptOnlineRemotePad(pad){if(!pad){onlineRemotePad=null;onlineRemotePadAt=0;return true}const next=normaliseOnlinePad(pad,'Remote online controller');if(!next)return false;onlineRemotePad=next;onlineRemotePadAt=performance.now();return true}
-  function acceptOnlineLocalPad(pad){if(!pad){onlineLocalPad=null;onlineLocalPadAt=0;return true}const next=normaliseOnlinePad(pad,'Local online controller');if(!next)return false;onlineLocalPad=next;onlineLocalPadAt=performance.now();return true}
-  function serialiseOnlineNativePad(gamepad){if(!gamepad)return null;return{index:Number.isInteger(gamepad.index)?gamepad.index:0,id:String(gamepad.id||'Local gamepad').slice(0,160),mapping:String(gamepad.mapping||''),connected:gamepad.connected!==false,axes:Array.from(gamepad.axes||[]).slice(0,10).map(value=>+clamp(Number(value)||0,-1,1).toFixed(3)),buttons:Array.from(gamepad.buttons||[]).slice(0,20).map(button=>({pressed:!!(button&&(button.pressed||button.value>.5)),value:+clamp(Number(button&&button.value)||0,0,1).toFixed(3)}))}}
-  function postOnlineNativeGamepadSample(gamepad,now=performance.now(),force=false){if(!ONLINE_HOST||window.parent===window)return;const pad=serialiseOnlineNativePad(gamepad),json=JSON.stringify(pad);if(!force&&json===onlineNativePadSampleJson&&now-onlineNativePadSampleSentAt<250)return;onlineNativePadSampleJson=json;onlineNativePadSampleSentAt=now;parent.postMessage({source:'football-legacy-online-child',type:'gamepad-sample',context:'match',role:'host',pad,connected:!!pad,sampledAt:now},ONLINE_PARENT_ORIGIN)}
-  addEventListener('message',event=>{const data=event.data;if(!ONLINE_HOST||event.source!==parent||(ONLINE_PARENT_ORIGIN!=='*'&&event.origin!==ONLINE_PARENT_ORIGIN)||!data||data.source!=='football-legacy-online-parent')return;if(data.type==='remote-input')acceptOnlineRemotePad(data.pad);else if(data.type==='local-input')acceptOnlineLocalPad(data.pad)});
+  let onlineRemotePad=null,onlineRemotePadAt=0,onlinePausedForRemote=false;
+  function acceptOnlineRemotePad(pad){if(!pad){onlineRemotePad=null;onlineRemotePadAt=0;return true}if(!Array.isArray(pad.axes)||!Array.isArray(pad.buttons))return false;onlineRemotePad={index:99,id:String(pad.id||'Remote online controller').slice(0,160),mapping:String(pad.mapping||''),connected:true,axes:pad.axes.slice(0,10).map(value=>clamp(Number(value)||0,-1,1)),buttons:pad.buttons.slice(0,20).map(button=>({pressed:!!(button&&button.pressed),value:clamp(Number(button&&button.value)||0,0,1) }))};onlineRemotePadAt=performance.now();return true}
+  addEventListener('message',event=>{const data=event.data;if(!ONLINE_HOST||event.source!==parent||(ONLINE_PARENT_ORIGIN!=='*'&&event.origin!==ONLINE_PARENT_ORIGIN)||!data||data.source!=='football-legacy-online-parent'||data.type!=='remote-input')return;acceptOnlineRemotePad(data.pad)});
   const RECOVER_PLAYTEST=query.get('recoverPlaytest')==='1';let recoveredPlaytest=null;if(RECOVER_PLAYTEST){try{const candidate=JSON.parse(localStorage.getItem('footballLegacyLastPlaytestLogV2')||'null');if(candidate&&candidate.playtestId&&Array.isArray(candidate.events)&&Array.isArray(candidate.annotations))recoveredPlaytest=candidate;}catch(error){}}
   const FORCE_SINGLE_CONTROLLER=query.get('singleController')==='1'||query.get('controllerTest')==='1';
   function encodeMatchPayload(value){const bytes=new TextEncoder().encode(JSON.stringify(value));let binary='';for(let offset=0;offset<bytes.length;offset+=16384)binary+=String.fromCharCode(...bytes.subarray(offset,offset+16384));return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
@@ -757,7 +752,7 @@
   }
   function pollGamepad(){
     if(typeof navigator.getGamepads!=='function'){updateGamepadHint();return;}let pads;try{pads=Array.from(navigator.getGamepads()||[]).filter(g=>g&&g.connected!==false).sort((a,b)=>a.index-b.index);}catch(e){updateGamepadHint();return;}
-    const now=performance.now(),nativeGp1=pads[0]||null,gp2=pads[1]||null,localFresh=ONLINE_HOST&&onlineLocalPad&&now-onlineLocalPadAt<ONLINE_LOCAL_INPUT_TIMEOUT,gp1=localFresh?onlineLocalPad:nativeGp1,remoteFresh=ONLINE_HOST&&onlineRemotePad&&now-onlineRemotePadAt<ONLINE_REMOTE_INPUT_TIMEOUT,boundGp2=ONLINE_HOST?(remoteFresh?onlineRemotePad:null):(FORCE_SINGLE_CONTROLLER||!SECOND_CONTROLLER_REQUESTED?null:gp2);if(ONLINE_HOST)postOnlineNativeGamepadSample(nativeGp1,now);const p1Changed=gamepadInput.index!==(gp1&&gp1.index),p2Changed=gamepadInput2.index!==(boundGp2&&boundGp2.index);
+    const gp1=pads[0]||null,gp2=pads[1]||null,remoteFresh=ONLINE_HOST&&onlineRemotePad&&performance.now()-onlineRemotePadAt<ONLINE_REMOTE_INPUT_TIMEOUT,boundGp2=ONLINE_HOST?(remoteFresh?onlineRemotePad:null):(FORCE_SINGLE_CONTROLLER||!SECOND_CONTROLLER_REQUESTED?null:gp2);const p1Changed=gamepadInput.index!==(gp1&&gp1.index),p2Changed=gamepadInput2.index!==(boundGp2&&boundGp2.index);
     if(ONLINE_HOST&&started&&!matchOver){if(!remoteFresh&&!paused){paused=true;onlinePausedForRemote=true;showEvent('AWAY CONTROLLER DISCONNECTED · MATCH PAUSED',1000);}else if(remoteFresh&&onlinePausedForRemote){paused=false;onlinePausedForRemote=false;showEvent('AWAY CONTROLLER RECONNECTED',850);}}
     bindPadState(gamepadInput,gp1,false);bindPadState(gamepadInput2,boundGp2,true);setTwoPlayerEnabled(!!boundGp2);pollBoundPad(gamepadInput,gp1,false);if(twoPlayerEnabled)pollBoundPad(gamepadInput2,boundGp2,true);
     if(p1Changed||p2Changed)updateGamepadHint();
