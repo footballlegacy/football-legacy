@@ -223,12 +223,13 @@ function reconcileOnlineConnection(connected,epoch){
   if(!epochChanged&&!connectionChanged)return false;
   onlineState.connectionEpoch=nextEpoch;
   onlineState.connected=nextConnected;
-  if(epochChanged||!nextConnected){
+  const preserveLaunch=onlineState.launchRequested&&!!onlineState.launchId;
+  if((epochChanged||!nextConnected)&&!preserveLaunch){
     const remoteSide=ONLINE_OWNED_SIDE==='home'?'away':'home';
     onlineState.sideRevisions[remoteSide]=-1;
     if(ONLINE_ROLE==='guest')onlineState.settingsRevision=-1;
     invalidateOnlineLobby('connection-epoch',false);
-  }
+  }else if(preserveLaunch)traceOnline('launch-connection-preserved',{launchId:onlineState.launchId,nextConnected,epochChanged});
   traceOnline('connection',{nextConnected,epochChanged});
   updateOnlineReadyUI();
   if(nextConnected)requestAnimationFrame(onlineBroadcastCurrent);

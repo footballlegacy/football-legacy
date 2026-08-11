@@ -51,14 +51,15 @@ class FakeElement {
   setSelectionRange(){}
 }
 
-function createHarness({dropFirstMatchNavigation=false,matchError='' }={}){
+function createHarness({dropFirstMatchNavigation=false,matchError='',search='' }={}){
   const elements=new Map();
   const node=id=>{if(!elements.has(id))elements.set(id,new FakeElement(id));return elements.get(id)};
   for(const id of ['entryScreen','waitingScreen','gameStage','gameFrame','guestStage','matchVideo','videoGate','guestMessage','connectionPill','networkStatus','networkRole','networkLatency','roomCodeBlock','roomCode','waitingEyebrow','waitingTitle','waitingCopy','joinForm','roomInput','fatalCard','fatalTitle','fatalCopy','remoteEvent','remoteOfficial','remoteVar','remoteSetPiece','remotePlayerCard','remotePowerFill','remotePowerIdeal','remoteStateOverlay','hostButton','showJoinButton','copyCode','cancelButton','retryButton'])node(id);
   node('waitingScreen').hidden=node('gameStage').hidden=node('guestStage').hidden=node('joinForm').hidden=node('fatalCard').hidden=true;
 
-  const location={href:'https://example.test/football-legacy/online/index.html',origin:'https://example.test',search:''};
-  const frame=node('gameFrame'),frameError={textContent:''},replacements=[];
+  const location={href:`https://example.test/football-legacy/online/index.html${search}`,origin:'https://example.test',search};
+  const frame=node('gameFrame'),frameError={textContent:''},replacements=[],childMessages=[];
+  frame.contentWindow.postMessage=message=>childMessages.push(message);
   const videoTrack={stopped:false,stop(){this.stopped=true}};
   const stream={getVideoTracks:()=>[videoTrack],getAudioTracks:()=>[],getTracks:()=>[videoTrack]};
   let assignedFrameSrc='',dropped=false;
@@ -83,9 +84,10 @@ function createHarness({dropFirstMatchNavigation=false,matchError='' }={}){
   const intervals=new Map(),timeouts=new Map(),globalListeners=new Map(),peers=[];
   let timerId=0;
   class FakePeer extends Emitter {
-    constructor(id){super();this.id=id;this.destroyed=false;this.calls=[];peers.push(this)}
+    constructor(id){super();this.id=id;this.destroyed=false;this.calls=[];this.connections=[];peers.push(this)}
     reconnect(){}
     destroy(){this.destroyed=true}
+    connect(peer,options){const connection=new FakeConnection(peer,options.metadata);this.connections.push(connection);return connection}
     call(peer,media,options){this.calls.push({peer,media,options});return new FakeCall()}
   }
   const context={
@@ -108,7 +110,7 @@ function createHarness({dropFirstMatchNavigation=false,matchError='' }={}){
   };
   context.window=context;
   vm.runInNewContext(onlineApp,context,{filename:'online/app.js'});
-  return{context,node,frame,frameError,replacements,intervals,peers,globalListeners};
+  return{context,node,frame,frameError,replacements,childMessages,intervals,peers,globalListeners};
 }
 
 function windowMessage(h,data){for(const listener of h.globalListeners.get('message')||[])listener({source:h.frame.contentWindow,origin:h.context.location.origin,data})}
@@ -162,6 +164,27 @@ replacementLaunchConnection.emit('data',{protocol,build,release,type:'launch-com
 replacementLaunchConnection.emit('data',{protocol,build,release,type:'launch-committed',...reconnectLaunch});
 assert.equal(launchReconnect.context.FLOnlineDebug.getState().matchStarted,true,'Home must start after Away re-acknowledges the resumed commit');
 assert.equal(launchReconnect.context.FLOnlineDebug.getProtocolTrace().filter(row=>row.type==='host-committed').length,1,'A resumed launch must start Home exactly once');
+
+const guestLaunchReconnect=createHarness({search:'?join=ABCDE-FGHIJ'});
+guestLaunchReconnect.node('joinForm').dispatch('submit');
+const guestPeer=guestLaunchReconnect.peers.at(-1);
+guestPeer.emit('open');
+const firstGuestConnection=guestPeer.connections.at(-1);
+firstGuestConnection.emit('open');
+windowMessage(guestLaunchReconnect,{source:'football-legacy-online-child',type:'child-ready'});
+const guestReconnectLaunch={launchId:'launch-guest-reconnect',lobbyVersion:'ABCDE-FGHIJ|0:0:0',configRevision:'0:0:0',homeName:'HOME',awayName:'AWAY'};
+firstGuestConnection.emit('data',{protocol,build,release,type:'launch-proposal',...guestReconnectLaunch});
+windowMessage(guestLaunchReconnect,{source:'football-legacy-online-child',type:'send',message:{type:'launch-ack',...guestReconnectLaunch}});
+assert.equal(firstGuestConnection.sent.find(message=>message.type==='launch-ack')?.launchId,guestReconnectLaunch.launchId,'Away must accept the launch proposal before the simulated link loss');
+firstGuestConnection.emit('close');
+tickIntervals(guestLaunchReconnect,1800);
+const replacementGuestConnection=guestPeer.connections.at(-1);
+replacementGuestConnection.emit('open');
+replacementGuestConnection.emit('data',{protocol,build,release,type:'launch-commit',...guestReconnectLaunch});
+assert.equal(guestLaunchReconnect.childMessages.at(-1)?.message?.type,'launch-commit','Away must forward the resumed commit to the still-accepted setup transaction');
+windowMessage(guestLaunchReconnect,{source:'football-legacy-online-child',type:'send',message:{type:'launch-commit-ack',...guestReconnectLaunch}});
+assert.equal(replacementGuestConnection.sent.find(message=>message.type==='launch-committed')?.launchId,guestReconnectLaunch.launchId,'Away must confirm the resumed launch commit after reconnect');
+assert.equal(guestLaunchReconnect.context.FLOnlineDebug.getState().matchStarted,true,'Away must enter the match after the recovered commit');
 
 const recovery=createHarness({dropFirstMatchNavigation:true});
 const recoveryLaunch=startCommittedHost(recovery);

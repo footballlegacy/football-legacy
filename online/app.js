@@ -2,8 +2,8 @@
 (() => {
   const PROTOCOL='football-legacy-online-v2';
   const BUILD='172';
-  const RELEASE='172-controller-launch-5';
-  const PEER_PREFIX='football-legacy-172-controller-launch-5-';
+  const RELEASE='172-controller-launch-6';
+  const PEER_PREFIX='football-legacy-172-controller-launch-6-';
   const TARGET_ORIGIN=location.origin==='null'?'*':location.origin;
   const $=id=>document.getElementById(id);
   const ui={
@@ -231,12 +231,18 @@
       lastPongAt=Date.now();
       traceProtocol('connection','open',{peer:conn.peer});
       setConnection('connected',matchStarted?'Match link restored':'Opponent connected');
-      if(!matchStarted&&(ui.stage.hidden||!childReady))loadLobby();
+      const preserveLaunchFrame=!matchStarted&&childReady&&!!(pendingLaunch||proposedGuestLaunch||acceptedGuestLaunch);
+      if(preserveLaunchFrame){
+        showOnly(ui.stage);
+        ui.guestStage.hidden=true;
+        ui.frame.hidden=false;
+        traceProtocol('launch','setup-frame-preserved',{role});
+      }else if(!matchStarted&&(ui.stage.hidden||!childReady))loadLobby();
       queueChild({type:'connection',connected:true,role,roomCode,connectionEpoch});
       send({type:'hello',role,roomCode});
       startHeartbeat();
-      if(role==='host'&&!matchStarted&&pendingLaunch?.phase==='commit'){
-        traceProtocol('launch','commit-resumed',{launchId:pendingLaunch.launchId});
+      if(role==='host'&&!matchStarted&&pendingLaunch){
+        traceProtocol('launch','transaction-resumed',{launchId:pendingLaunch.launchId,phase:pendingLaunch.phase});
         clearInterval(launchTimer);
         launchTimer=setInterval(transmitPendingLaunch,500);
         transmitPendingLaunch();
@@ -309,13 +315,8 @@
     if(pendingLaunch){
       clearInterval(launchTimer);
       launchTimer=null;
-      if(pendingLaunch.phase==='proposal'){
-        pendingLaunch=null;
-        queueChild({type:'launch-failed',reason:'connection-lost'});
-      }else traceProtocol('launch','commit-suspended',{launchId:pendingLaunch.launchId});
+      traceProtocol('launch','transaction-suspended',{launchId:pendingLaunch.launchId,phase:pendingLaunch.phase});
     }
-    proposedGuestLaunch=null;
-    acceptedGuestLaunch=null;
     queueChild({type:'connection',connected:false,role,roomCode,connectionEpoch});
     if(role==='host')forwardRemoteInput(null);
     if(matchStarted){
