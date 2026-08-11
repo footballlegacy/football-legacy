@@ -15,8 +15,8 @@ const check = (condition, message) => {
   passed += 1;
 };
 
-check(onlineHtml.includes('../controller-ui.js?v=172-controller-launch-4'), 'Online shell must load the cache-busted shared controller UI');
-check(quickHtml.includes('../controller-ui.js?v=172-controller-launch-4'), 'Quick Play must load the same cache-busted controller UI');
+check(onlineHtml.includes('../controller-ui.js?v=172-controller-launch-5'), 'Online shell must load the cache-busted shared controller UI');
+check(quickHtml.includes('../controller-ui.js?v=172-controller-launch-5'), 'Quick Play must load the same cache-busted controller UI');
 check(onlineHtml.includes('id="hostButton" type="button" data-controller-default'), 'Host must be the default controller target');
 check(quickHtml.includes('id="startMatch" type="button" data-controller-default'), 'Ready must be the default controller target on confirmation');
 check(onlineApp.includes("const BUILD='172'"), 'The peer protocol build must remain compatible with the current room');
@@ -28,29 +28,62 @@ check(onlineApp.includes("addEventListener('gamepadconnected',event=>observeGame
 check(!onlineApp.includes('request-controller-activation'), 'The obsolete parent activation request path must be removed');
 check(!onlineApp.includes('acceptancePad'), 'No synthetic controller may ship');
 
-const gamepadHelperSource = onlineApp.match(/  function gamepadsFrom\(navigatorLike\)\{[\s\S]*?(?=\n  function selectGamepad\(\))/)?.[0] || '';
+const gamepadHelperSource = onlineApp.match(/  function neutralGamepad\(gamepad\)\{[\s\S]*?(?=\n  function selectGamepad\(\))/)?.[0] || '';
 check(gamepadHelperSource, 'Controller discovery helpers must remain available');
-const runConnectedGamepads = new Function('navigator', 'ui', 'childGamepadSample', 'childGamepadSampleAt', `${gamepadHelperSource};return connectedGamepads();`);
+const runConnectedGamepads = new Function('navigator', 'ui', 'childGamepadSample', 'childGamepadSampleAt', 'role', 'matchStarted', 'latchedGuestGamepadSample', 'childGamepadExplicitlyDisconnected', `${gamepadHelperSource};return connectedGamepads();`);
 const iframeDualSense = {index:0,id:'DualSense Wireless Controller',mapping:'',connected:true,axes:[],buttons:[]};
 const iframeOnlyPads = runConnectedGamepads(
   {getGamepads:()=>[]},
   {frame:{contentWindow:{navigator:{getGamepads:()=>[iframeDualSense]}}}},
   null,
-  0
+  0,
+  'host',
+  false,
+  null,
+  false
 );
 check(iframeOnlyPads.length===1&&iframeOnlyPads[0]===iframeDualSense, 'Existing same-origin iframe controller discovery must remain intact');
 const duplicatePads = runConnectedGamepads(
   {getGamepads:()=>[{...iframeDualSense}]},
   {frame:{contentWindow:{navigator:{getGamepads:()=>[{...iframeDualSense}]}}}},
   {...iframeDualSense},
-  performance.now()
+  performance.now(),
+  'guest',
+  false,
+  null,
+  false
 );
 check(duplicatePads.length===1, 'Existing controller sources must remain de-duplicated');
+const staleGuestPads = runConnectedGamepads(
+  {getGamepads:()=>[]},
+  {frame:{contentWindow:{navigator:{getGamepads:()=>[]}}}},
+  null,
+  0,
+  'guest',
+  true,
+  iframeDualSense,
+  false
+);
+check(staleGuestPads.length===1&&staleGuestPads[0].connected===true&&staleGuestPads[0].buttons.every(button=>!button.pressed&&!button.value), 'A throttled guest frame must preserve a neutral connected controller after kickoff');
+const explicitlyDisconnectedGuestPads = runConnectedGamepads(
+  {getGamepads:()=>[]},
+  {frame:{contentWindow:{navigator:{getGamepads:()=>[]}}}},
+  null,
+  0,
+  'guest',
+  true,
+  iframeDualSense,
+  true
+);
+check(explicitlyDisconnectedGuestPads.length===0, 'An explicit controller disconnect must clear the guest latch');
 
 check(quickApp.includes("document.body.dataset.controllerExternalGamepad='true'"), 'The parent must remain the sole controller UI authority');
 check(quickApp.includes("if(data.type==='menu-input'){handleOnlineMenuInput(data);return}"), 'Quick Play must still consume parent menu input');
 check(quickApp.includes("type:'gamepad-sample',context:'setup'"), 'Quick Play must forward genuine iframe controller samples to its online parent');
 check(quickApp.includes('navigator.getGamepads?.()'), 'Quick Play must sample the controller in the genuinely focused iframe context');
+check(quickApp.includes("setInterval(()=>postOnlineNativeGamepadSample(performance.now()),250)"), 'Quick Play must retain a timer-backed controller bridge across kickoff');
+check(onlineApp.includes("latchedGuestGamepadSample&&!childGamepadExplicitlyDisconnected"), 'A temporarily throttled frame must retain a neutral connected Away controller');
+check(onlineApp.includes("data.reason==='disconnected'"), 'Only an explicit child disconnect may clear the controller latch');
 check(matchHtml.includes("type:'gamepad-sample',context:'match'"), 'The match iframe must keep forwarding its native controller after kickoff');
 check(matchHtml.includes("else if(data.type==='local-input')acceptOnlineLocalPad(data.pad)"), 'The match must accept the parent-routed local controller sample');
 check(matchHtml.includes('gp1=localFresh?onlineLocalPad:nativeGp1'), 'The match must prefer fresh routed input while retaining native fallback');
@@ -73,6 +106,9 @@ const sourceBetween = (source, start, end) => {
   const to = source.indexOf(end, from + start.length);
   return from >= 0 && to > from ? source.slice(from, to) : '';
 };
+const guestStartSource = sourceBetween(onlineApp, 'function startGuestMatch(message={}){', 'function renderRemoteView(view){');
+check(guestStartSource.includes('ui.frame.hidden=false'), 'Guest kickoff must keep the controller-owning setup frame rendered behind video');
+check(!guestStartSource.includes('ui.frame.hidden=true'), 'Guest kickoff must never display-hide the controller-owning setup frame');
 const readyUiSource = sourceBetween(quickApp, 'function updateOnlineReadyUI(){', 'function reconcileOnlineConnection(');
 check(readyUiSource, 'Online Ready UI must remain available');
 check(readyUiSource.includes("elements.startMatch.disabled=!onlineState.connected||!lobbySynchronized||onlineState.launchRequested"), 'Ready may depend only on connection, lobby sync and launch state');

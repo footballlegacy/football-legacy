@@ -136,6 +136,33 @@ const startHostBody=onlineApp.slice(onlineApp.indexOf('function startHostMatch')
 assert.ok(startHostBody.indexOf('ui.frame.onload')<startHostBody.indexOf('ui.frame.src='),'Host must install the match load handler before navigating the iframe');
 assert.match(onlineApp,/if\(hostStreamTimer\|\|hostMatchStream\)return/,'Host stream startup must be idempotent');
 
+const launchReconnect=createHarness();
+launchReconnect.node('hostButton').dispatch('click');
+const launchPeer=launchReconnect.peers.at(-1);
+launchPeer.emit('open');
+const firstLaunchConnection=new FakeConnection('away-peer',{protocol,build,release,role:'guest'});
+launchPeer.emit('connection',firstLaunchConnection);
+firstLaunchConnection.emit('open');
+windowMessage(launchReconnect,{source:'football-legacy-online-child',type:'child-ready'});
+const reconnectLaunch={launchId:'launch-reconnect-test',lobbyVersion:'ROOM|0:0:0',configRevision:'0:0:0',href:'../match-engine/match.html?quickPlay=1#flMatch=test',homeName:'HOME',awayName:'AWAY'};
+windowMessage(launchReconnect,{source:'football-legacy-online-child',type:'launch-request',...reconnectLaunch});
+firstLaunchConnection.emit('data',{protocol,build,release,type:'launch-ack',...reconnectLaunch});
+const firstCommit=firstLaunchConnection.sent.find(message=>message.type==='launch-commit');
+assert.equal(firstCommit?.launchId,reconnectLaunch.launchId,'Home must enter the commit phase before the simulated link loss');
+firstLaunchConnection.emit('close');
+assert.equal(launchReconnect.context.FLOnlineDebug.getState().pendingLaunch?.phase,'commit','A dropped committed ACK must preserve Home launch intent across disconnect');
+const replacementLaunchConnection=new FakeConnection('away-peer',{protocol,build,release,role:'guest'});
+launchPeer.emit('connection',replacementLaunchConnection);
+replacementLaunchConnection.emit('open');
+const resumedCommit=replacementLaunchConnection.sent.find(message=>message.type==='launch-commit');
+assert.equal(resumedCommit?.launchId,firstCommit.launchId,'The replacement link must replay the identical launch commit');
+firstLaunchConnection.emit('close');
+assert.equal(launchReconnect.context.FLOnlineDebug.getState().connectionOpen,true,'A late close from the old link must not disturb the replacement');
+replacementLaunchConnection.emit('data',{protocol,build,release,type:'launch-committed',...reconnectLaunch});
+replacementLaunchConnection.emit('data',{protocol,build,release,type:'launch-committed',...reconnectLaunch});
+assert.equal(launchReconnect.context.FLOnlineDebug.getState().matchStarted,true,'Home must start after Away re-acknowledges the resumed commit');
+assert.equal(launchReconnect.context.FLOnlineDebug.getProtocolTrace().filter(row=>row.type==='host-committed').length,1,'A resumed launch must start Home exactly once');
+
 const recovery=createHarness({dropFirstMatchNavigation:true});
 const recoveryLaunch=startCommittedHost(recovery);
 assert.equal(recovery.context.FLOnlineDebug.getState().matchStarted,true,'Committed host must enter the match state');

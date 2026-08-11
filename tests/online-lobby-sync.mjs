@@ -21,8 +21,8 @@ const productionCheck = (condition, message) => {
 
 check(onlineApp.includes("const BUILD='172'"), 'Peers must share the lobby-sync build');
 check(onlineApp.includes("const PROTOCOL='football-legacy-online-v2'"), 'The controller bridge must use an incompatible peer protocol');
-check(onlineApp.includes("const RELEASE='172-controller-launch-4'"), 'The public build must expose an exact controller release');
-check(onlineApp.includes("const PEER_PREFIX='football-legacy-172-controller-launch-4-'"), 'Old and new peer rooms must not mix');
+check(onlineApp.includes("const RELEASE='172-controller-launch-5'"), 'The public build must expose an exact controller release');
+check(onlineApp.includes("const PEER_PREFIX='football-legacy-172-controller-launch-5-'"), 'Old and new peer rooms must not mix');
 check(onlineApp.includes('metadata.release!==RELEASE'), 'Incoming peer and media handshakes must reject a different release');
 check(onlineApp.includes('message.release!==RELEASE'), 'Every open peer link must keep validating the exact release');
 check(onlineApp.includes('peerConnected:!!(connection&&connection.open),connectionEpoch'), 'Continuous lobby packets must carry peer truth and epoch');
@@ -40,8 +40,8 @@ check(quickApp.includes('reconcileOnlineConnection(data&&data.peerConnected,data
 check(quickApp.includes('getProtocolTrace:()=>onlineProtocolTrace.slice()'), 'Lobby protocol telemetry must be inspectable');
 check(!quickApp.match(/function applyOnlineSide\([^\n]+remoteReady=false/), 'Team replication must not silently erase Ready state');
 check(!quickApp.match(/function applyOnlineSettings\([^\n]+remoteReady=false/), 'Settings replication must not silently erase Ready state');
-check(onlineHtml.includes('app.js?v=172-controller-launch-4'), 'Online shell must bypass the old cached parent script');
-check(quickHtml.includes('app.js?v=172-controller-launch-4'), 'Quick Play must bypass the old cached lobby script');
+check(onlineHtml.includes('app.js?v=172-controller-launch-5'), 'Online shell must bypass the old cached parent script');
+check(quickHtml.includes('app.js?v=172-controller-launch-5'), 'Quick Play must bypass the old cached lobby script');
 
 class ReadyPeer {
   constructor(side) {
@@ -111,6 +111,8 @@ productionCheck(/message\.type==='launch-commit'&&role==='guest'[\s\S]{0,260}que
 productionCheck(/connection=conn;\s*connectionPending=true;[\s\S]{0,260}disconnectHandled=false;[\s\S]{0,500}conn\.on\('open'/.test(onlineApp), 'Every accepted DataConnection must reset its disconnect guard before it can fail during opening');
 productionCheck(/pendingLaunch\.phase==='proposal'&&Date\.now\(\)-pendingLaunch\.startedAt>12000[\s\S]{0,380}launchPacket\('launch-cancel',cancelled\)[\s\S]{0,300}clearLaunchHandshake/.test(onlineApp), 'A proposal timeout must send launch-cancel before abandoning the safe pre-commit transaction');
 productionCheck(/if\(pendingLaunch\.phase==='proposal'&&Date\.now\(\)-pendingLaunch\.startedAt>12000\)/.test(onlineApp) && !/if\(Date\.now\(\)-pendingLaunch\.startedAt>12000\)/.test(onlineApp), 'Commit retry must not inherit the proposal timeout and strand one player after a delivered commit');
+productionCheck(/if\(pendingLaunch\.phase==='proposal'\)[\s\S]{0,220}pendingLaunch=null[\s\S]{0,260}commit-suspended/.test(onlineApp), 'Disconnect may abandon a proposal but must preserve a commit that Away may already have applied');
+productionCheck(/pendingLaunch\?\.phase==='commit'[\s\S]{0,220}commit-resumed[\s\S]{0,220}transmitPendingLaunch\(\)/.test(onlineApp), 'A replacement peer link must immediately resume the same pending launch commit');
 productionCheck(/const ownHome=ONLINE_OWNED_SIDE==='home',launchLocked=onlineState\.launchRequested/.test(quickApp) && (quickApp.match(/launchLocked\|\|/g)||[]).length>=4, 'Team, tactics, kit and shared settings controls must lock while a launch transaction is in flight');
 productionCheck(/function onlineLocalChange\(target\)\{\s*if\(!ONLINE\|\|onlineState\.applyingRemote\|\|onlineState\.launchRequested\)return/.test(quickApp), 'Programmatic or late change events must not mutate configuration while launch is in flight');
 productionCheck(/!onlineState\.launchRequested\|\|onlineState\.launchId===message\.launchId/.test(quickApp), 'Away must reject a different concurrent proposal while retaining the accepted launch identity');

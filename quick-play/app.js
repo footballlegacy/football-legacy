@@ -49,7 +49,7 @@ function serialiseOnlineNativePad(gamepad){
   if(!gamepad)return null;
   return{index:Number.isInteger(gamepad.index)?gamepad.index:0,id:String(gamepad.id||'Local gamepad').slice(0,160),mapping:String(gamepad.mapping||''),connected:gamepad.connected!==false,axes:Array.from(gamepad.axes||[]).slice(0,10).map(value=>+Math.max(-1,Math.min(1,Number(value)||0)).toFixed(3)),buttons:Array.from(gamepad.buttons||[]).slice(0,20).map(button=>({pressed:!!(button&&(button.pressed||button.value>.5)),value:+Math.max(0,Math.min(1,Number(button&&button.value)||0)).toFixed(3)}))};
 }
-function postOnlineNativeGamepadSample(now=performance.now(),force=false){
+function postOnlineNativeGamepadSample(now=performance.now(),force=false,reason='poll'){
   if(!ONLINE||window.parent===window)return;
   let nativePad=null;
   try{nativePad=Array.from(navigator.getGamepads?.()||[]).filter(gamepad=>gamepad&&gamepad.connected!==false).sort((a,b)=>a.index-b.index)[0]||null}catch{}
@@ -57,7 +57,7 @@ function postOnlineNativeGamepadSample(now=performance.now(),force=false){
   if(!force&&json===onlineNativePadSampleJson&&now-onlineNativePadSampleSentAt<250)return;
   onlineNativePadSampleJson=json;
   onlineNativePadSampleSentAt=now;
-  parent.postMessage({source:'football-legacy-online-child',type:'gamepad-sample',context:'setup',role:ONLINE_ROLE,pad,connected:!!pad,sampledAt:now},TARGET_ORIGIN);
+  parent.postMessage({source:'football-legacy-online-child',type:'gamepad-sample',context:'setup',role:ONLINE_ROLE,pad,connected:!!pad,reason,sampledAt:now},TARGET_ORIGIN);
 }
 function pollOnlineNativeGamepad(now){
   if(!ONLINE)return;
@@ -407,10 +407,13 @@ function initialiseOnlineMode(){
     if(!onlineState.ownReady){onlineSetReady(true);return}
     onlineSetReady(false);
   },true);
-  addEventListener('gamepadconnected',()=>{postOnlineNativeGamepadSample(performance.now(),true);updateOnlineReadyUI()});
-  addEventListener('gamepaddisconnected',()=>{postOnlineNativeGamepadSample(performance.now(),true);updateOnlineReadyUI()});
+  addEventListener('gamepadconnected',()=>{postOnlineNativeGamepadSample(performance.now(),true,'connected');updateOnlineReadyUI()});
+  addEventListener('gamepaddisconnected',()=>{postOnlineNativeGamepadSample(performance.now(),true,'disconnected');updateOnlineReadyUI()});
   window.FLQuickPlayOnlineDebug={getState:()=>({...onlineState,sideRevisions:{...onlineState.sideRevisions},lobbyVersion:currentLobbyVersion(),lobbySynchronized:onlineLobbySynchronized()}),getProtocolTrace:()=>onlineProtocolTrace.slice(),resendReady:()=>onlineSendReady(true),broadcastLobby:onlineBroadcastCurrent};
   requestAnimationFrame(pollOnlineNativeGamepad);
+  // Timers keep a low-frequency bridge alive if a browser briefly throttles
+  // the rendered child frame; the animation-frame path remains the live input.
+  setInterval(()=>postOnlineNativeGamepadSample(performance.now()),250);
   parent.postMessage({source:'football-legacy-online-child',type:'child-ready'},TARGET_ORIGIN);
 }
 if(ONLINE){const onlineOption=document.createElement('option');onlineOption.value='online';onlineOption.textContent='Online Versus';elements.matchMode.appendChild(onlineOption)}

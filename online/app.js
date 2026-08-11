@@ -2,8 +2,8 @@
 (() => {
   const PROTOCOL='football-legacy-online-v2';
   const BUILD='172';
-  const RELEASE='172-controller-launch-4';
-  const PEER_PREFIX='football-legacy-172-controller-launch-4-';
+  const RELEASE='172-controller-launch-5';
+  const PEER_PREFIX='football-legacy-172-controller-launch-5-';
   const TARGET_ORIGIN=location.origin==='null'?'*':location.origin;
   const $=id=>document.getElementById(id);
   const ui={
@@ -40,6 +40,8 @@
   let lastLocalInputSentAt=0;
   let childGamepadSample=null;
   let childGamepadSampleAt=0;
+  let latchedGuestGamepadSample=null;
+  let childGamepadExplicitlyDisconnected=false;
   let guestPadConnected=false;
   let preferredGamepadIndex=null;
   let eventGamepad=null;
@@ -233,6 +235,12 @@
       queueChild({type:'connection',connected:true,role,roomCode,connectionEpoch});
       send({type:'hello',role,roomCode});
       startHeartbeat();
+      if(role==='host'&&!matchStarted&&pendingLaunch?.phase==='commit'){
+        traceProtocol('launch','commit-resumed',{launchId:pendingLaunch.launchId});
+        clearInterval(launchTimer);
+        launchTimer=setInterval(transmitPendingLaunch,500);
+        transmitPendingLaunch();
+      }
       if(matchStarted){
         if(role==='host')scheduleHostMediaRecovery('peer-reconnected',120);
         else requestGuestMediaRecovery('peer-reconnected');
@@ -298,7 +306,14 @@
     if(connection===source||!source)connection=null;
     setConnection('lost','Opponent disconnected');
     traceProtocol('connection','closed',{peer:source&&source.peer});
-    if(pendingLaunch){clearInterval(launchTimer);launchTimer=null;pendingLaunch=null;queueChild({type:'launch-failed',reason:'connection-lost'})}
+    if(pendingLaunch){
+      clearInterval(launchTimer);
+      launchTimer=null;
+      if(pendingLaunch.phase==='proposal'){
+        pendingLaunch=null;
+        queueChild({type:'launch-failed',reason:'connection-lost'});
+      }else traceProtocol('launch','commit-suspended',{launchId:pendingLaunch.launchId});
+    }
     proposedGuestLaunch=null;
     acceptedGuestLaunch=null;
     queueChild({type:'connection',connected:false,role,roomCode,connectionEpoch});
@@ -511,6 +526,17 @@
       buttons:normalisedRemoteButtons(gamepad)
     };
   }
+  function neutralGamepad(gamepad){
+    if(!gamepad)return null;
+    return{
+      index:Number.isInteger(gamepad.index)?gamepad.index:0,
+      id:String(gamepad.id||'Remote standard gamepad').slice(0,160),
+      mapping:String(gamepad.mapping||''),
+      connected:true,
+      axes:Array.from(gamepad.axes||[]).slice(0,10).map(()=>0),
+      buttons:Array.from({length:Math.max(20,Array.from(gamepad.buttons||[]).length)},()=>({pressed:false,value:0}))
+    };
+  }
   function gamepadsFrom(navigatorLike){
     try{return Array.from(navigatorLike&&navigatorLike.getGamepads?navigatorLike.getGamepads()||[]:[]).filter(gamepad=>gamepad&&gamepad.connected!==false)}catch{return[]}
   }
@@ -518,6 +544,7 @@
     const pads=gamepadsFrom(navigator);
     try{pads.push(...gamepadsFrom(ui.frame&&ui.frame.contentWindow&&ui.frame.contentWindow.navigator))}catch{}
     if(childGamepadSample&&performance.now()-childGamepadSampleAt<1600)pads.push(childGamepadSample);
+    else if(role==='guest'&&matchStarted&&latchedGuestGamepadSample&&!childGamepadExplicitlyDisconnected)pads.push(neutralGamepad(latchedGuestGamepadSample));
     const seen=new Set();
     return pads.filter(gamepad=>{
       const key=`${gamepad.index}:${gamepad.id||''}`;
@@ -769,7 +796,12 @@
     matchStarted=true;
     videoPlaying=false;
     hostSeesAwayController=null;
-    ui.frame.hidden=true;
+    // Keep the focused same-origin setup frame rendered behind the opaque
+    // guest video. Firefox can expose a Bluetooth gamepad only to that frame;
+    // display:none would stop its animation-frame sampler at kickoff.
+    ui.frame.hidden=false;
+    ui.frame.tabIndex=-1;
+    ui.frame.style.pointerEvents='none';
     ui.guestStage.hidden=false;
     ui.videoGate.hidden=true;
     ui.networkRole.textContent='Away · Guest';
@@ -890,6 +922,13 @@
       const candidate=data.connected&&data.pad&&Array.isArray(data.pad.axes)&&Array.isArray(data.pad.buttons)?data.pad:null;
       childGamepadSample=candidate;
       childGamepadSampleAt=performance.now();
+      if(candidate){
+        latchedGuestGamepadSample=candidate;
+        childGamepadExplicitlyDisconnected=false;
+      }else if(data.reason==='disconnected'){
+        latchedGuestGamepadSample=null;
+        childGamepadExplicitlyDisconnected=true;
+      }
       if(role==='guest')guestPadConnected=!!selectGamepad();
       if(!matchStarted&&childReady)sendCurrentMenuInput(performance.now());
       return;
@@ -932,6 +971,8 @@
     if(event.gamepad&&event.gamepad.index===preferredGamepadIndex){
       preferredGamepadIndex=null;
       eventGamepad=null;
+      latchedGuestGamepadSample=null;
+      childGamepadExplicitlyDisconnected=true;
       guestPadConnected=false;
       sendCurrentMenuInput(performance.now(),null);
       updateGuestNetworkStatus();
