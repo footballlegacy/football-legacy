@@ -2,6 +2,7 @@
 (function installHistoricPlaytestSquads(global){
   const api=global.FLQuickPlayTeams;if(!api||!api.TEAMS)return;
   const clamp=n=>Math.max(1,Math.min(99,Math.round(n)));
+  const LEFT_FOOTED=new Set(['ars-cole','ars-clichy','ars-edu','ars-reyes','che-courtois','che-matic','che-alonso']);
   const roleDefaults=(role,overall)=>{
     if(role==='gk')return{pace:46,accel:48,control:62,pass:70,shoot:24,defend:48,awareness:overall,strength:76,heading:14,jumping:82,balance:55,agility:overall-2,technique:60,aggression:42,keeper:overall};
     if(role==='def')return{pace:overall-7,accel:overall-8,control:overall-10,pass:overall-11,shoot:overall-35,defend:overall,strength:overall,awareness:overall,heading:overall-3,jumping:overall-2,balance:overall-8,agility:overall-12,technique:overall-11,aggression:overall-2,keeper:8};
@@ -11,7 +12,7 @@
   const player=(id,name,position,overall,number,specific={},appearance={})=>{
     const role=position==='GK'?'gk':['RB','LB','CB','RWB','LWB'].includes(position)?'def':['ST','CF','RW','LW'].includes(position)?'fwd':'mid';
     const attrs=Object.fromEntries(Object.entries({...roleDefaults(role,overall),...specific}).map(([key,value])=>[key,clamp(value)]));
-    return{id,name,position,role,overall,number,attrs,appearance,age:0,seasonApps:0,seasonGoals:0,quickPlayProfile:{season:id.startsWith('ars-')?'2003/04':'2016/17',squadRole:'historic-playtest',calibration:'Football Legacy role-and-performance model',source:'historic season and tactical role; custom playtest ratings, not official EA ratings'}};
+    return{id,name,position,role,overall,number,attrs,appearance,preferredFoot:LEFT_FOOTED.has(id)?'Left':'Right',age:0,seasonApps:0,seasonGoals:0,quickPlayProfile:{season:id.startsWith('ars-')?'2003/04':'2016/17',squadRole:'historic-playtest',calibration:'Football Legacy role-and-performance model',source:'historic season and tactical role; custom playtest ratings, not official EA ratings'}};
   };
   const find=id=>api.TEAMS.div1.find(team=>team.id===id);
   const arsenal=find('woolwich-arsenal');
