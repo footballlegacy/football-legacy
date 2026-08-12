@@ -99,10 +99,16 @@
   const isXboxDevice=gp=>!!gp&&/(xbox|xinput|microsoft.*(?:controller|gamepad)|(?:0?45e)[-:](?:0?2d1|0?2dd|0?2ea|0?2fd|0?b12|0?b13))/i.test(gp.id||'');
   const isRawDualSense=gp=>isDualSenseDevice(gp)&&gp.mapping!=='standard';
   const rawDualSenseButton={0:1,1:2,2:0,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,11:11};
+  const RAW_DUALSENSE_HAT_VALUES=[-1,-.714286,-.428571,-.142857,.142857,.428571,.714286,1];
   const rawDualSenseDpad=(gp,index)=>{
     const value=gp.axes&&gp.axes.length>9?gp.axes[9]:null;
     if(!Number.isFinite(value)||value>1.14)return false;
-    const sector=Math.round((value+1)*3.5)%8;
+    let sector=-1,nearest=Infinity;
+    RAW_DUALSENSE_HAT_VALUES.forEach((candidate,candidateSector)=>{const distance=Math.abs(value-candidate);if(distance<nearest){nearest=distance;sector=candidateSector;}});
+    // A freshly reconnected Bluetooth DualSense can briefly expose a zeroed
+    // axis-9 packet. Zero is not a valid Firefox hat position, but rounding it
+    // used to turn that packet into a permanently repeating D-pad Down input.
+    if(nearest>.08)return false;
     if(index===12)return sector===0||sector===1||sector===7;
     if(index===13)return sector===3||sector===4||sector===5;
     if(index===14)return sector===5||sector===6||sector===7;
@@ -114,19 +120,27 @@
     // Firefox has exposed the same wired DualSense D-pad in two different
     // shapes: ordinary buttons 12-15 on some Macs, and a hat value on axis 9
     // on others. Accept either representation instead of forcing one.
-    if(isDualSenseDevice(gp)&&index>=12&&index<=15)return buttonPressed(gp,index,threshold)||rawDualSenseDpad(gp,index);
+    if(isDualSenseDevice(gp)&&index>=12&&index<=15)return buttonPressed(gp,index,threshold)||(isRawDualSense(gp)&&rawDualSenseDpad(gp,index));
     const rawIndex=isRawDualSense(gp)&&(index in rawDualSenseButton)?rawDualSenseButton[index]:index;
     return buttonPressed(gp,rawIndex,threshold);
+  };
+  const meaningfulInput=gp=>{
+    if(!gp)return false;
+    const stickActive=[...(gp.axes||[])].slice(0,4).some(value=>Number.isFinite(value)&&Math.abs(value)>.18);
+    const buttonActive=[...(gp.buttons||[])].some(button=>button&&(button.pressed||Number(button.value)>.15));
+    const rawDpadActive=isRawDualSense(gp)&&[12,13,14,15].some(index=>rawDualSenseDpad(gp,index));
+    return stickActive||buttonActive||rawDpadActive;
   };
   const directionFor=gp=>{if(pressed(gp,12))return'up';if(pressed(gp,13))return'down';if(pressed(gp,14))return'left';if(pressed(gp,15))return'right';const x=gp.axes&&gp.axes.length>1?gp.axes[0]:0,y=gp.axes&&gp.axes.length>1?gp.axes[1]:0;if(Math.abs(x)>.66||Math.abs(y)>.66)return Math.abs(x)>Math.abs(y)?(x>0?'right':'left'):(y>0?'down':'up');return null;};
   const processGamepad=(gp,now=performance.now())=>{
     if(!gp)return null;
-    let state=padStates.get(gp.index);if(!state){state={buttons:[],direction:null,nextMove:0};padStates.set(gp.index,state);}
+    let state=padStates.get(gp.index);if(!state){state={buttons:[],direction:null,nextMove:0,inputObserved:false,lastInputAt:0};padStates.set(gp.index,state);}
+      const inputActive=meaningfulInput(gp),firstInput=inputActive&&!state.inputObserved;if(inputActive){state.inputObserved=true;state.lastInputAt=now;}if(firstInput)showHint(isXboxDevice(gp)?'Xbox controller active · A select · B back':'DualSense active · × select · ○ back');
       const scope=activeScope(),uiActive=!!scope;if(uiActive){const cross=pressed(gp,0),circle=pressed(gp,1);if(cross&&!state.buttons[0]){controllerMode=true;ensureFocus();activate();}if(circle&&!state.buttons[1]){controllerMode=true;back();}
         const direction=directionFor(gp);if(direction!==state.direction){state.direction=direction;if(direction){controllerMode=true;ensureFocus();navigate(direction);state.nextMove=now+310;}}else if(direction&&now>=state.nextMove){navigate(direction);state.nextMove=now+135;}
       }else state.direction=null;
       for(const i of [0,1,4,5,12,13,14,15])state.buttons[i]=pressed(gp,i);
-    return{select:pressed(gp,0),back:pressed(gp,1),previousSection:pressed(gp,4),nextSection:pressed(gp,5),direction:directionFor(gp)};
+    return{detected:true,inputObserved:state.inputObserved,inputActive,lastInputAt:state.lastInputAt,select:pressed(gp,0),back:pressed(gp,1),previousSection:pressed(gp,4),nextSection:pressed(gp,5),direction:directionFor(gp)};
   };
   const poll=now=>{
     let pads=[];if(document.body?.dataset.controllerExternalGamepad!=='true'){try{pads=typeof navigator.getGamepads==='function'?[...(navigator.getGamepads()||[])].filter(Boolean):[];}catch(e){}}
@@ -140,8 +154,9 @@
     #controllerUiHint{position:fixed;right:16px;bottom:16px;z-index:99999;max-width:calc(100% - 32px);padding:9px 13px;border:1px solid rgba(232,120,36,.65);border-left:4px solid #e87824;background:rgba(3,16,31,.95);color:#f7f1e7;font:800 11px/1.35 Arial,sans-serif;letter-spacing:.07em;text-transform:uppercase;opacity:0;transform:translateY(8px);pointer-events:none;transition:.16s}#controllerUiHint.show{opacity:1;transform:none}`;document.head.appendChild(style);
   enhanceSelects(document);
   new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(enhanceSelects))).observe(document.documentElement,{childList:true,subtree:true});
-  addEventListener('gamepadconnected',event=>{controllerMode=true;ensureFocus();showHint(isXboxDevice(event.gamepad)?'Xbox controller connected · D-pad / Left stick navigate · A select · B back':'DualSense connected · D-pad / Left stick navigate · × select · ○ back');});
+  addEventListener('gamepadconnected',event=>{padStates.delete(event.gamepad.index);showHint(isXboxDevice(event.gamepad)?'Xbox controller detected · press a button to activate':'DualSense detected · press a button to activate');});
+  addEventListener('gamepaddisconnected',event=>{padStates.delete(event.gamepad.index);});
   addEventListener('pointerdown',()=>{controllerMode=false;document.body.classList.remove('controller-navigation');clearFocus();},{passive:true});
   addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Escape'].includes(e.key)){controllerMode=false;document.body.classList.remove('controller-navigation');}});
-  window.FootballLegacyControllerUI={focus:target=>target?setFocus(target,false):ensureFocus(),navigate,activate,back,receiveGamepad:(gp,now)=>processGamepad(gp,now),forgetGamepad:index=>padStates.delete(index),debugGamepadDirection:gp=>directionFor(gp),debugGamepadContract:gp=>({xbox:isXboxDevice(gp),dualSense:isDualSenseDevice(gp),standard:gp&&gp.mapping==='standard',select:pressed(gp,0),back:pressed(gp,1),previousSection:pressed(gp,4),nextSection:pressed(gp,5),dpadDown:pressed(gp,13),direction:directionFor(gp)}),debugSelectSteppers:()=>({selects:document.querySelectorAll('select').length,enhanced:document.querySelectorAll('.controller-select-stepper>select').length,visibleArrows:[...document.querySelectorAll('.controller-select-arrow')].filter(visible).length})};requestAnimationFrame(poll);
+  window.FootballLegacyControllerUI={focus:target=>target?setFocus(target,false):ensureFocus(),navigate,activate,back,receiveGamepad:(gp,now)=>processGamepad(gp,now),forgetGamepad:index=>padStates.delete(index),getGamepadReadiness:gp=>{const state=gp&&padStates.get(gp.index);return{detected:!!gp,inputObserved:!!(state&&state.inputObserved),lastInputAt:Number(state&&state.lastInputAt)||0};},debugGamepadDirection:gp=>directionFor(gp),debugGamepadContract:gp=>({xbox:isXboxDevice(gp),dualSense:isDualSenseDevice(gp),standard:gp&&gp.mapping==='standard',meaningfulInput:meaningfulInput(gp),select:pressed(gp,0),back:pressed(gp,1),previousSection:pressed(gp,4),nextSection:pressed(gp,5),dpadDown:pressed(gp,13),direction:directionFor(gp)}),debugSelectSteppers:()=>({selects:document.querySelectorAll('select').length,enhanced:document.querySelectorAll('.controller-select-stepper>select').length,visibleArrows:[...document.querySelectorAll('.controller-select-arrow')].filter(visible).length})};requestAnimationFrame(poll);
 })();

@@ -13,23 +13,23 @@ const Ball = require('../match-engine/ball-engine-v2.js');
 const Composer = require('../match-engine/live-v2-contact-authority-composer.js');
 
 const HASHES = Object.freeze({
-  'live-v2-contact-authority-composer.js': 'bc277f91b9b4a49c5243355b0f7ca1846302cc817d37f948f64de317ef24412f',
-  'first-touch-v2.js': 'da75f9cc3ab3458df67c08f7868e45ae2c8d4ad1ef50ff07c78c3c100370b77d',
+  'live-v2-contact-authority-composer.js': 'b44b417b00db779e0a1501c646bcdb31153480fd6e2e62486b907308e9d00615',
+  'first-touch-v2.js': '7f4d23e0bb76491957fbe95fed95a62d1019dfa69a372802ab303ddfd4017fc2',
   'first-touch-authority-adapter-v2.js': 'fbbea7ff774015fff32806c32eeb012e23ff2197f86470d4441a9aec27ea4c3e',
   'aerial-contact-v2.js': '54bf086bef9e0f149f9ed2445454da510fca5908e79aa77d95ba5f70d5e8b1ba',
   'ball-engine-v2.js': '4084ff8968859af2a4149703ce02eb37e0691fa20a542dbc97d793c33342c504',
-  'movement-engine-v2.js': '72df57ceaf2eab4d7eae46360a21cd6f1c1d9187d5efeefe2c033ad3d9fa864f'
+  'movement-engine-v2.js': 'af10e98822e2c1d93aa5b8bb9ce2e31ebad61def47174cf3ad25510eb106811d'
 });
 
 function sha(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(path.join(root, 'match-engine', file))).digest('hex');
 }
 
-function capability() {
+function capability(workflow = 'single-player') {
   return Composer.createCapability({
     enabled: true,
     online: false,
-    workflow: 'single-player',
+    workflow,
     parentAdapterVersion: Composer.PARENT_VERSION,
     parentGrant: 'offline-normal-match-live-authority',
     acknowledgement: Composer.ACKNOWLEDGEMENT
@@ -100,7 +100,7 @@ function fixture(overrides = {}) {
     player.id === defender.id ? overrides.defenderRoster || {} : overrides.receiverRoster || {}));
   return {
     schema: Composer.REQUEST_SCHEMA,
-    workflow: 'single-player',
+    workflow: overrides.workflow || 'single-player',
     online: false,
     tick,
     epoch,
@@ -155,9 +155,12 @@ function aerialFixture(overrides = {}) {
 
 test('review is pinned to the declared contact composition and exact lower-engine bytes', () => {
   for (const [file, expected] of Object.entries(HASHES)) assert.equal(sha(file), expected, file);
+  assert.equal(Composer.ACKNOWLEDGEMENT, 'EXPLICIT_OFFLINE_LIVE_V2_CONTACT_COMPOSITION');
+  assert.equal(Composer.AUTHORITY, 'offline-live-v2-contact-plan');
+  assert.deepEqual([...Composer.SUPPORTED_WORKFLOWS], ['single-player', 'cpu-v-cpu']);
 });
 
-test('only a factory-issued explicit offline Single Player capability can compose', () => {
+test('only factory-issued explicit offline Single Player or CPU-v-CPU capabilities can compose', () => {
   const forged = {
     schema: Composer.CAPABILITY_SCHEMA,
     version: Composer.VERSION,
@@ -173,7 +176,6 @@ test('only a factory-issued explicit offline Single Player capability can compos
   for (const patch of [
     { online: true },
     { workflow: 'online-versus' },
-    { workflow: 'cpu-v-cpu' },
     { workflow: 'home-co-op' },
     { parentAdapterVersion: 'forged' },
     { parentGrant: 'forged' }
@@ -188,6 +190,10 @@ test('only a factory-issued explicit offline Single Player capability can compos
       ...patch
     }), /exact offline Single Player/);
   }
+  const cpuCapability = capability('cpu-v-cpu');
+  const cpuResult = Composer.compose(fixture({ workflow: 'cpu-v-cpu' }), cpuCapability);
+  assert.equal(cpuResult.workflow, 'cpu-v-cpu');
+  assert.throws(() => Composer.compose(fixture(), cpuCapability), /match the exact approved offline workflow/);
 });
 
 test('composition is pure and retry-stable before outer commit', () => {
@@ -220,6 +226,32 @@ test('ground reception records exactly one contact and stages possession without
   });
 });
 
+test('retained same-player continuation is contact-authoritative without replaying reception presentation', () => {
+  const directional = {
+    type: 'directional-touch', direction: { x: 1, y: 0 }, touchDistanceM: 1.1, active: true
+  };
+  const first = Composer.compose(fixture({ tick: 41, firstTouchIntent: directional }), capability());
+  assert.equal(first.contactType, 'first-touch');
+  assert.equal(first.presentation.outcome, 'retained');
+
+  const continuationInput = fixture({
+    tick: 59,
+    firstTouchIntent: directional,
+    contactCount: first.ballState.contactCount
+  });
+  continuationInput.ballState = Ball.createBallState({
+    ...structuredClone(first.ballState),
+    lastOuterTick: continuationInput.tick
+  });
+  const continuation = Composer.compose(continuationInput, capability());
+  assert.equal(continuation.status, 'contact');
+  assert.equal(continuation.contactType, 'dribble-touch');
+  assert.equal(continuation.presentation.phase, Composer.DRIBBLE_CONTINUATION_PHASE);
+  assert.equal(continuation.detail.retainedTouchContinuation, true);
+  assert.equal(continuation.ballState.contactCount, first.ballState.contactCount + 1);
+  assert.equal(continuation.suppressLegacy.reception, true);
+});
+
 test('a high ball cannot be stolen by the ground first-touch lane', () => {
   const input = fixture({
     ballPosition: { x: 52.8, y: 0, z: 3 },
@@ -232,7 +264,7 @@ test('a high ball cannot be stolen by the ground first-touch lane', () => {
   assert.equal(result.ownedContact, false);
   assert.equal(result.ballState.contactCount, input.ballState.contactCount);
   assert.deepEqual(result.suppressLegacy, {
-    reception: false,
+    reception: true,
     aerialDuel: false,
     outfieldBallBlock: false,
     keeperContact: false,

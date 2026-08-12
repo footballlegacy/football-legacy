@@ -582,7 +582,7 @@ test('public shadow API remains observation-only while live authority uses a sep
     assert.ok(matchHtml.split(`'${filename}'`).length - 1 >= 1, filename);
     assert.doesNotMatch(matchHtml, new RegExp(`<script\\s+src=["'][^"']*${filename.replace(/\./g, '\\.')}`, 'i'));
   }
-  assert.match(matchHtml, /const liveWorkflow=matchType==='single-player'\?'single-player':matchType==='free-kick-suite'\?'set-piece-suite':null/);
+  assert.match(matchHtml, /const liveWorkflow=matchType==='single-player'\?'single-player':matchType==='spectator'\?'cpu-v-cpu':matchType==='free-kick-suite'\?'set-piece-suite':null/);
   assert.match(matchHtml, /if\(!eligible\)return;[\s\S]*'aerial-contact-v2\.js'/);
   assert.doesNotMatch(matchHtml, /<script[^>]+src=["']aerial-contact-v2\.js/);
   assert.match(matchHtml, /requested=values\.length===1&&values\[0\]==='1'/);
@@ -699,18 +699,6 @@ test('CPU decisions remain semantically invariant between canonical and metric p
   }
 });
 
-test('representative 22-player trace is invariant across arbitrary render-frame batches', () => {
-  const snapshots = Array.from({ length: 48 }, (_, index) => representativeSnapshot(index + 1));
-  const individual = adapter({ traceLimit: 64, sessionId: 'chunk-invariance' });
-  const batched = adapter({ traceLimit: 64, sessionId: 'chunk-invariance' });
-  snapshots.forEach(item => individual.observe(item));
-  for (const [start, end] of [[0, 1], [1, 8], [8, 9], [9, 27], [27, 48]]) {
-    batched.observeTimeline(snapshots.slice(start, end));
-  }
-  assert.deepEqual(batched.getShadowState(), individual.getShadowState());
-  assert.equal(batched.stableTraceJson(), individual.stableTraceJson());
-});
-
 test('representative 22-player read-only shadow stays inside a bounded per-tick CPU budget and trace window', t => {
   const tickCount = 180;
   const instance = adapter({ traceLimit: 16, sessionId: 'performance-bound' });
@@ -724,6 +712,18 @@ test('representative 22-player read-only shadow stays inside a bounded per-tick 
   assert.equal(trace.recordCount, 16);
   assert.equal(trace.ballTrace.recordCount, 16);
   assert.ok(JSON.stringify(trace).length < 2_000_000, 'bounded trace unexpectedly exceeds 2 MB');
+});
+
+test('representative 22-player trace is invariant across arbitrary render-frame batches', () => {
+  const snapshots = Array.from({ length: 48 }, (_, index) => representativeSnapshot(index + 1));
+  const individual = adapter({ traceLimit: 64, sessionId: 'chunk-invariance' });
+  const batched = adapter({ traceLimit: 64, sessionId: 'chunk-invariance' });
+  snapshots.forEach(item => individual.observe(item));
+  for (const [start, end] of [[0, 1], [1, 8], [8, 9], [9, 27], [27, 48]]) {
+    batched.observeTimeline(snapshots.slice(start, end));
+  }
+  assert.deepEqual(batched.getShadowState(), individual.getShadowState());
+  assert.equal(batched.stableTraceJson(), individual.stableTraceJson());
 });
 
 test('bounded trace retention never exposes a candidate projection method', () => {

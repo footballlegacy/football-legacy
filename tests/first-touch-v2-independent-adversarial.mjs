@@ -131,6 +131,44 @@ test('contact metadata uses a unit normal and normal-relative speed rather than 
     `normalSpeed ${contact.normalSpeed} must equal relative normal projection ${projected}`);
 });
 
+test('seeded routine-control assurance is bounded to low-pressure ground arrivals and ordered by technique', () => {
+  const run = (rating, pressure = []) => {
+    let failures = 0;
+    for (let seed = 1; seed <= 300; seed += 1) {
+      const result = Touch.resolve(fixture({
+        seed,
+        player: {
+          facing: { x: 0, y: 1 },
+          attributes: {
+            control: rating, technique: rating, balance: rating,
+            agility: rating, strength: rating, awareness: rating
+          }
+        },
+        pressure
+      }), capability());
+      if (result.outcome !== 'controlled') failures += 1;
+    }
+    return failures;
+  };
+  const failures = { low: run(50), ordinary: run(70), elite: run(90) };
+  assert.ok(failures.low > failures.ordinary, JSON.stringify(failures));
+  assert.ok(failures.ordinary > failures.elite, JSON.stringify(failures));
+  assert.ok(failures.ordinary <= 15 && failures.elite <= 8, JSON.stringify(failures));
+
+  const pressured = Touch.resolve(fixture({
+    player: {
+      facing: { x: 0, y: 1 },
+      attributes: { control: 90, technique: 90, balance: 90, agility: 90, strength: 90, awareness: 90 }
+    },
+    pressure: [{
+      id: 'close-defender', teamId: 'away', position: { x: 0.1, y: 0 },
+      velocity: { x: 0, y: 0 }, strength: 99
+    }]
+  }), capability());
+  assert.equal(pressured.telemetry.routineControl.eligible, false);
+  assert.notEqual(pressured.outcome, 'controlled');
+});
+
 test('schema completeness gate: every declared player attribute is required', () => {
   for (const attribute of ['control', 'technique', 'balance', 'agility', 'strength', 'awareness']) {
     const input = fixture();

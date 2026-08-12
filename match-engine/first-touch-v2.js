@@ -22,6 +22,14 @@
   ]);
   const OUTCOMES = Object.freeze(['controlled', 'retained', 'loose', 'missed']);
   const TIMING_BANDS = Object.freeze({ perfect: 0.045, good: 0.105, stretch: 0.18 });
+  const ROUTINE_CONTROL = Object.freeze({
+    minimumTechnicalReliability: 0.50,
+    maximumPressureScore: 0.12,
+    maximumRelativeSpeed: 14,
+    failureChanceAt50: 0.12,
+    failureChanceAt70: 0.02,
+    eliteFailureFloor: 0.001
+  });
   const SAFE_DATA_LIMITS = Object.freeze({
     maximumDepth: 10,
     maximumNodes: 1024,
@@ -468,6 +476,36 @@
     };
   }
 
+  function routineControlSecurity(request, technique, timing, geometry, quality) {
+    const attributes = request.player.attributes;
+    const technicalReliability = (
+      attributes.control * 0.50 + attributes.technique * 0.30 + attributes.awareness * 0.20
+    ) / 100;
+    const eligible = ['trap', 'cushion'].includes(request.intent.type) &&
+      ['sole-trap', 'foot-cushion'].includes(technique) &&
+      ['perfect', 'good'].includes(timing) && geometry.reachable &&
+      quality.pressure.score <= ROUTINE_CONTROL.maximumPressureScore &&
+      quality.relativeSpeed <= ROUTINE_CONTROL.maximumRelativeSpeed &&
+      technicalReliability >= ROUTINE_CONTROL.minimumTechnicalReliability;
+    const failureChance = technicalReliability < 0.70
+      ? clamp(ROUTINE_CONTROL.failureChanceAt50 -
+        (technicalReliability - ROUTINE_CONTROL.minimumTechnicalReliability) *
+        ((ROUTINE_CONTROL.failureChanceAt50 - ROUTINE_CONTROL.failureChanceAt70) / 0.20),
+      ROUTINE_CONTROL.failureChanceAt70, ROUTINE_CONTROL.failureChanceAt50)
+      : clamp(ROUTINE_CONTROL.failureChanceAt70 - (technicalReliability - 0.70) *
+        ((ROUTINE_CONTROL.failureChanceAt70 - ROUTINE_CONTROL.eliteFailureFloor) / 0.30),
+      ROUTINE_CONTROL.eliteFailureFloor, ROUTINE_CONTROL.failureChanceAt70);
+    const roll = keyedUnit(request.seed,
+      request.tick + '|' + request.ball.id + '|' + request.player.id + '|routine-control');
+    return {
+      eligible,
+      secured: eligible && roll >= failureChance,
+      technicalReliability,
+      failureChance,
+      roll
+    };
+  }
+
   function rotate2(direction, angle) {
     const cosine = Math.cos(angle);
     const sine = Math.sin(angle);
@@ -588,11 +626,13 @@
       request.intent.type, request.technique);
     const geometry = contactGeometry(request, technique);
     const quality = qualityScore(request, technique, timing, config);
+    const routineControl = routineControlSecurity(request, technique, timing, geometry, quality);
     const impossibleSpeed = quality.relativeSpeed > config.maximumRelativeSpeed;
     const missed = timing === 'missed' || !geometry.reachable || impossibleSpeed;
     let outcome = 'missed';
     if (!missed) {
-      if (quality.score >= config.controlledThreshold && ['trap', 'cushion'].includes(request.intent.type)) outcome = 'controlled';
+      if ((quality.score >= config.controlledThreshold || routineControl.secured) &&
+          ['trap', 'cushion'].includes(request.intent.type)) outcome = 'controlled';
       else if (quality.score >= config.retainedThreshold) outcome = 'retained';
       else outcome = 'loose';
     }
@@ -651,6 +691,10 @@
         pressureScore: quality.pressure.score,
         nearestPressure: quality.pressure.nearest
       },
+      routineControl,
+      controlBasis: outcome === 'controlled'
+        ? (routineControl.secured ? 'routine-technical-security' : 'quality-threshold')
+        : null,
       directionErrorRadians: output.errorAngle,
       beforeEnergy,
       afterEnergy,
@@ -721,6 +765,7 @@
     TECHNIQUES,
     OUTCOMES,
     TIMING_BANDS,
+    ROUTINE_CONTROL,
     DEFAULT_CONFIG,
     TECHNIQUE_PROFILES,
     createConfig,

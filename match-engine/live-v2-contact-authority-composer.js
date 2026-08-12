@@ -24,13 +24,19 @@
   const REQUEST_SCHEMA = 'football-legacy-live-v2-contact-composer-request';
   const RESULT_SCHEMA = 'football-legacy-live-v2-contact-composer-result';
   const CAPABILITY_SCHEMA = 'football-legacy-live-v2-contact-composer-capability';
-  const ACKNOWLEDGEMENT = 'EXPLICIT_OFFLINE_SINGLE_PLAYER_LIVE_V2_CONTACT_COMPOSITION';
-  const AUTHORITY = 'offline-single-player-live-v2-contact-plan';
+  const ACKNOWLEDGEMENT = 'EXPLICIT_OFFLINE_LIVE_V2_CONTACT_COMPOSITION';
+  const AUTHORITY = 'offline-live-v2-contact-plan';
   const WORKFLOW = 'single-player';
+  const SUPPORTED_WORKFLOWS = Object.freeze(['single-player', 'cpu-v-cpu']);
   const PARENT_VERSION = '1.0.0-offline-live-authority-playtest';
   const FIXED_TICK_SECONDS = 1 / 60;
   const COORDINATE_SYSTEM = 'si-metres-centred-pitch-positive-z-up';
   const FIRST_TOUCH_WORKFLOW = 'offline-v2-lab';
+  const DRIBBLE_CONTINUATION_PHASE = 'dribble-continuation';
+  // Ownership is granted only at a real playable foot-contact distance. The
+  // player may be assisted toward the ball by Movement V2, but the ball must
+  // never bridge the old two-metre-plus Build 173 reception radius.
+  const FIRST_TOUCH_ACQUISITION_RADIUS_METRES = 0.74;
   const MAX_LEDGER_IDS = 256;
   const MAX_TICK = 1000000000;
   const MAX_SEED = 0xffffffff;
@@ -148,16 +154,16 @@
   function createCapability(options) {
     assertDependencies();
     const source = plainObject(clone(options || {}), 'capability');
-    if (source.enabled !== true || source.online !== false || source.workflow !== WORKFLOW ||
+    if (source.enabled !== true || source.online !== false || !SUPPORTED_WORKFLOWS.includes(source.workflow) ||
         source.parentAdapterVersion !== PARENT_VERSION || source.parentGrant !== 'offline-normal-match-live-authority' ||
         source.acknowledgement !== ACKNOWLEDGEMENT) {
-      throw new Error('exact offline Single Player live contact capability is required');
+      throw new Error('exact offline Single Player or CPU-v-CPU live contact capability is required');
     }
     const capability = deepFreeze({
       schema: CAPABILITY_SCHEMA,
       version: VERSION,
       authority: AUTHORITY,
-      workflow: WORKFLOW,
+      workflow: source.workflow,
       online: false,
       parentAdapterVersion: PARENT_VERSION,
       parentGrant: source.parentGrant,
@@ -170,7 +176,7 @@
 
   function assertCapability(capability) {
     if (!capability || !issuedCapabilities.has(capability) || capability.schema !== CAPABILITY_SCHEMA ||
-        capability.version !== VERSION || capability.authority !== AUTHORITY || capability.workflow !== WORKFLOW ||
+        capability.version !== VERSION || capability.authority !== AUTHORITY || !SUPPORTED_WORKFLOWS.includes(capability.workflow) ||
         capability.online !== false || capability.parentAdapterVersion !== PARENT_VERSION ||
         capability.parentGrant !== 'offline-normal-match-live-authority' || capability.exactOnce !== true ||
         capability.transactionalPlanOnly !== true) throw new Error('issued live contact capability is required');
@@ -236,10 +242,10 @@
     };
   }
 
-  function normalizeRequest(input) {
+  function normalizeRequest(input, workflow) {
     const source = plainObject(clone(input || {}), 'request');
-    if (source.schema !== REQUEST_SCHEMA || source.workflow !== WORKFLOW || source.online !== false) {
-      throw new Error('live contact request must be exact offline Single Player scope');
+    if (source.schema !== REQUEST_SCHEMA || source.workflow !== workflow || source.online !== false) {
+      throw new Error('live contact request must match the exact approved offline workflow');
     }
     const tick = integer(source.tick, 1, MAX_TICK, 'request.tick');
     const epoch = integer(source.epoch, 0, MAX_TICK, 'request.epoch');
@@ -260,7 +266,7 @@
     const firstTouchLedger = normalizeLedger(source.consumedFirstTouchIds || [], 'first-touch-v2:', 'consumedFirstTouchIds');
     const aerialLedger = normalizeLedger(source.consumedAerialIds || [], 'aerial-v2:', 'consumedAerialIds');
     return {
-      schema: REQUEST_SCHEMA, workflow: WORKFLOW, online: false, tick, epoch, seed,
+      schema: REQUEST_SCHEMA, workflow, online: false, tick, epoch, seed,
       fixedTickSeconds: FIXED_TICK_SECONDS, world, ballState, roster, intendedReceiverId,
       firstTouchIntent: source.firstTouchIntent && typeof source.firstTouchIntent === 'object' ? clone(source.firstTouchIntent) : null,
       aerialIntent: normalizeAerialIntent(source.aerialIntent, tick, epoch, roster),
@@ -317,15 +323,25 @@
     };
   }
 
+  function isRetainedTouchContinuation(request, playerId) {
+    const lastContact = request.ballState.lastContact;
+    const metadata = request.ballState.metadata && request.ballState.metadata.firstTouch;
+    return !!(lastContact && metadata &&
+      lastContact.colliderId === playerId &&
+      String(lastContact.materialId || '').startsWith('first-touch:') &&
+      metadata.playerId === playerId && metadata.outcome === 'retained');
+  }
+
   function noContact(request, status, detail, arbitration) {
     const aerialArbitrated = arbitration === 'aerial-attempt';
+    const groundArbitrated = arbitration === 'ground-attempt';
     return deepFreeze({
-      schema: RESULT_SCHEMA, version: VERSION, authority: AUTHORITY, workflow: WORKFLOW, online: false,
+      schema: RESULT_SCHEMA, version: VERSION, authority: AUTHORITY, workflow: request.workflow, online: false,
       tick: request.tick, epoch: request.epoch, status, ownedContact: false, contactType: null,
       ownerCandidateId: null, ballState: request.ballState, consumedFirstTouchIds: request.consumedFirstTouchIds,
       consumedAerialIds: request.consumedAerialIds,
       suppressLegacy: {
-        reception: aerialArbitrated,
+        reception: aerialArbitrated || groundArbitrated,
         aerialDuel: aerialArbitrated,
         outfieldBallBlock: false,
         keeperContact: false,
@@ -343,9 +359,9 @@
       roster: rosterById[player.id],
       intended: player.id === request.intendedReceiverId,
       distance: Math.hypot(player.position.x - request.ballState.position.x, player.position.y - request.ballState.position.y)
-    })).filter(row => row.roster && !row.roster.isGK && !row.roster.sentOff && row.roster.available && row.roster.contactEligible && row.distance <= 1.3)
+    })).filter(row => row.roster && !row.roster.isGK && !row.roster.sentOff && row.roster.available && row.roster.contactEligible && row.distance <= FIRST_TOUCH_ACQUISITION_RADIUS_METRES)
       .sort((left, right) => Number(right.intended) - Number(left.intended) || left.distance - right.distance || left.player.id.localeCompare(right.player.id));
-    if (!candidates.length) return noContact(request, 'no-contact', 'no-eligible-first-touch-receiver');
+    if (!candidates.length) return noContact(request, 'no-contact', 'no-eligible-first-touch-receiver', 'ground-attempt');
     const capability = FirstTouchAuthority.createCapability({
       enabled: true,
       online: false,
@@ -354,6 +370,11 @@
       acknowledgement: FirstTouchAuthority.ACKNOWLEDGEMENT
     });
     for (const candidate of candidates) {
+      // A retained directional contact deliberately leaves the ball loose for
+      // physics-led dribbling. If the same player reaches that same contact
+      // chain again, keep resolving the physics but do not present it as a new
+      // reception every time the host's short animation lock expires.
+      const continuation = isRetainedTouchContinuation(request, candidate.player.id);
       const profile = rosterAttributes(candidate.roster);
       const pressureIds = request.world.players.filter(player => {
         const roster = rosterById[player.id];
@@ -398,7 +419,7 @@
         consumedHandoffIds: request.consumedFirstTouchIds
       }, capability);
       if (result.status === 'no-contact') continue;
-      if (result.status === 'already-consumed') return noContact(request, 'already-consumed', result.candidateHandoffId);
+      if (result.status === 'already-consumed') return noContact(request, 'already-consumed', result.candidateHandoffId, 'ground-attempt');
       const handoff = result.handoff;
       if (!handoff || result.status !== 'pending' || result.schema !== FirstTouchAuthority.RESULT_SCHEMA ||
           result.version !== FirstTouchAuthority.VERSION || handoff.schema !== FirstTouchAuthority.HANDOFF_SCHEMA ||
@@ -415,9 +436,10 @@
       if (request.consumedFirstTouchIds.length >= MAX_LEDGER_IDS) throw new Error('first-touch exact-once ledger is full');
       const ballState = ballToPitch(handoff.contact.ballState, snapshot.centre);
       const ownerCandidateId = handoff.possession.disposition === 'candidate-acquire' ? candidate.player.id : null;
+      const contactType = continuation ? 'dribble-touch' : 'first-touch';
       return deepFreeze({
-        schema: RESULT_SCHEMA, version: VERSION, authority: AUTHORITY, workflow: WORKFLOW, online: false,
-        tick: request.tick, epoch: request.epoch, status: 'contact', ownedContact: true, contactType: 'first-touch',
+        schema: RESULT_SCHEMA, version: VERSION, authority: AUTHORITY, workflow: request.workflow, online: false,
+        tick: request.tick, epoch: request.epoch, status: 'contact', ownedContact: true, contactType,
         ownerCandidateId, ballState,
         consumedFirstTouchIds: [...request.consumedFirstTouchIds, handoff.handoffId],
         consumedAerialIds: request.consumedAerialIds,
@@ -431,12 +453,14 @@
         presentation: {
           playerId: candidate.player.id, teamId: candidate.player.teamId, outcome: result.outcome,
           reason: result.reason, technique: result.technique, handoffId: handoff.handoffId,
-          possessionDisposition: handoff.possession.disposition
+          possessionDisposition: handoff.possession.disposition,
+          phase: continuation ? DRIBBLE_CONTINUATION_PHASE : 'reception'
         },
-        detail: { sourceResultDigest: digest(result), handoffId: handoff.handoffId }
+        detail: { sourceResultDigest: digest(result), handoffId: handoff.handoffId,
+          retainedTouchContinuation: continuation }
       });
     }
-    return noContact(request, 'no-contact', 'first-touch-geometry-miss');
+    return noContact(request, 'no-contact', 'first-touch-geometry-miss', 'ground-attempt');
   }
 
   function aerialPlayer(player, roster, commandTick) {
@@ -576,7 +600,7 @@
       }
     }, { radius: request.ballState.radius, mass: request.ballState.mass });
     return deepFreeze({
-      schema: RESULT_SCHEMA, version: VERSION, authority: AUTHORITY, workflow: WORKFLOW, online: false,
+      schema: RESULT_SCHEMA, version: VERSION, authority: AUTHORITY, workflow: request.workflow, online: false,
       tick: request.tick, epoch: request.epoch, status: 'contact', ownedContact: true, contactType: 'aerial-volley',
       ownerCandidateId: null, ballState, consumedFirstTouchIds: request.consumedFirstTouchIds, consumedAerialIds,
       suppressLegacy: {
@@ -597,7 +621,7 @@
   function compose(input, capability) {
     assertDependencies();
     assertCapability(capability);
-    const request = normalizeRequest(input);
+    const request = normalizeRequest(input, capability.workflow);
     if (!request.gate.livePlay || request.gate.restartActive || request.gate.replayActive || request.gate.keeperAuthority ||
         request.gate.offsideInvolvementPending || request.gate.specialActionAuthority) {
       return noContact(request, 'gated', clone(request.gate));
@@ -614,9 +638,12 @@
     ACKNOWLEDGEMENT,
     AUTHORITY,
     WORKFLOW,
+    SUPPORTED_WORKFLOWS,
     PARENT_VERSION,
     FIXED_TICK_SECONDS,
     COORDINATE_SYSTEM,
+    DRIBBLE_CONTINUATION_PHASE,
+    FIRST_TOUCH_ACQUISITION_RADIUS_METRES,
     DEPENDENCY_CONTRACTS,
     createCapability,
     compose,

@@ -15,10 +15,10 @@ change's ownership.
 
 - The default request and effective engine are both `build-173`.
 - `fl-v2` must be explicitly selected.
-- `fl-v2` is effective only for offline `single-player` and
-  `free-kick-suite` (shown as Free Kick Practice).
-- Local 2P, Same-Team Co-op and CPU vs CPU preserve the `fl-v2` request but
-  visibly and effectively fall back to Build 173.
+- `fl-v2` is effective only for offline `single-player`, exact all-CPU
+  `spectator`, and `free-kick-suite` (shown as Set-Piece Suite).
+- Local 2P and Same-Team Co-op preserve the `fl-v2` request but visibly select
+  Build 173 before kickoff because their authority routes are unsupported.
 - Online locks the selector and always resolves to Build 173. An attempted V2
   request is retained as intent only and receives `online-authority-frozen`.
 - Switching back to either supported offline mode recomputes the effective
@@ -57,10 +57,12 @@ excluded, so an identical match package produces the same seed.
 
 ## User-facing behavior
 
-The Match Settings page names Build 173 as stable and FL V2 as experimental
-offline authority. A live status panel distinguishes the Single Player and
-Set-Piece Suite contracts, and the final confirmation names the effective
-engine and explains every fallback before launch. The Match Preview stadium
+The Match Settings page names Build 173 as stable and FL V2 as a strict offline
+playtest. A live status panel distinguishes the Single Player, CPU-versus-CPU
+and Set-Piece Suite contracts, and the final confirmation names the effective
+engine and explains every pre-launch Build 173 selection. After V2 launches, a
+fault freezes the match behind an exportable diagnostic rather than continuing
+under Build 173. The Match Preview stadium
 strip has an explicit layout contract, so its kick-off summary, named stadium
 and matchday label remain visually separated rather than collapsing into one
 unstyled line.
@@ -71,7 +73,7 @@ unstyled line.
   opt-in, mode switches, Online freeze, deterministic seed, payload codec,
   query markers, workflow preservation, exact Madrid BBC source bytes and the
   Match Preview stadium-strip layout contract.
-- The final release proof must verify both supported routes through the real
+- The final release proof must verify all three supported routes through the real
   five-step Quick Play UI; a standalone lab is not release evidence.
 - Existing Quick Play/online/Madrid/formation/replay/name protections:
   **43/43 pass**.

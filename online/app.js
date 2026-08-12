@@ -458,10 +458,16 @@
   function forwardRemoteInput(pad){
     try{ui.frame.contentWindow&&ui.frame.contentWindow.postMessage({source:'football-legacy-online-parent',type:'remote-input',pad,receivedAt:performance.now()},TARGET_ORIGIN)}catch{}
   }
+  const RAW_DUALSENSE_HAT_VALUES=[-1,-.714286,-.428571,-.142857,.142857,.428571,.714286,1];
   function rawDualSenseDpad(gamepad,index){
     const value=gamepad&&gamepad.axes&&gamepad.axes.length>9?Number(gamepad.axes[9]):null;
     if(!Number.isFinite(value)||value>1.14)return false;
-    const sector=Math.round((value+1)*3.5)%8;
+    let sector=-1,nearest=Infinity;
+    RAW_DUALSENSE_HAT_VALUES.forEach((candidate,candidateSector)=>{const distance=Math.abs(value-candidate);if(distance<nearest){nearest=distance;sector=candidateSector}});
+    // Firefox can expose a momentary zeroed axis-9 packet while a Bluetooth
+    // DualSense reconnects. Zero is not a real hat position; accepting it as
+    // one used to serialize an indefinitely held D-pad Down to the host.
+    if(nearest>.08)return false;
     if(index===12)return sector===0||sector===1||sector===7;
     if(index===13)return sector===3||sector===4||sector===5;
     if(index===14)return sector===5||sector===6||sector===7;

@@ -55,6 +55,23 @@ function runPreflight(search = '', hash = '') {
   return { diagnostic: window.__FL_V2_SHADOW_PREFLIGHT, writes };
 }
 
+function runLivePreflight(search = '', hash = '') {
+  const match = matchHtml.match(/<script id="offlineLiveV2Preflight">([\s\S]*?)<\/script>/);
+  assert.ok(match, 'separate conditional offline-live preflight must exist');
+  const writes = [];
+  const window = {};
+  vm.runInNewContext(match[1], {
+    window,
+    location: { search, hash },
+    document: { write: value => writes.push(String(value)) },
+    URLSearchParams,
+    TextDecoder,
+    Uint8Array,
+    atob
+  });
+  return { diagnostic: window.__FL_V2_LIVE_PREFLIGHT, writes };
+}
+
 function encoded(value) {
   return Buffer.from(typeof value === 'string' ? value : JSON.stringify(value), 'utf8').toString('base64url');
 }
@@ -164,12 +181,16 @@ function arm(harness, workflow = 'quick-play') {
 
 test('FROZEN BYTE GATE: reviewed hook, match integration and approved target bytes are exact', () => {
   assert.equal(sha256(fs.readFileSync(hookPath)), '61c4ab42563f3b4b8585371b37e8e2527073bdab4eb5598cb75b677fd1c12fca');
-  assert.equal(sha256(fs.readFileSync(matchPath)), '0d0bc4ea63368722d7220526b717bf04769aa6ce074a90a4bf174a6105e0df82');
+  assert.equal(sha256(fs.readFileSync(matchPath)), 'c97f4f7897ba458c36cb28414cb4fc99ceb755bb96e3009fa5372bddea4e626c');
   assert.equal(sha256(fs.readFileSync(adapterPath)), 'b7cbd0f9366c97b966962c2a2c26c16d592cdb46358c0a7eb9e25cd3e60600e5');
   assert.equal(sha256(fs.readFileSync(capturePath)), 'c6556fafdb0caf1877e4b6b78f27bc4784d2dff5cfcee21b501849db96ea16c5');
 });
 
 test('DEFAULT-ZERO-LOAD GATE: only one exact offline flag writes the ten reviewed scripts in order', () => {
+  const defaultLive = runLivePreflight();
+  assert.equal(defaultLive.diagnostic.requested, false);
+  assert.equal(defaultLive.diagnostic.eligible, false);
+  assert.deepEqual(defaultLive.writes, []);
   for (const search of [
     '', '?v2Shadow=', '?v2Shadow=0', '?v2Shadow=true', '?v2Shadow=01',
     '?v2Shadow=1&v2Shadow=1', '?V2Shadow=1'
@@ -186,6 +207,18 @@ test('DEFAULT-ZERO-LOAD GATE: only one exact offline flag writes the ten reviewe
     'overhaul-shadow-orchestrator-v2.js', 'build173-live-shadow-adapter-v2.js',
     'build173-shadow-host-capture-v2.js', 'build173-live-shadow-hook-v2.js'
   ]);
+  const liveEngineConflict = runPreflight('?v2Shadow=1&engine=fl-v2');
+  assert.equal(liveEngineConflict.diagnostic.eligible, false);
+  assert.ok(liveEngineConflict.diagnostic.urlMarkers.includes('live-engine-marker'));
+  assert.deepEqual(liveEngineConflict.writes, []);
+  const shadowConflict = runLivePreflight('?v2Shadow=1&engine=fl-v2');
+  assert.equal(shadowConflict.diagnostic.eligible, false);
+  assert.ok(shadowConflict.diagnostic.urlMarkers.includes('shadow-marker-conflict'));
+  assert.deepEqual(shadowConflict.writes, []);
+  const livePreflight = matchHtml.match(/<script id="offlineLiveV2Preflight">([\s\S]*?)<\/script>/);
+  assert.ok(livePreflight, 'the separate conditional offline-live preflight must coexist');
+  assert.match(livePreflight[1], /if\(shadowValues\.length\)markers\.push\('shadow-marker-conflict'\)/,
+    'the offline-live route must reject every shadow marker before loading');
   assert.doesNotMatch(matchHtml, /<script\s+src=["'][^"']*(?:ball-engine-v2|ball-shadow-bridge-v2|cpu-intelligence-v2|movement-engine-v2|formation-behaviour-v2|match-clock-v2|overhaul-shadow-orchestrator-v2|build173-live-shadow-adapter-v2|build173-shadow-host-capture-v2|build173-live-shadow-hook-v2)\.js/i);
 });
 
@@ -412,13 +445,20 @@ test('SET-PIECE READY LIFECYCLE GATE: explicit ready restart arms and captures t
   assert.equal(readySuite.attachment.exportTelemetry().telemetry.acceptedTicks, 1);
 });
 
-test('STATIC LIFECYCLE WIRING GATE: match integration has only the four approved boundaries', () => {
+test('STATIC LIFECYCLE WIRING GATE: both mutually exclusive clock authorities retain the four approved shadow lifecycle boundaries', () => {
   assert.equal((matchHtml.match(/\.resetForNewMatch\(\)/g) || []).length, 1);
   assert.equal((matchHtml.match(/\.armAfterPostWalkoutKickoff\(\)/g) || []).length, 1);
   assert.equal((matchHtml.match(/\.armAfterSetPieceSuiteReady\(\)/g) || []).length, 1);
   assert.equal((matchHtml.match(/\.finishBeforeFullTimePresentation\(\)/g) || []).length, 1);
   assert.ok(matchHtml.indexOf("matchPhase='play';kickoff('you');if(build173V2Shadow)build173V2Shadow.armAfterPostWalkoutKickoff()") >= 0);
-  assert.ok(matchHtml.indexOf('if(build173V2Shadow)build173V2Shadow.finishBeforeFullTimePresentation();matchPhase=\'fulltime-presentation\'') >= 0);
+  assert.match(matchHtml, /function finishBuild173ShadowBeforeFullTime\(\)\{if\(build173V2Shadow\)build173V2Shadow\.finishBeforeFullTimePresentation\(\);\}/,
+    'one shared finish boundary must own the sole public shadow finish call');
+  assert.equal((matchHtml.match(/finishBuild173ShadowBeforeFullTime\(\)/g) || []).length, 3,
+    'one definition plus the live-V2 and Build 173 full-time paths must exist');
+  assert.match(matchHtml, /clock\.period==='full-time'[\s\S]{0,360}?finishBuild173ShadowBeforeFullTime\(\);matchPhase='fulltime-presentation'/,
+    'conditional live V2 clock authority must finish the read-only shadow before presentation');
+  assert.match(matchHtml, /if\(!liveV2OwnsPeriodClock\(\)\)[\s\S]{0,1800}?finishBuild173ShadowBeforeFullTime\(\);matchPhase='fulltime-presentation'/,
+    'default Build 173 clock authority must finish the read-only shadow before presentation');
   assert.ok(matchHtml.indexOf("restart('FREE KICK','you',practiceSpot.x,practiceSpot.y,false,actor)") <
     matchHtml.indexOf('if(build173V2Shadow)build173V2Shadow.armAfterSetPieceSuiteReady()'));
 });

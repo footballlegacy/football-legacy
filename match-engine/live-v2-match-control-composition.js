@@ -31,8 +31,8 @@
   const RECEIPT_SCHEMA = 'football-legacy-live-v2-match-control-receipt-v1';
   const SNAPSHOT_SCHEMA = 'football-legacy-live-v2-match-control-snapshot-v1';
   const AUTHORITY = 'fl-v2-approved-offline-match-control';
-  const ACKNOWLEDGEMENT = 'EXPLICIT_FL_V2_OFFLINE_SINGLE_PLAYER_MATCH_CONTROL';
-  const WORKFLOWS = Object.freeze(['single-player', 'set-piece-suite']);
+  const ACKNOWLEDGEMENT = 'EXPLICIT_FL_V2_OFFLINE_MATCH_CONTROL';
+  const WORKFLOWS = Object.freeze(['single-player', 'cpu-v-cpu', 'set-piece-suite']);
   const ENGINE = 'fl-v2';
   const FALLBACK_ENGINE = 'build-173';
   const LIVE_ENGINE_VERSION = '1.0.0-offline-live-authority-playtest';
@@ -297,7 +297,9 @@
     restartState = Restart.activate(restartState, restartCapability, {
       workflow: capability.workflow === 'set-piece-suite'
         ? Restart.WORKFLOWS.SET_PIECE_SUITE
-        : Restart.WORKFLOWS.SINGLE_PLAYER,
+        : capability.workflow === 'cpu-v-cpu'
+          ? Restart.WORKFLOWS.CPU_V_CPU
+          : Restart.WORKFLOWS.SINGLE_PLAYER,
       runtimeMode: Restart.RUNTIME_MODE,
       authority: Restart.RUNTIME_AUTHORITY,
       normalMatchAuthority: false,
@@ -478,7 +480,9 @@
     return Restart.resolveCameraPolicy({
       workflow: workflow === 'set-piece-suite'
         ? Restart.WORKFLOWS.SET_PIECE_SUITE
-        : Restart.WORKFLOWS.SINGLE_PLAYER,
+        : workflow === 'cpu-v-cpu'
+          ? Restart.WORKFLOWS.CPU_V_CPU
+          : Restart.WORKFLOWS.SINGLE_PLAYER,
       restartKind: cameraRestartKind(suiteState.selectedScenario.kind),
       takerOwner: event.takerOwner,
       goalkeeperOwner: event.goalkeeperOwner == null ? Restart.OWNERS.CPU : event.goalkeeperOwner
@@ -703,6 +707,7 @@
       version: VERSION,
       authority: AUTHORITY,
       sessionId: runtime.sessionId,
+      workflow: runtime.workflow,
       tick: safeTick,
       requestedEngine: ENGINE,
       effectiveEngine: FALLBACK_ENGINE,
@@ -828,6 +833,7 @@
         version: VERSION,
         authority: AUTHORITY,
         sessionId: runtime.sessionId,
+        workflow: runtime.workflow,
         tick: normalized.tick,
         requestedEngine: ENGINE,
         effectiveEngine: ENGINE,
@@ -969,7 +975,9 @@
     return Restart.resolveCameraPolicy({
       workflow: source.workflow === 'set-piece-suite'
         ? Restart.WORKFLOWS.SET_PIECE_SUITE
-        : Restart.WORKFLOWS.SINGLE_PLAYER,
+        : source.workflow === 'cpu-v-cpu'
+          ? Restart.WORKFLOWS.CPU_V_CPU
+          : Restart.WORKFLOWS.SINGLE_PLAYER,
       restartKind: source.restartKind,
       takerOwner: source.takerOwner,
       goalkeeperOwner: source.goalkeeperOwner == null ? Restart.OWNERS.CPU : source.goalkeeperOwner

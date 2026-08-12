@@ -1,8 +1,14 @@
-# Current match build: Build 174 offline FL V2 playtest
+# Current match build: local Build 174 offline FL V2 playtest
 
-The main 3D match remains the shared renderer, rules, camera, goalkeeper, restart and replay host. Build 173 is the default authority. An explicit offline Quick Play opt-in can activate FL V2 for Single Player and Free Kick Practice; any unsupported, online or failed candidate route stays on or returns visibly to Build 173.
+The main 3D match remains the shared renderer, rules, camera, goalkeeper, restart and replay host. Build 173 is the deliberate default authority. An explicit offline Quick Play opt-in can activate FL V2 for Single Player, all-CPU CPU vs CPU, and the Set-Piece Suite. Unsupported and online modes select Build 173 before kickoff. A launched FL V2 match never returns to Build 173: a candidate fault rolls back its tick, freezes the simulation and opens the strict diagnostic screen.
 
-Build 174 adds deterministic Ball, Movement, CPU, Formation, First Touch, Aerial, Match Clock, Restart and Set-Piece candidates behind strict workflow and transaction boundaries. It does not remove Local 2P, same-team co-op, CPU vs CPU, Online, Career or creation workflows.
+Build 174 adds deterministic Ball, Movement, CPU, Formation, First Touch, Aerial, Match Clock, Restart and Set-Piece candidates behind strict workflow and transaction boundaries. Single Player and all-CPU CPU vs CPU use the live gameplay authority; the Set-Piece Suite uses the reviewed set-piece authority. Local 2P, same-team co-op and Online remain on Build 173, and no Career or creation workflow is removed.
+
+The latest three-log gameplay batch calibrates pass, through-ball, lob, cross and throw-in delivery; prevents the kicker immediately reclaiming their own release; improves first-touch acceleration, shielding, collision ownership, goalkeeper possession and loose-ball decisions; and adds targeted carrier-support corrections for the Invincibles and Conte Chelsea. Arsenal's full-match support/pressing shape still needs visual calibration and is not claimed closed. CPU free kicks, restart camera ownership, incident-anchored replays, the three-view set-piece replay package, controller reconnection and single-launch loading feedback are included. Ancelotti's representative 2013/14 Real Madrid BBC team is part of the current historic-team set.
+
+The current set-piece closure adds a dedicated slower free-kick approach that mirrors preferred foot and strike technique, plus a ball-anchored behind-player camera with bounded pan. Free kicks, corners and goal kicks now share normal, low and driven directional service physics while direct free-kick shooting remains a separate Circle action.
+
+Build 173 has already been published as the stable baseline. This document describes the local Build 174 working state and makes no public-release claim for FL V2.
 
 The visual-pass notes below are retained as historical implementation context; their old claim that gameplay systems were unchanged no longer describes the current opt-in FL V2 route.
 

@@ -102,7 +102,8 @@ function offsideIncident(id = 'offside-0001') {
 }
 
 equal(Adapter.VERSION, '1.0.0-offline-live-match-control', 'version is frozen');
-equal(Adapter.WORKFLOWS, ['single-player', 'set-piece-suite'], 'only approved offline workflows are exposed');
+equal(Adapter.ACKNOWLEDGEMENT, 'EXPLICIT_FL_V2_OFFLINE_MATCH_CONTROL', 'acknowledgement covers only the approved offline match-control scope');
+equal(Adapter.WORKFLOWS, ['single-player', 'cpu-v-cpu', 'set-piece-suite'], 'only approved offline workflows are exposed');
 equal(Adapter.mapHostPhase('live'), 'live', 'live phase maps exactly');
 equal(Adapter.mapHostPhase('kickoff'), 'dead-ball', 'kickoff freezes gameplay time');
 equal(Adapter.mapHostPhase('offside-presentation'), 'offside-presentation', 'offside has an explicit clock phase');
@@ -113,7 +114,13 @@ throws(() => Adapter.mapHostPhase('render-frame'), /unsupported/, 'presentation/
 
 throws(() => capability('online-versus'), /exact FL V2 approved offline/, 'online is frozen');
 throws(() => capability('home-co-op'), /exact FL V2 approved offline/, 'co-op is frozen');
-throws(() => capability('cpu-v-cpu'), /exact FL V2 approved offline/, 'CPU v CPU is frozen');
+const cpuCap = capability('cpu-v-cpu');
+const cpuRuntime = Adapter.createRuntime(runtimeOptions('cpu-v-cpu'), cpuCap);
+let cpuPlan = Adapter.prepareTick(cpuRuntime, tickInput(1, 'live', 'cpu-v-cpu'), cpuCap);
+equal(cpuPlan.effectiveEngine, 'fl-v2', 'CPU v CPU is an explicit approved offline authority');
+equal(cpuPlan.workflow, 'cpu-v-cpu', 'CPU v CPU plan preserves its external workflow identity');
+equal(commitPlan(cpuRuntime, cpuCap, cpuPlan).workflow, 'cpu-v-cpu', 'CPU v CPU identity survives commit');
+equal(Adapter.snapshot(cpuRuntime, cpuCap).restart.workflow, 'cpu-v-cpu', 'CPU v CPU uses its Restart workflow contract');
 const singleCap = capability();
 const copiedCapability = JSON.parse(JSON.stringify(singleCap));
 throws(() => Adapter.createRuntime({ sessionId: 'forged' }, copiedCapability), /issued/, 'serialized capability is not authority');

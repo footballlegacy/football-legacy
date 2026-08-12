@@ -85,7 +85,7 @@ test('plain browser loading requires Ball V2 and exposes one frozen global', () 
 });
 
 test('EXACT OFFLINE AUTHORITY GATE: the live match conditionally loads First Touch V2 without giving the module host authority', () => {
-  assert.match(matchSource, /const liveWorkflow=matchType==='single-player'\?'single-player':matchType==='free-kick-suite'\?'set-piece-suite':null/);
+  assert.match(matchSource, /const liveWorkflow=matchType==='single-player'\?'single-player':matchType==='spectator'\?'cpu-v-cpu':matchType==='free-kick-suite'\?'set-piece-suite':null/);
   assert.match(matchSource, /if\(!eligible\)return;[\s\S]*'first-touch-v2\.js'/);
   assert.match(matchSource, /shadow-marker-conflict|frozen-or-unsupported/);
   assert.doesNotMatch(matchSource, /<script[^>]+src=["']first-touch-v2\.js/);
@@ -120,6 +120,51 @@ test('elite ground reception cushions a driven pass into explicit controlled pos
   assert.equal(result.ballState.lastContact.colliderId, 'receiver');
   assert.equal(result.ballState.lastContact.materialId, 'first-touch:foot-cushion');
   assert.equal(result.telemetry.liveApplied, false);
+});
+
+test('routine low-pressure ground control is seeded, rating-led and makes elite errors exceptional', () => {
+  const failures = {};
+  for (const rating of [50, 60, 70, 90, 95]) {
+    failures[rating] = 0;
+    for (let seed = 1; seed <= 500; seed += 1) {
+      const result = Touch.resolve(request({
+        seed,
+        player: {
+          facing: { x: 0, y: 1 },
+          attributes: {
+            control: rating, technique: rating, balance: rating,
+            agility: rating, strength: rating, awareness: rating
+          }
+        }
+      }), capability());
+      assert.equal(result.telemetry.routineControl.eligible, true);
+      if (result.outcome !== 'controlled') failures[rating] += 1;
+    }
+  }
+  assert.ok(failures[50] > failures[60]);
+  assert.ok(failures[60] > failures[70]);
+  assert.ok(failures[70] > failures[90]);
+  assert.ok(failures[50] >= 45 && failures[50] <= 100, JSON.stringify(failures));
+  assert.ok(failures[60] >= 20 && failures[60] <= 65, JSON.stringify(failures));
+  assert.ok(failures[70] <= 20, JSON.stringify(failures));
+  assert.ok(failures[90] <= 10, JSON.stringify(failures));
+  assert.ok(failures[95] <= 5, JSON.stringify(failures));
+});
+
+test('routine-control security never overrides meaningful close pressure', () => {
+  const result = Touch.resolve(request({
+    player: {
+      facing: { x: 0, y: 1 },
+      attributes: { control: 90, technique: 90, balance: 90, agility: 90, strength: 90, awareness: 90 }
+    },
+    pressure: [{
+      id: 'pressing-defender', teamId: 'away', position: { x: 0.1, y: 0 },
+      velocity: { x: 0, y: 0 }, strength: 99
+    }]
+  }), capability());
+  assert.equal(result.telemetry.routineControl.eligible, false);
+  assert.equal(result.telemetry.routineControl.secured, false);
+  assert.notEqual(result.outcome, 'controlled');
 });
 
 test('timing bands are explicit and a late contact cannot consume the ball', () => {

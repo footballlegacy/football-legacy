@@ -285,10 +285,26 @@ test('Invincibles 4-4-2 is a reusable philosophy overlay, not a team-ID branch',
   assert.equal(buildup.phaseShape, '4-4-1-1');
   assert.equal(attack.phaseShape, '3-2-5');
   assert.equal(attack.telemetry.restDefence.slotIds.length, 3);
+  assert.equal(attack.telemetry.restDefence.slotIds.includes('LB'), false, 'Cole lane must not be selected into the back three');
+  assert.equal(attack.telemetry.restDefence.slotIds.includes('RB'), true, 'right back forms the asymmetric back three');
   assert.match(targetBySlot(buildup, 'LB').instruction, /overlap/i);
   assert.match(targetBySlot(buildup, 'LST').instruction, /connector/i);
   assert.doesNotMatch(source, /woolwich-arsenal|west-london-blues/);
   assert.equal(Object.prototype.hasOwnProperty.call(overlay, 'teamId'), false);
+});
+
+test('Invincibles settled attack advances support relative to an advanced carrier', () => {
+  const staticShape = Formation.resolve(request({ formation: '4-4-2', phase: 'settled-attack', philosophy: 'invincibles-442' }));
+  const advanced = Formation.resolve(request({ formation: '4-4-2', phase: 'settled-attack', philosophy: 'invincibles-442', tactics: { carrierProgress: 0.74 } }));
+  for (const slotId of ['LB', 'LM', 'RM', 'LST', 'RST']) {
+    assert.ok(targetBySlot(advanced, slotId).normalized.progress >= targetBySlot(staticShape, slotId).normalized.progress, slotId);
+  }
+  assert.ok(targetBySlot(advanced, 'LST').normalized.progress >= 0.75, 'connector stays near the carrier');
+  assert.ok(targetBySlot(advanced, 'RST').normalized.progress >= 0.83, 'depth runner stays beyond the carrier');
+  assert.ok(targetBySlot(advanced, 'LM').normalized.progress >= 0.70, 'left support lane follows play');
+  assert.ok(targetBySlot(advanced, 'RM').normalized.progress >= 0.70, 'right support lane follows play');
+  assert.equal(targetBySlot(advanced, 'RB').restDefence, true);
+  assert.equal(targetBySlot(advanced, 'LB').restDefence, false);
 });
 
 test('Conte 3-4-3 is a reusable 3-4-2-1 / 5-4-1 philosophy overlay', () => {
@@ -302,6 +318,18 @@ test('Conte 3-4-3 is a reusable 3-4-2-1 / 5-4-1 philosophy overlay', () => {
   assert.ok(targetBySlot(defend, 'RWB').normalized.progress <= 0.22);
   assert.match(targetBySlot(buildup, 'LW').instruction, /half-space/i);
   assert.equal(Object.prototype.hasOwnProperty.call(overlay, 'teamId'), false);
+});
+
+test('Conte settled attack carries both central midfielders and all five attacking lanes with a wide carrier', () => {
+  const staticShape = Formation.resolve(request({ formation: '3-4-3', phase: 'settled-attack', philosophy: 'conte-343' }));
+  const advanced = Formation.resolve(request({ formation: '3-4-3', phase: 'settled-attack', philosophy: 'conte-343', tactics: { carrierProgress: 0.72 } }));
+  for (const slotId of ['LWB', 'LCM', 'RCM', 'RWB', 'LW', 'ST', 'RW']) {
+    assert.ok(targetBySlot(advanced, slotId).normalized.progress >= targetBySlot(staticShape, slotId).normalized.progress, slotId);
+  }
+  assert.ok(targetBySlot(advanced, 'LCM').normalized.progress >= 0.62, 'left central midfielder remains a forward support option');
+  assert.ok(targetBySlot(advanced, 'RCM').normalized.progress >= 0.62, 'right central midfielder remains a forward support option');
+  assert.ok(targetBySlot(advanced, 'ST').normalized.progress >= 0.8, 'striker remains the high outlet');
+  assert.equal(advanced.telemetry.restDefence.slotIds.length, 3);
 });
 
 test('Ancelotti BBC 4-3-3 is a reusable counterattacking and 4-4-2 recovery overlay', () => {

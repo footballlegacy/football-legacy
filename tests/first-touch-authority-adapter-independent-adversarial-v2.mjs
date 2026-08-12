@@ -43,9 +43,9 @@ function finiteTree(value) {
 
 test('freeze and dependency bytes match the independently reviewed versions', () => {
   assert.equal(sha256(bytes.adapter), 'fbbea7ff774015fff32806c32eeb012e23ff2197f86470d4441a9aec27ea4c3e');
-  assert.equal(sha256(bytes.movement), '72df57ceaf2eab4d7eae46360a21cd6f1c1d9187d5efeefe2c033ad3d9fa864f');
+  assert.equal(sha256(bytes.movement), 'af10e98822e2c1d93aa5b8bb9ce2e31ebad61def47174cf3ad25510eb106811d');
   assert.equal(sha256(bytes.ball), '4084ff8968859af2a4149703ce02eb37e0691fa20a542dbc97d793c33342c504');
-  assert.equal(sha256(bytes.touch), 'da75f9cc3ab3458df67c08f7868e45ae2c8d4ad1ef50ff07c78c3c100370b77d');
+  assert.equal(sha256(bytes.touch), '7f4d23e0bb76491957fbe95fed95a62d1019dfa69a372802ab303ddfd4017fc2');
   assert.match(source.adapter, /Movement\.VERSION !== '2\.0\.0-dormant'/);
   assert.match(source.adapter, /Ball\.VERSION !== '2\.0\.0-shadow'/);
   assert.match(source.adapter, /FirstTouch\.VERSION !== '2\.0\.0-dormant'/);

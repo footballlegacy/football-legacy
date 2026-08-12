@@ -30,8 +30,13 @@
     sprintSpeedMaximum: 9.15,
     jockeySpeedMinimum: 2.35,
     jockeySpeedMaximum: 3.7,
-    shieldSpeedMinimum: 1.55,
-    shieldSpeedMaximum: 2.65,
+    shieldSpeedMinimum: 1.9,
+    shieldSpeedMaximum: 3.1,
+    shieldTurnRateMultiplier: 0.84,
+    carrierRunSpeedPenaltyMinimum: 0.004,
+    carrierRunSpeedPenaltyMaximum: 0.025,
+    carrierSprintSpeedPenaltyMinimum: 0.008,
+    carrierSprintSpeedPenaltyMaximum: 0.035,
     accelerationMinimum: 5.2,
     accelerationMaximum: 10.8,
     decelerationMinimum: 6.1,
@@ -148,6 +153,16 @@
       'safetyVelocityLimit', 'safetyPositionLimit']) {
       if (!(config[key] > 0)) throw new RangeError(key + ' must be positive');
     }
+    if (!(config.shieldTurnRateMultiplier > 0)) throw new RangeError('shieldTurnRateMultiplier must be positive');
+    for (const pair of [
+      ['carrierRunSpeedPenaltyMinimum', 'carrierRunSpeedPenaltyMaximum'],
+      ['carrierSprintSpeedPenaltyMinimum', 'carrierSprintSpeedPenaltyMaximum']
+    ]) {
+      const minimum = config[pair[0]], maximum = config[pair[1]];
+      if (!(minimum >= 0 && maximum >= minimum && maximum < 0.2)) {
+        throw new RangeError(pair.join('/') + ' must be an ordered fraction below 0.2');
+      }
+    }
     return config;
   }
 
@@ -241,6 +256,8 @@
       control: createControl(source.control),
       action: createAction(source.action),
       hasBall: Boolean(source.hasBall),
+      touchBurstUntilTick: Number.isInteger(source.touchBurstUntilTick) ? source.touchBurstUntilTick : -1,
+      touchBurstAccelerationMultiplier: clamp(finite(source.touchBurstAccelerationMultiplier, 1), 1, 1.08),
       lastCommandAck: source.lastCommandAck ? cloneObject(source.lastCommandAck) : null,
       safetyCorrections: Math.max(0, Math.trunc(finite(source.safetyCorrections, 0)))
     };
@@ -439,12 +456,18 @@
     else if (mode === 'walk') speed = config.walkSpeed;
     else if (mode === 'idle') speed = 0;
     else speed = attributeScale(player.attributes.pace, config.runSpeedMinimum, config.runSpeedMaximum);
+    if (player.hasBall && (mode === 'run' || mode === 'sprint')) {
+      const technique = clamp((player.attributes.control - 1) / 98, 0, 1);
+      const minimum = mode === 'sprint' ? config.carrierSprintSpeedPenaltyMinimum : config.carrierRunSpeedPenaltyMinimum;
+      const maximum = mode === 'sprint' ? config.carrierSprintSpeedPenaltyMaximum : config.carrierRunSpeedPenaltyMaximum;
+      speed *= 1 - (maximum + (minimum - maximum) * technique);
+    }
     const acceleration = attributeScale(player.attributes.acceleration,
       config.accelerationMinimum, config.accelerationMaximum) * profile.acceleration * fatigue;
     const deceleration = attributeScale((player.attributes.agility + player.attributes.balance) / 2,
       config.decelerationMinimum, config.decelerationMaximum);
     const turnRate = attributeScale(player.attributes.agility,
-      config.turnRateMinimum, config.turnRateMaximum) * profile.turn * (mode === 'jockey' ? 1.22 : mode === 'shield' ? 0.76 : 1);
+      config.turnRateMinimum, config.turnRateMaximum) * profile.turn * (mode === 'jockey' ? 1.22 : mode === 'shield' ? config.shieldTurnRateMultiplier : 1);
     return {
       speed: speed * profile.speed * fatigue,
       acceleration,
@@ -494,7 +517,8 @@
     const delta = { x: targetVelocity.x - player.velocity.x, y: targetVelocity.y - player.velocity.y };
     const deltaLength = magnitude(delta);
     const braking = targetSpeed < speed || inputMagnitude <= 1e-9 || (liveAction && livePhase === 'recovery');
-    const rate = forcedAcceleration == null ? (braking ? limits.deceleration : limits.acceleration) : forcedAcceleration;
+    const touchBurst = !braking && player.touchBurstUntilTick >= tick ? player.touchBurstAccelerationMultiplier : 1;
+    const rate = forcedAcceleration == null ? (braking ? limits.deceleration : limits.acceleration * touchBurst) : forcedAcceleration;
     const maximumDelta = rate * dt;
     if (deltaLength > maximumDelta && deltaLength > 1e-12) {
       player.velocity.x += delta.x / deltaLength * maximumDelta;

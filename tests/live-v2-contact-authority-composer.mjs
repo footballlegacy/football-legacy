@@ -21,11 +21,11 @@ const Ball = require(paths.ball);
 const Composer = require(paths.composer);
 const source = Object.fromEntries(Object.entries(paths).map(([name, file]) => [name, fs.readFileSync(file, 'utf8')]));
 
-function capability() {
+function capability(workflow = 'single-player') {
   return Composer.createCapability({
     enabled: true,
     online: false,
-    workflow: 'single-player',
+    workflow,
     parentAdapterVersion: Composer.PARENT_VERSION,
     parentGrant: 'offline-normal-match-live-authority',
     acknowledgement: Composer.ACKNOWLEDGEMENT
@@ -110,7 +110,7 @@ function request(overrides = {}) {
   });
   return {
     schema: Composer.REQUEST_SCHEMA,
-    workflow: 'single-player',
+    workflow: overrides.workflow || 'single-player',
     online: false,
     tick,
     epoch: overrides.epoch || 0,
@@ -174,6 +174,10 @@ function aerialRequest(overrides = {}) {
 test('surface is frozen, dependency-locked, plan-only and deterministic', () => {
   assert.equal(Composer.VERSION, '1.0.0-offline-live-contact-composer-playtest');
   assert.equal(Composer.PARENT_VERSION, '1.0.0-offline-live-authority-playtest');
+  assert.equal(Composer.ACKNOWLEDGEMENT, 'EXPLICIT_OFFLINE_LIVE_V2_CONTACT_COMPOSITION');
+  assert.equal(Composer.AUTHORITY, 'offline-live-v2-contact-plan');
+  assert.equal(Composer.DRIBBLE_CONTINUATION_PHASE, 'dribble-continuation');
+  assert.deepEqual([...Composer.SUPPORTED_WORKFLOWS], ['single-player', 'cpu-v-cpu']);
   assert.equal(Object.isFrozen(Composer), true);
   assert.equal(typeof Composer.createCapability, 'function');
   assert.equal(typeof Composer.compose, 'function');
@@ -221,6 +225,18 @@ test('capability provenance, parent version, workflow and online scope fail clos
     parentGrant: 'offline-normal-match-live-authority',
     acknowledgement: Composer.ACKNOWLEDGEMENT
   }), /exact offline Single Player/);
+  assert.throws(() => Composer.createCapability({
+    enabled: true,
+    online: false,
+    workflow: 'home-co-op',
+    parentAdapterVersion: Composer.PARENT_VERSION,
+    parentGrant: 'offline-normal-match-live-authority',
+    acknowledgement: Composer.ACKNOWLEDGEMENT
+  }), /exact offline Single Player or CPU-v-CPU/);
+  const cpuCapability = capability('cpu-v-cpu');
+  const cpuResult = Composer.compose(request({ workflow: 'cpu-v-cpu' }), cpuCapability);
+  assert.equal(cpuResult.workflow, 'cpu-v-cpu');
+  assert.throws(() => Composer.compose(request(), cpuCapability), /match the exact approved offline workflow/);
 });
 
 test('clean pass reception emits one canonical controlled first-touch handoff', () => {
@@ -245,6 +261,38 @@ test('clean pass reception emits one canonical controlled first-touch handoff', 
     keeperContact: false,
     wallContact: false
   });
+});
+
+test('same-player retained contacts stay physical but cannot restart reception presentation every 18 ticks', () => {
+  const directional = {
+    type: 'directional-touch', direction: { x: 1, y: 0 }, touchDistanceM: 1.1, active: true
+  };
+  const first = Composer.compose(request({ tick: 17, firstTouchIntent: directional }), capability());
+  assert.equal(first.contactType, 'first-touch');
+  assert.equal(first.presentation.outcome, 'retained');
+  assert.equal(first.presentation.phase, 'reception');
+
+  const secondInput = request({ tick: 35, firstTouchIntent: directional, contactCount: first.ballState.contactCount });
+  secondInput.ballState = Ball.createBallState({
+    ...structuredClone(first.ballState),
+    lastOuterTick: secondInput.tick
+  });
+  const second = Composer.compose(secondInput, capability());
+  assert.equal(second.status, 'contact');
+  assert.equal(second.contactType, 'dribble-touch');
+  assert.equal(second.presentation.phase, Composer.DRIBBLE_CONTINUATION_PHASE);
+  assert.equal(second.detail.retainedTouchContinuation, true);
+  assert.equal(second.ballState.contactCount, first.ballState.contactCount + 1);
+  assert.equal(second.suppressLegacy.reception, true);
+
+  const thirdInput = request({ tick: 53, firstTouchIntent: directional, contactCount: second.ballState.contactCount });
+  thirdInput.ballState = Ball.createBallState({
+    ...structuredClone(second.ballState),
+    lastOuterTick: thirdInput.tick
+  });
+  const third = Composer.compose(thirdInput, capability());
+  assert.equal(third.contactType, 'dribble-touch');
+  assert.equal(third.presentation.phase, Composer.DRIBBLE_CONTINUATION_PHASE);
 });
 
 test('pressured weak receiver produces a deterministic heavy touch that remains loose', () => {

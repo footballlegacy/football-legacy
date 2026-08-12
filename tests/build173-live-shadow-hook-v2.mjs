@@ -80,6 +80,22 @@ function runPreflight(search = '', hash = '') {
   return { diagnostic: window.__FL_V2_SHADOW_PREFLIGHT, writes };
 }
 
+function runLivePreflight(search = '', hash = '') {
+  const source = matchHtml.match(/<script id="offlineLiveV2Preflight">([\s\S]*?)<\/script>/)[1];
+  const writes = [];
+  const window = {};
+  vm.runInNewContext(source, {
+    window,
+    location: { search, hash },
+    document: { write: value => writes.push(String(value)) },
+    URLSearchParams,
+    TextDecoder,
+    Uint8Array,
+    atob
+  });
+  return { diagnostic: window.__FL_V2_LIVE_PREFLIGHT, writes };
+}
+
 test('public API is a telemetry-only exact-flag hook with no projection or apply surface', () => {
   assert.equal(Hook.VERSION, '2.0.0-build173-exact-flag-live-shadow-hook');
   assert.equal(Hook.ACKNOWLEDGEMENT, 'EXPLICIT_BUILD_173_EXACT_FLAG_OFFLINE_TELEMETRY_HOOK');
@@ -95,6 +111,10 @@ test('public API is a telemetry-only exact-flag hook with no projection or apply
 });
 
 test('default and malformed flags load no V2 component while the exact offline flag loads the reviewed UMD stack in order', () => {
+  const defaultLive = runLivePreflight();
+  assert.equal(defaultLive.diagnostic.requested, false);
+  assert.equal(defaultLive.diagnostic.eligible, false);
+  assert.deepEqual(defaultLive.writes, []);
   for (const search of ['', '?v2Shadow=0', '?v2Shadow=true', '?v2Shadow=1&v2Shadow=1']) {
     const result = runPreflight(search);
     assert.equal(result.diagnostic.eligible, false);
@@ -108,6 +128,17 @@ test('default and malformed flags load no V2 component while the exact offline f
     'overhaul-shadow-orchestrator-v2.js', 'build173-live-shadow-adapter-v2.js',
     'build173-shadow-host-capture-v2.js', 'build173-live-shadow-hook-v2.js'
   ]);
+  const liveEngineConflict = runPreflight('?v2Shadow=1&engine=fl-v2');
+  assert.equal(liveEngineConflict.diagnostic.eligible, false);
+  assert.ok(liveEngineConflict.diagnostic.urlMarkers.includes('live-engine-marker'));
+  assert.deepEqual(liveEngineConflict.writes, []);
+  const shadowConflict = runLivePreflight('?v2Shadow=1&engine=fl-v2');
+  assert.equal(shadowConflict.diagnostic.eligible, false);
+  assert.ok(shadowConflict.diagnostic.urlMarkers.includes('shadow-marker-conflict'));
+  assert.deepEqual(shadowConflict.writes, []);
+  const livePreflight = matchHtml.match(/<script id="offlineLiveV2Preflight">([\s\S]*?)<\/script>/);
+  assert.ok(livePreflight, 'separate conditional offline-live preflight must remain present');
+  assert.match(livePreflight[1], /if\(shadowValues\.length\)markers\.push\('shadow-marker-conflict'\)/);
 });
 
 test('obvious URL and decoded online markers freeze before any V2 component is loaded', () => {
@@ -228,12 +259,16 @@ test('online status and capture faults self-freeze without interrupting Build 17
   assert.equal(broken.fixture.calls(), 2);
 });
 
-test('match integration has only the approved lifecycle boundaries and no live projection path', () => {
+test('match integration has only the approved lifecycle boundaries under either mutually exclusive clock authority and no live projection path', () => {
   assert.equal((matchHtml.match(/\.resetForNewMatch\(\)/g) || []).length, 1);
   assert.equal((matchHtml.match(/\.armAfterPostWalkoutKickoff\(\)/g) || []).length, 1);
   assert.equal((matchHtml.match(/\.armAfterSetPieceSuiteReady\(\)/g) || []).length, 1);
   assert.equal((matchHtml.match(/\.finishBeforeFullTimePresentation\(\)/g) || []).length, 1);
   assert.match(matchHtml, /kickoff\('opp'\);}\s*return;/, 'half-time kickoff must not reset the shadow epoch');
+  assert.match(matchHtml, /function finishBuild173ShadowBeforeFullTime\(\)\{if\(build173V2Shadow\)build173V2Shadow\.finishBeforeFullTimePresentation\(\);\}/);
+  assert.equal((matchHtml.match(/finishBuild173ShadowBeforeFullTime\(\)/g) || []).length, 3);
+  assert.match(matchHtml, /clock\.period==='full-time'[\s\S]{0,360}?finishBuild173ShadowBeforeFullTime\(\);matchPhase='fulltime-presentation'/);
+  assert.match(matchHtml, /if\(!liveV2OwnsPeriodClock\(\)\)[\s\S]{0,1800}?finishBuild173ShadowBeforeFullTime\(\);matchPhase='fulltime-presentation'/);
   assert.match(matchHtml, /build173SimulationTick=build173V2Shadow\?build173V2Shadow\.selectTickRunner\(update/);
   assert.match(matchHtml, /build173ShadowSimulationStepIndex=n;build173SimulationTick\(\)/);
   assert.doesNotMatch(matchHtml, /FootballLegacyBuild173LiveShadowAdapterV2\.(?:apply|project|commit)/);

@@ -16,11 +16,12 @@ const Movement = require(path.join(engine, 'movement-engine-v2.js'));
 const CPU = require(path.join(engine, 'cpu-intelligence-v2.js'));
 const Formation = require(path.join(engine, 'formation-behaviour-v2.js'));
 const Contact = require(path.join(engine, 'live-v2-contact-authority-composer.js'));
+const Dribbling = require(path.join(engine, 'dribbling-state-v2.js'));
 const matchSource = readFileSync(path.join(engine, 'match.html'), 'utf8');
 const adapterSource = readFileSync(path.join(engine, 'live-v2-authority-adapter.js'), 'utf8');
 const historicSource = readFileSync(path.join(root, 'quick-play', 'historic-playtest-squads.js'), 'utf8');
 const hash = value => createHash('sha256').update(value).digest('hex');
-const dependencies = { ball: Ball, movement: Movement, cpu: CPU, formation: Formation, contact: Contact };
+const dependencies = { ball: Ball, movement: Movement, cpu: CPU, formation: Formation, contact: Contact, dribbling: Dribbling };
 
 function capability(extra = {}) {
   return Adapter.createCapability({
@@ -110,16 +111,25 @@ function validPayload(seed = 173173) {
   };
 }
 
+function cpuPayload(seed = 173173) {
+  return {
+    ...validPayload(seed),
+    matchType: 'spectator',
+    controllers: { player1Team: null, player2Team: null, aiTeam: 'both' }
+  };
+}
+
 test('frozen promotion bytes and lower-engine contracts are exact', () => {
-  assert.equal(hash(adapterSource), '4567ed9c55d9072e544e36c7572b5e7f07bcf0b3d0b5bcb275ff987c26faa326');
-  assert.equal(hash(matchSource), '0d0bc4ea63368722d7220526b717bf04769aa6ce074a90a4bf174a6105e0df82');
+  assert.equal(hash(adapterSource), '0abf4e3ee5af94dbabccc5a7c37833d82540ce5e086beaa51723b66222539548');
+  assert.equal(hash(matchSource), 'c97f4f7897ba458c36cb28414cb4fc99ceb755bb96e3009fa5372bddea4e626c');
   assert.equal(Adapter.VERSION, '1.0.0-offline-live-authority-playtest');
-  assert.deepEqual([...Adapter.SUPPORTED_WORKFLOWS], ['single-player']);
+  assert.deepEqual([...Adapter.SUPPORTED_WORKFLOWS], ['single-player', 'cpu-v-cpu']);
   assert.equal(Ball.VERSION, Adapter.DEPENDENCY_CONTRACTS.ball.version);
   assert.equal(Movement.VERSION, Adapter.DEPENDENCY_CONTRACTS.movement.version);
   assert.equal(CPU.VERSION, Adapter.DEPENDENCY_CONTRACTS.cpu.version);
   assert.equal(Formation.VERSION, Adapter.DEPENDENCY_CONTRACTS.formation.version);
   assert.equal(Contact.VERSION, Adapter.DEPENDENCY_CONTRACTS.contact.version);
+  assert.equal(Dribbling.VERSION, Adapter.DEPENDENCY_CONTRACTS.dribbling.version);
 });
 
 test('capabilities fail closed against forgery, online markers and unsupported workflows', () => {
@@ -211,6 +221,7 @@ test('a launch owns released-ball flight while retaining team, receiver and offs
   }));
   assert.ok(frame, JSON.stringify(live.status()));
   assert.ok(frame.hostProjection.ball, 'Ball V2 must integrate the released ball');
+  assert.ok(frame.hostProjection.ball.x > source.x, 'a positive-x launch must advance toward its intended target');
   assert.deepEqual(frame.hostProjection.possession, {
     teamId: 'you', ownerId: null, inFlight: true, intendedReceiverId: target.id,
     releaseTick: 1, offsideCandidate: launch.offsideCandidate
@@ -269,11 +280,29 @@ test('deterministic replay, bounded finite telemetry and reset epoch re-arm at t
   assert.deepEqual(traces[0], traces[1]);
 });
 
-test('preflight loads V2 only for one exact offline Single Player query/payload pair', () => {
+test('preflight loads V2 only for exact offline Single Player or all-CPU spectator query/payload pairs', () => {
   const good = preflight('?engine=fl-v2&simulationSeed=173173', validPayload());
   assert.equal(good.value.eligible, true);
   assert.equal(good.value.workflow, 'single-player');
-  assert.equal(good.writes.length, 14);
+  assert.equal(good.writes.length, 15);
+  const cpuGood = preflight('?engine=fl-v2&simulationSeed=173173&autoplay=1', cpuPayload());
+  assert.equal(cpuGood.value.eligible, true);
+  assert.equal(cpuGood.value.workflow, 'cpu-v-cpu');
+  assert.equal(cpuGood.writes.length, 15);
+  for (const [query, payload] of [
+    ['?engine=fl-v2&simulationSeed=173173', cpuPayload()],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=0', cpuPayload()],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=1&autoplay=1', cpuPayload()],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=1', { ...cpuPayload(), controllers: { player1Team: 'home', player2Team: null, aiTeam: 'away' } }],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=1', { ...cpuPayload(), controllers: { player1Team: null, player2Team: 'away', aiTeam: 'you' } }],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=1', { ...cpuPayload(), controllers: { player1Team: null, player2Team: null, aiTeam: 'both', cooperative: true } }],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=1', { ...cpuPayload(), controllers: { player1Team: null, player2Team: null, aiTeam: 'both', online: true } }],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=1', { ...cpuPayload(), online: { protocol: 'football-legacy-online-v1' } }]
+  ]) {
+    const result = preflight(query, payload);
+    assert.equal(result.value.eligible, false);
+    assert.equal(result.writes.length, 0);
+  }
   for (const [query, mutate] of [
     ['', null],
     ['?engine=fl-v2&engine=fl-v2&simulationSeed=173173', null],
@@ -308,7 +337,8 @@ test('live hook is exact-one and successful V2 ticks suppress every overlapping 
   assert.match(matchSource, /resolveSetPieceWallBlock\(\);resolveBallBlock\(\);if\(!liveV2SuppressLegacyAerialDuel\)resolveAerialDuel\(false\)/);
   assert.match(adapterSource, /firstTouchReception: 'football-legacy-live-v2-contact-authority-composer'/);
   assert.match(adapterSource, /aerialVolleyAttempt: 'football-legacy-live-v2-contact-authority-composer'/);
-  assert.match(adapterSource, /wallKeeperAndUnownedOutfieldBallContact: 'build-173-explicit-contact-handoff'/);
+  assert.match(adapterSource, /looseBallRecoverySelection: 'football-legacy-live-v2-authority-adapter'/);
+  assert.match(adapterSource, /wallKeeperAndOutfieldBodyBlock: 'build-173-explicit-contact-handoff'/);
 });
 
 test('composed live bridge applies restart and Suite commands honestly and exactly once', () => {
@@ -323,7 +353,9 @@ test('composed live bridge applies restart and Suite commands honestly and exact
   ]) assert.ok(apply.includes(`command.type==='${command}'`), command);
   assert.match(apply, /throw new Error\('unrecognized FL V2 match-control command:/);
   assert.match(matchSource, /appliedCommandIds\.push\(command\.id\)/);
-  assert.match(matchSource, /appliedCommandIds\.length!==plan\.requiredCommandIds\.length/);
+  assert.match(matchSource, /function liveV2ControlReceiptMatches\(appliedCommandIds,requiredCommandIds\)/);
+  assert.match(matchSource, /applied\.length===required\.length&&applied\.every\(\(id,index\)=>id===required\[index\]\)/);
+  assert.match(matchSource, /if\(!liveV2ControlReceiptMatches\(appliedCommandIds,plan\.requiredCommandIds\)\)/);
   assert.doesNotMatch(matchSource, /appliedCommandIds:plan\.requiredCommandIds/);
 });
 
@@ -336,7 +368,7 @@ test('offside entry, Suite lifecycle, live aim and menu are wired to real host b
   assert.equal((offside.match(/whistle\(\)/g) || []).length, 1);
 
   assert.match(matchSource, /liveV2QueueSuiteEvent\('arm',\{launch:\{target:canonicalTarget,/);
-  assert.match(matchSource, /metadata:\{technique,shotLabel,power:\+p\.toFixed\(3\),liveAim:true\}/);
+  assert.match(matchSource, /metadata:\{technique,shotLabel,power:\+p\.toFixed\(3\),paceMps:Number\(paceMps\)\|\|null,arrivalMs:Number\(arrivalMs\)\|\|null,liveAim:true\}/);
   assert.match(matchSource, /liveV2QueueSuiteEvent\('contact',\{contact:\{kind:'keeper-contact'/);
   assert.match(matchSource, /resolveResult:'saved'/);
   assert.match(matchSource, /consumedSuiteEvent\.action==='arm'.*liveV2QueueSuiteEvent\('launch'\)/);

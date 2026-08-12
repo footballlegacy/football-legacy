@@ -679,18 +679,22 @@
     const records = [];
 
     function record(type, details) {
-      const item = {
+      const envelope = {
         schema: TRACE_SCHEMA,
         version: VERSION,
         sessionId,
         sequence: sequence++,
         type,
-        status: clone(status),
-        ...(clone(details) || {})
+        status
       };
+      // Keep one detached private trace copy. The public return can reuse the
+      // freshly-created details because those values are not retained as
+      // candidate state; cloning the complete 22-player telemetry a second
+      // time made the read-only observer consume most of a render frame.
+      const item = { ...envelope, ...(clone(details) || {}) };
       records.push(item);
       if (records.length > traceLimit) records.shift();
-      return clone(item);
+      return { ...envelope, ...(details || {}) };
     }
 
     function observe(snapshot) {
@@ -854,12 +858,16 @@
         shadowAuthority: SHADOW_AUTHORITY,
         readOnly: true,
         appliedToLive: false,
-        legacySnapshot: clone(normalized.source),
+        // assertLegacySnapshot already detached this source from the caller.
+        legacySnapshot: normalized.source,
         candidate: {
           ball: clone(ballResult.candidateState),
           movement: clone(nextMovementState),
-          cpu: decisions.map(entry => ({ teamId: entry.teamId, decision: clone(entry.decision) })),
-          formation: clone(formationOutputs),
+          // CPU memories are separately cloned before commit and formation
+          // outputs are not retained, so these public values cannot mutate
+          // private state and do not need another full-tree copy.
+          cpu: decisions.map(entry => ({ teamId: entry.teamId, decision: entry.decision })),
+          formation: formationOutputs,
           clock: clone(clockOutput)
         },
         telemetry,

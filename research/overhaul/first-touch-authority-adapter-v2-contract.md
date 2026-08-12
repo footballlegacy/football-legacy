@@ -1,8 +1,10 @@
 # First-Touch Authority Adapter V2 contract
 
-Status: dormant, additive, offline-only advisory adapter. It is not loaded or
-called by `match-engine/match.html`, it does not edit an authority state, and it
-does not authorize live or online promotion.
+Status: immutable offline-only advisory adapter, conditionally loaded in Build
+174 only after the exact offline FL V2 preflight. It still does not edit an
+authority state or authorize online promotion. A separate live contact composer
+may validate and consume its handoff; the default Build 173 and online paths do
+not load the conditional dependency graph.
 
 Implementation: `match-engine/first-touch-authority-adapter-v2.js`
 Focused gates: `tests/first-touch-authority-adapter-v2.mjs`
@@ -27,7 +29,7 @@ The required coordinate declaration is
 `lastOuterTick` must be the same positive fixed-simulation tick, and Movement
 and the adapter must use the same explicit `fixedTickSeconds`.
 
-## Capability and dormancy
+## Capability and public authority
 
 The adapter accepts only factory-issued capabilities carrying the exact
 acknowledgement
@@ -151,8 +153,8 @@ inertia fixtures, canonical identity/team/possession/tick/SI validation,
 pressure-order invariance, hostile inputs, deterministic deep-frozen output and
 replay/rollback exact-once behavior.
 
-This adapter remains frozen as a dormant foundation only. Its bytes still own
-none of the responsibilities below.
+This adapter remains frozen as an advisory foundation. Its bytes still own none
+of the authority responsibilities below.
 
 The separately sealed Offline V2 authority-kernel candidate version
 `2.4.0-offline-cpu-integration-authority-candidate` now performs the first reviewed
@@ -170,6 +172,12 @@ consumer transaction, and only inside its capability-gated offline state. It:
 Any validation failure rolls back the whole kernel tick. A heavy/retained touch
 may commit Ball contact while remaining loose, but cannot partially commit
 possession. The standalone Offline V2 playable slice consumes that sealed
-kernel. Normal `match.html`, Build 173 and online authority remain untouched.
-Animation/replay-video/online coordination and any live promotion remain
-outside both this adapter and the sealed offline consumer.
+kernel. Build 174 also has a separately reviewed live V2 contact composer which
+uses the same factory-issued `offline-v2-lab`, `liveAuthority:false` adapter
+capability after exact offline FL V2 preflight. That composer, not this adapter,
+validates and consumes the handoff and owns any live contact/possession commit.
+
+The normal Build 173 path and online authority remain untouched: no exact FL V2
+request means no conditional load, and any online marker fails preflight before
+the dependency graph is written. Animation, replay-video and online
+coordination remain outside this adapter's public contract.

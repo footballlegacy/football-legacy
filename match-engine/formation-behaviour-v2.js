@@ -542,6 +542,27 @@
         errors.push(`restDefence.${phase} must be an integer from 0 to 6`);
       }
     });
+    const restDefenceExclusions = Array.isArray(source.restDefenceExclusions) ? source.restDefenceExclusions.map(String) : [];
+    if (baseFormation) restDefenceExclusions.forEach(slotId => {
+      if (!FORMATIONS[baseFormation].slots.some(formationSlot => formationSlot.id === slotId)) {
+        errors.push(`restDefenceExclusions references unknown slot ${slotId}`);
+      }
+    });
+    const carrierSupportFloors = source.carrierSupportFloors && typeof source.carrierSupportFloors === 'object'
+      ? source.carrierSupportFloors : {};
+    Object.keys(carrierSupportFloors).forEach(phase => {
+      if (!normalizePhase(phase)) errors.push(`unknown carrierSupportFloors phase: ${phase}`);
+      const rows = carrierSupportFloors[phase];
+      if (!rows || typeof rows !== 'object' || Array.isArray(rows)) errors.push(`carrierSupportFloors.${phase} must be an object`);
+      else if (baseFormation) Object.keys(rows).forEach(slotId => {
+        if (!FORMATIONS[baseFormation].slots.some(formationSlot => formationSlot.id === slotId)) {
+          errors.push(`carrierSupportFloors.${phase} references unknown slot ${slotId}`);
+        }
+        if (!Number.isFinite(rows[slotId]) || rows[slotId] < -1 || rows[slotId] > 1) {
+          errors.push(`carrierSupportFloors.${phase}.${slotId} must be finite from -1 to 1`);
+        }
+      });
+    });
     return {
       valid: errors.length === 0,
       errors,
@@ -554,6 +575,8 @@
         phaseModifiers: clone(phaseModifiers),
         slotAdjustments: clone(adjustments),
         restDefence: clone(restDefence),
+        restDefenceExclusions: restDefenceExclusions.slice(),
+        carrierSupportFloors: clone(carrierSupportFloors),
         principles: Array.isArray(source.principles) ? source.principles.map(String) : []
       }
     };
@@ -602,6 +625,10 @@
         }
       },
       restDefence: { buildup: 3, 'settled-attack': 3, 'positive-transition': 3 },
+      restDefenceExclusions: ['LB'],
+      carrierSupportFloors: {
+        'settled-attack': { LB: -0.08, LM: -0.03, LCM: -0.12, RCM: -0.12, RM: -0.03, LST: 0.02, RST: 0.1 }
+      },
       principles: [
         'left-sided overlap and inside rotation',
         'one forward connects while one attacks depth',
@@ -651,6 +678,9 @@
         }
       },
       restDefence: { buildup: 3, 'settled-attack': 3, 'positive-transition': 3 },
+      carrierSupportFloors: {
+        'settled-attack': { LWB: -0.04, LCM: -0.1, RCM: -0.1, RWB: -0.04, LW: 0.02, ST: 0.08, RW: 0.02 }
+      },
       principles: [
         'wing-backs provide full attacking width',
         'wide forwards receive in the half-spaces',
@@ -915,12 +945,28 @@
       0,
       Math.max(0, activeOutfield.length - 1)
     );
+    const restDefenceExclusions = new Set(philosophy && philosophy.restDefenceExclusions || []);
     const restDefenceIds = activeOutfield.slice().sort((a, b) => {
+      const aExcluded = restDefenceExclusions.has(a.formationSlot.id) ? 1 : 0;
+      const bExcluded = restDefenceExclusions.has(b.formationSlot.id) ? 1 : 0;
+      if (aExcluded !== bExcluded) return aExcluded - bExcluded;
       return a.formationSlot.restRank - b.formationSlot.restRank || a.ordinal - b.ordinal;
     }).slice(0, restDefenceCount).map(row => row.formationSlot.id);
     activeGeometry.forEach(row => {
       if (restDefenceIds.includes(row.formationSlot.id)) row.progress = Math.min(row.progress, geometry.restMaximum);
     });
+
+    // Static anchors collapse behind an advancing carrier. Philosophy-owned
+    // relative floors let support lanes travel with play while preserving the
+    // selected rest defence and the normal pitch/offside clamps.
+    const carrierProgress = clamp(finite(tactics.carrierProgress, NaN), 0, 1);
+    const supportFloors = philosophy && phaseMapValue(philosophy.carrierSupportFloors, phase);
+    if (supportFloors && Number.isFinite(carrierProgress)) {
+      activeGeometry.forEach(row => {
+        if (restDefenceIds.includes(row.formationSlot.id) || !Object.prototype.hasOwnProperty.call(supportFloors, row.formationSlot.id)) return;
+        row.progress = clamp(Math.max(row.progress, carrierProgress + supportFloors[row.formationSlot.id]), 0.025, 0.95);
+      });
+    }
 
     const xLow = pitch.xMin + Math.min(config.pitchMargin, (pitch.xMax - pitch.xMin) * 0.2);
     const xHigh = pitch.xMax - Math.min(config.pitchMargin, (pitch.xMax - pitch.xMin) * 0.2);

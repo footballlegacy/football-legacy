@@ -43,9 +43,10 @@ function functionSource(name) {
   throw new Error(`unterminated ${name}`);
 }
 
+const cameraKindSource = functionSource('normalizeRestartCameraKind');
 const cameraResolverSource = functionSource('resolveLiveRestartCameraPreset');
 const cameraContext = {};
-vm.runInNewContext(`${cameraResolverSource};this.resolve=resolveLiveRestartCameraPreset;`, cameraContext);
+vm.runInNewContext(`${cameraKindSource};${cameraResolverSource};this.resolve=resolveLiveRestartCameraPreset;`, cameraContext);
 const resolveCamera = (...args) => cameraContext.resolve(...args);
 
 test('restart camera ownership matrix matches the requested human and CPU policy', () => {
@@ -107,17 +108,21 @@ test('offside presentation state is observable and cleared on every terminal rou
 
 test('camera preset is captured for each live set-piece launch route', () => {
   const assignments = source.match(/setPieceCameraHold=\{[^}]+cameraPreset:liveRestartCameraPreset\(kind,team\)[^}]+\}/g) || [];
-  assert.equal(assignments.length, 3);
+  assert.equal(assignments.length, 2);
+  assert.match(source, /function holdSetPieceStrikeCamera\(kind,team,targetY=setPieceAim\.y,now=performance\.now\(\)\)/);
+  assert.match(source, /holdSetPieceStrikeCamera\(kind,team,targetY\)/);
+  assert.match(source, /holdSetPieceStrikeCamera\(strikeKind,shooter\.team,target\.y\*yPer\)/);
   assert.match(source, /restartCameraPreset==='penalty-save'/);
   assert.match(source, /restartCameraPreset!=='broadcast'/);
 });
 
-test('protected match workflows and dormant V2 authority remain unchanged', () => {
+test('protected workflows remain and V2 authority loads only through the exact offline preflight', () => {
   for (const marker of ['ONLINE_HOST', 'SAME_TEAM_COOP', 'FORCE_SINGLE_CONTROLLER', 'FREE_KICK_PRACTICE', 'getOnlineStream', 'twoPlayerEnabled']) {
     assert.ok(source.includes(marker), `missing protected marker ${marker}`);
   }
-  for (const candidate of ['ball-engine-v2.js', 'cpu-intelligence-v2.js', 'movement-engine-v2.js', 'formation-behaviour-v2.js', 'match-clock-v2.js']) {
-    assert.doesNotMatch(source, new RegExp(`<script[^>]+${candidate.replaceAll('.', '\\.')}`));
-  }
-  assert.match(source, /engineVersion:'0\.173'/);
+  assert.match(source, /id="offlineLiveV2Preflight"/);
+  assert.match(source, /const liveWorkflow=matchType==='single-player'\?'single-player':matchType==='spectator'\?'cpu-v-cpu':matchType==='free-kick-suite'\?'set-piece-suite':null/);
+  assert.match(source, /eligible=requested&&queryRequested&&payloadRequested&&!!decoded&&!!liveWorkflow&&unique\.length===0/);
+  assert.match(source, /buildVersion:'0\.174'/);
+  assert.match(source, /hostEngineVersion:'build-173-compatible-orchestrator'/);
 });

@@ -6,21 +6,26 @@
  * This is an explicit, offline-only migration seam. It projects the reviewed
  * deterministic Ball, Movement, CPU, Formation and Contact V2 modules into the existing
  * 3D match without taking ownership of rendering, cameras, controllers,
- * restarts, replays, officiating or presentation. Build 173 remains the default
- * and immediate transactional fallback.
+ * restarts, replays, officiating or presentation. Build 173 remains the
+ * deliberate pre-match default. A component fault returns a fail-closed
+ * sentinel to the host; the strict playtest host must halt rather than execute
+ * a Build 173 gameplay tick.
  */
 (function exposeLiveV2Authority(root, factory) {
-  const api = factory(root || null);
+  const localDribbling = typeof module === 'object' && module.exports
+    ? require('./dribbling-state-v2.js')
+    : null;
+  const api = factory(root || null, localDribbling);
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (root) root.FootballLegacyLiveV2Authority = api;
-})(typeof window === 'object' ? window : null, function createLiveV2AuthorityApi(browserRoot) {
+})(typeof window === 'object' ? window : null, function createLiveV2AuthorityApi(browserRoot, localDribbling) {
   'use strict';
 
   const VERSION = '1.0.0-offline-live-authority-playtest';
-  const ACKNOWLEDGEMENT = 'I understand FL V2 is an explicit offline playtest authority with Build 173 as the transactional fallback.';
-  const SUPPORTED_WORKFLOWS = Object.freeze(['single-player']);
+  const ACKNOWLEDGEMENT = 'I understand FL V2 is an explicit offline playtest authority whose host must stop on a failed candidate transaction.';
+  const SUPPORTED_WORKFLOWS = Object.freeze(['single-player', 'cpu-v-cpu']);
   const REQUIRED_DEPENDENCIES = Object.freeze([
-    'ball', 'movement', 'cpu', 'formation', 'contact'
+    'ball', 'movement', 'cpu', 'formation', 'contact', 'dribbling'
   ]);
   const DEPENDENCY_CONTRACTS = Object.freeze({
     ball: Object.freeze({ version: '2.0.0-shadow', schemas: Object.freeze({
@@ -43,10 +48,20 @@
       REQUEST_SCHEMA: 'football-legacy-live-v2-contact-composer-request',
       RESULT_SCHEMA: 'football-legacy-live-v2-contact-composer-result',
       CAPABILITY_SCHEMA: 'football-legacy-live-v2-contact-composer-capability'
+    }) }),
+    dribbling: Object.freeze({ version: '2.0.0-offline-live-dribbling-state', schemas: Object.freeze({
+      STATE_SCHEMA: 'football-legacy-dribbling-state-v2',
+      REQUEST_SCHEMA: 'football-legacy-dribbling-request-v2',
+      RESULT_SCHEMA: 'football-legacy-dribbling-result-v2',
+      CAPABILITY_SCHEMA: 'football-legacy-dribbling-capability-v2',
+      SERIALIZED_SCHEMA: 'football-legacy-dribbling-serialized-state-v2'
     }) })
   });
   const FIXED_TICK_SECONDS = 1 / 60;
   const METRIC_PITCH = Object.freeze({ xMin: 0, xMax: 105, yMin: -34, yMax: 34 });
+  const LOOSE_BALL_MAX_HEIGHT_METRES = 1.05;
+  const LOOSE_BALL_MAX_SPEED_METRES_PER_SECOND = 28;
+  const LOOSE_BALL_MAX_ETA_SECONDS = 3.2;
   const issuedCapabilities = new WeakSet();
 
   function finite(value, fallback) {
@@ -85,6 +100,12 @@
     return hash || 0x9e3779b9;
   }
 
+  function canonical(value) {
+    if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
+    if (!value || typeof value !== 'object') return JSON.stringify(value);
+    return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
+  }
+
   function point(value, fallback) {
     const source = value && typeof value === 'object' ? value : {};
     return {
@@ -112,7 +133,8 @@
       movement: supplied.movement || root.FootballLegacyMovementEngineV2,
       cpu: supplied.cpu || root.FootballLegacyCPUIntelligenceV2,
       formation: supplied.formation || root.FootballLegacyFormationBehaviourV2,
-      contact: supplied.contact || root.FootballLegacyLiveV2ContactAuthorityComposer
+      contact: supplied.contact || root.FootballLegacyLiveV2ContactAuthorityComposer,
+      dribbling: supplied.dribbling || localDribbling || root.FootballLegacyDribblingStateV2
     };
   }
 
@@ -128,6 +150,10 @@
         typeof dependencies.formation.validateLineup !== 'function') errors.push('formation-v2-api-missing');
     if (!dependencies.contact || typeof dependencies.contact.createCapability !== 'function' ||
         typeof dependencies.contact.compose !== 'function') errors.push('contact-v2-api-missing');
+    if (!dependencies.dribbling || typeof dependencies.dribbling.createCapability !== 'function' ||
+        typeof dependencies.dribbling.resolve !== 'function' ||
+        typeof dependencies.dribbling.serializeState !== 'function' ||
+        typeof dependencies.dribbling.restoreState !== 'function') errors.push('dribbling-v2-api-missing');
     for (const name of REQUIRED_DEPENDENCIES) {
       const api = dependencies[name], contract = DEPENDENCY_CONTRACTS[name];
       if (!api || api.VERSION !== contract.version) errors.push(name + '-v2-version-mismatch');
@@ -150,11 +176,27 @@
       return !(value == null || value === false || value === '' || (Array.isArray(value) && value.length === 0));
     });
     if (activeMarkers.length) throw new Error('online markers freeze live V2: ' + activeMarkers.sort().join(','));
+    let controlOwnership = null;
+    if (workflow === 'cpu-v-cpu') {
+      const ownership = source.controlOwnership && typeof source.controlOwnership === 'object'
+        ? source.controlOwnership : {};
+      const humanPlayerIds = Array.isArray(ownership.humanPlayerIds) ? ownership.humanPlayerIds.map(String) : null;
+      const cpuTeamIds = Array.isArray(ownership.cpuTeamIds) ? ownership.cpuTeamIds.map(String).sort() : null;
+      if (!humanPlayerIds || humanPlayerIds.length !== 0 || !cpuTeamIds ||
+          cpuTeamIds.length !== 2 || cpuTeamIds[0] !== 'opp' || cpuTeamIds[1] !== 'you') {
+        throw new Error('CPU-v-CPU live V2 requires zero human players and exact you/opp CPU team ownership');
+      }
+      controlOwnership = Object.freeze({
+        humanPlayerIds: Object.freeze([]),
+        cpuTeamIds: Object.freeze(['opp', 'you'])
+      });
+    }
     const capability = Object.freeze({
       schema: 'football-legacy-live-v2-capability',
       version: VERSION,
       grant: 'offline-normal-match-live-authority',
       workflow,
+      controlOwnership,
       offlineOnly: true,
       online: false,
       onlineMarkerDigest: activeMarkers.length ? activeMarkers.sort().join(',') : 'none',
@@ -165,17 +207,19 @@
         outfieldPlayerContact: 'football-legacy-movement-engine-v2',
         cpuRunsAndCarrierIntent: 'football-legacy-cpu-intelligence-v2',
         teamShape: 'football-legacy-formation-behaviour-v2',
+        looseBallRecoverySelection: 'football-legacy-live-v2-authority-adapter',
         firstTouchReception: 'football-legacy-live-v2-contact-authority-composer',
         aerialVolleyAttempt: 'football-legacy-live-v2-contact-authority-composer',
+        dribblingPhysicalTouchesAndActionLease: 'football-legacy-dribbling-state-v2',
         goalkeepersSpecialActionsRenderingRulesRestartsReplays: 'build-173',
-        wallKeeperAndUnownedOutfieldBallContact: 'build-173-explicit-contact-handoff'
+        wallKeeperAndOutfieldBodyBlock: 'build-173-explicit-contact-handoff'
       })
     });
     issuedCapabilities.add(capability);
     return capability;
   }
 
-  function normalizeSnapshot(snapshot) {
+  function normalizeSnapshot(snapshot, workflow) {
     if (!snapshot || typeof snapshot !== 'object') throw new TypeError('live snapshot is required');
     if (!Number.isInteger(snapshot.tick) || snapshot.tick < 1) throw new TypeError('live snapshot tick must be a positive integer');
     if (Math.abs(finite(snapshot.fixedTickSeconds, 0) - FIXED_TICK_SECONDS) > 1e-12) {
@@ -210,11 +254,12 @@
         radius: finite(player.radius, 12.75), stamina: clamp(finite(player.stamina, 100), 0, 100),
         heightM: clamp(finite(player.heightM, 1.8), 1.3, 2.2),
         attrs: clone(player.attrs || {}), isGK: Boolean(player.isGK), sentOff: Boolean(player.sentOff),
+        contactEligible: player.contactEligible !== false,
         tackleActive: Boolean(player.tackleActive), shoulderActive: Boolean(player.shoulderActive),
         control: player.control && typeof player.control === 'object' ? {
           x: clamp(finite(player.control.x, 0), -1, 1), y: clamp(finite(player.control.y, 0), -1, 1),
           strength: clamp(finite(player.control.strength, Math.hypot(finite(player.control.x, 0), finite(player.control.y, 0))), 0, 1),
-          sprint: Boolean(player.control.sprint)
+          sprint: Boolean(player.control.sprint), shield: Boolean(player.control.shield)
         } : null
       };
     }) : [];
@@ -227,6 +272,9 @@
     }
     const humanPlayerIds = new Set((Array.isArray(snapshot.humanPlayerIds) ? snapshot.humanPlayerIds : []).map(String));
     for (const id of humanPlayerIds) if (!ids.has(id)) throw new TypeError('human ownership references an unknown player');
+    if (workflow === 'cpu-v-cpu' && (humanPlayerIds.size !== 0 || players.some(player => player.control !== null))) {
+      throw new Error('CPU-v-CPU live V2 snapshot must contain no human ownership or human control input');
+    }
     const ball = snapshot.ball && typeof snapshot.ball === 'object' ? {
       id: String(snapshot.ball.id || 'live-ball'), x: finite(snapshot.ball.x, NaN), y: finite(snapshot.ball.y, NaN),
       z: finite(snapshot.ball.z, 0), vx: finite(snapshot.ball.vx, 0), vy: finite(snapshot.ball.vy, 0),
@@ -271,7 +319,16 @@
     if (contact.intendedReceiverId && !ids.has(contact.intendedReceiverId)) {
       throw new TypeError('live contact intended receiver is unknown');
     }
-    return { tick: snapshot.tick, fixedTickSeconds: FIXED_TICK_SECONDS, pitch, units, players, ball, teams, humanPlayerIds, contact };
+    const dribblingSource = snapshot.dribbling && typeof snapshot.dribbling === 'object' ? snapshot.dribbling : {};
+    const dribbling = {
+      surface: String(dribblingSource.surface || 'dry'),
+      actionIntent: dribblingSource.actionIntent && typeof dribblingSource.actionIntent === 'object'
+        ? clone(dribblingSource.actionIntent) : null
+    };
+    if (dribbling.actionIntent && dribbling.actionIntent.actorId != null && !ids.has(String(dribbling.actionIntent.actorId))) {
+      throw new TypeError('live dribbling action actor is unknown');
+    }
+    return { tick: snapshot.tick, fixedTickSeconds: FIXED_TICK_SECONDS, pitch, units, players, ball, teams, humanPlayerIds, contact, dribbling };
   }
 
   function metricPoint(player, snapshot) {
@@ -358,7 +415,13 @@
       parentGrant: capability.grant,
       acknowledgement: dependencies.contact.ACKNOWLEDGEMENT
     });
+    const dribblingCapability = dependencies.dribbling.createCapability({
+      workflow: capability.workflow,
+      online: false,
+      acknowledgement: dependencies.dribbling.ACKNOWLEDGEMENT
+    });
     let enabled = source.enabled === true, lifecycle = enabled ? 'armed' : 'disabled', failure = null, resetEpoch = 0;
+    let attachmentGeneration = 0;
     function freshDomain() {
       return {
         world: null, rosterSignature: '', cpuMemories: { you: null, opp: null },
@@ -367,14 +430,16 @@
         lastCarrierEmission: { you: '', opp: '' }, possession: { teamId: null, ownerId: null, inFlight: false, intendedReceiverId: null, releaseTick: null, offsideCandidate: null },
         transition: null,
         consumedFirstTouchIds: [],
-        consumedAerialIds: []
+        consumedAerialIds: [],
+        dribblingState: dependencies.dribbling.createState({ epoch: resetEpoch })
       };
     }
     let domain = freshDomain();
     let planSequence = 0, latestPlanSequence = 0, lastCommittedTick = -1, committedTicks = 0, committedBallTicks = 0, committedContactTicks = 0;
     let lastFormation = { you: null, opp: null }, lastCpuDecision = { you: null, opp: null }, latestTelemetry = null;
-    const issuedFrames = new WeakSet(), consumedFrames = new WeakSet(), privateFrames = new WeakMap();
+    const issuedFrames = new WeakSet(), consumedFrames = new WeakSet(), reservedFrames = new WeakSet(), privateFrames = new WeakMap();
     const issuedPrepared = new WeakSet(), privatePrepared = new WeakMap();
+    let activePrepared = null;
 
     function freeze(reason) {
       enabled = false; lifecycle = 'self-disabled-fallback';
@@ -389,8 +454,100 @@
         deterministicSeed, committedTicks, committedBallTicks, committedContactTicks, lastCommittedTick,
         authorities: clone(capability.authority), dependencyContracts: clone(DEPENDENCY_CONTRACTS),
         lastFormation: clone(lastFormation), lastCpuDecision: clone(lastCpuDecision), latestTelemetry: clone(latestTelemetry),
-        possession: clone(domain.possession)
+        possession: clone(domain.possession),
+        dribbling: dependencies.dribbling.serializeState(domain.dribblingState)
       };
+    }
+    function exportState() {
+      const payload = {
+        schema: 'football-legacy-live-v2-serialized-state',
+        version: VERSION,
+        workflow: capability.workflow,
+        deterministicSeed,
+        resetEpoch,
+        attachmentGeneration,
+        lastCommittedTick,
+        committedTicks,
+        committedBallTicks,
+        committedContactTicks,
+        lifecycle,
+        domain: {
+          world: clone(domain.world),
+          rosterSignature: domain.rosterSignature,
+          cpuMemories: clone(domain.cpuMemories),
+          ballState: clone(domain.ballState),
+          ballContext: clone(domain.ballContext),
+          lastBallProjection: clone(domain.lastBallProjection),
+          lastLaunchSequence: domain.lastLaunchSequence,
+          lastTackleState: [...domain.lastTackleState].map(String).sort(),
+          lastCarrierEmission: clone(domain.lastCarrierEmission),
+          possession: clone(domain.possession),
+          transition: clone(domain.transition),
+          consumedFirstTouchIds: clone(domain.consumedFirstTouchIds),
+          consumedAerialIds: clone(domain.consumedAerialIds),
+          dribbling: dependencies.dribbling.serializeState(domain.dribblingState)
+        },
+        lastFormation: clone(lastFormation),
+        lastCpuDecision: clone(lastCpuDecision),
+        latestTelemetry: clone(latestTelemetry)
+      };
+      return deepFreeze({ ...payload, checksum: stableHash(canonical(payload)).toString(16).padStart(8, '0') });
+    }
+    function restoreState(serialized) {
+      if (!enabled || !serialized || serialized.schema !== 'football-legacy-live-v2-serialized-state' ||
+          serialized.version !== VERSION || serialized.workflow !== capability.workflow ||
+          serialized.deterministicSeed !== deterministicSeed) return false;
+      try {
+        const payload = clone(serialized); delete payload.checksum;
+        if (String(serialized.checksum || '') !== stableHash(canonical(payload)).toString(16).padStart(8, '0')) {
+          throw new Error('live V2 serialized state checksum mismatch');
+        }
+        if (!Number.isInteger(payload.resetEpoch) || payload.resetEpoch < 0 ||
+            !Number.isInteger(payload.lastCommittedTick) || payload.lastCommittedTick < -1 ||
+            !payload.domain || !dependencies.ball.isSimulationContext(payload.domain.ballContext)) {
+          throw new Error('live V2 serialized state chronology is invalid');
+        }
+        const restoredWorld = payload.domain.world == null ? null
+          : dependencies.movement.createWorldState(payload.domain.world);
+        const restoredBall = payload.domain.ballState == null ? null
+          : dependencies.ball.createBallState(payload.domain.ballState);
+        const restoredDribbling = dependencies.dribbling.restoreState(payload.domain.dribbling);
+        if (restoredDribbling.epoch !== payload.resetEpoch ||
+            restoredDribbling.physicalSeparated && !restoredBall) {
+          throw new Error('live V2 serialized dribbling state is inconsistent');
+        }
+        const stagedDomain = {
+          world: restoredWorld,
+          rosterSignature: String(payload.domain.rosterSignature || ''),
+          cpuMemories: clone(payload.domain.cpuMemories || { you: null, opp: null }),
+          ballState: restoredBall,
+          ballContext: dependencies.ball.cloneContext(payload.domain.ballContext),
+          lastBallProjection: clone(payload.domain.lastBallProjection),
+          lastLaunchSequence: String(payload.domain.lastLaunchSequence || ''),
+          lastTackleState: new Set((Array.isArray(payload.domain.lastTackleState) ? payload.domain.lastTackleState : []).map(String)),
+          lastCarrierEmission: clone(payload.domain.lastCarrierEmission || { you: '', opp: '' }),
+          possession: clone(payload.domain.possession || { teamId: null, ownerId: null, inFlight: false, intendedReceiverId: null, releaseTick: null, offsideCandidate: null }),
+          transition: clone(payload.domain.transition),
+          consumedFirstTouchIds: clone(payload.domain.consumedFirstTouchIds || []),
+          consumedAerialIds: clone(payload.domain.consumedAerialIds || []),
+          dribblingState: restoredDribbling
+        };
+        domain = stagedDomain;
+        resetEpoch = payload.resetEpoch;
+        lastCommittedTick = payload.lastCommittedTick;
+        committedTicks = Math.max(0, Math.trunc(finite(payload.committedTicks, 0)));
+        committedBallTicks = Math.max(0, Math.trunc(finite(payload.committedBallTicks, 0)));
+        committedContactTicks = Math.max(0, Math.trunc(finite(payload.committedContactTicks, 0)));
+        lastFormation = clone(payload.lastFormation || { you: null, opp: null });
+        lastCpuDecision = clone(payload.lastCpuDecision || { you: null, opp: null });
+        latestTelemetry = clone(payload.latestTelemetry);
+        lifecycle = payload.lifecycle === 'live' ? 'live' : 'armed';
+        failure = null;
+        attachmentGeneration += 1;
+        activePrepared = null;
+        latestPlanSequence = ++planSequence;
+        return true;
+      } catch (_) { return false; }
     }
     function phaseAuthority(snapshot, possession) {
       let transition = domain.transition && clone(domain.transition);
@@ -398,9 +555,11 @@
         transition = { fromTeamId: domain.possession.teamId, toTeamId: possession.teamId, startedTick: snapshot.tick, untilTick: snapshot.tick + 30 };
       } else if (transition && snapshot.tick > transition.untilTick) transition = null;
       const phases = {};
+      const owner = possession.ownerId && snapshot.players.find(player => player.id === possession.ownerId);
+      const goalkeeperBuildup = !!(owner && owner.isGK && owner.teamId === possession.teamId);
       for (const team of snapshot.teams) {
         if (transition) phases[team.id] = team.id === transition.toTeamId ? 'positive-transition' : 'negative-transition';
-        else if (possession.teamId) phases[team.id] = team.id === possession.teamId ? 'settled-attack' : 'defend';
+        else if (possession.teamId) phases[team.id] = team.id === possession.teamId ? (goalkeeperBuildup ? 'buildup' : 'settled-attack') : 'defend';
         else phases[team.id] = team.phase;
       }
       return { phases, transition };
@@ -413,12 +572,17 @@
         const lineup = team.lineup.map(row => ({ id: String(row.id), slotId: String(row.slotId), position: String(row.position) }));
         const validation = dependencies.formation.validateLineup(formation, lineup);
         if (!validation.valid) throw new Error('formation V2 lineup invalid: ' + validation.errors.join(';'));
+        const referenceId = snapshot.ball.ownerId || snapshot.ball.targetId;
+        const referencePlayer = referenceId && snapshot.players.find(player => player.id === referenceId && player.teamId === team.id);
+        const carrierProgress = referencePlayer ? clamp(team.attackingDirection === 1
+          ? (referencePlayer.x - snapshot.pitch.xMin) / (snapshot.pitch.xMax - snapshot.pitch.xMin)
+          : (snapshot.pitch.xMax - referencePlayer.x) / (snapshot.pitch.xMax - snapshot.pitch.xMin), 0, 1) : null;
         output[team.id] = dependencies.formation.resolve({
           formation, phase: phaseState.phases[team.id], tick: snapshot.tick, lineup,
           philosophy: philosophyFor(team, formation), pitch: METRIC_PITCH,
           attackingDirection: team.attackingDirection,
           offsideLine: (team.offsideLine - snapshot.pitch.xMin) / snapshot.units.xPerMetre,
-          tactics: team.tactics
+          tactics: { ...team.tactics, carrierProgress }
         });
       }
       return output;
@@ -532,8 +696,53 @@
         .map(candidate => ({ candidate, distance: Math.hypot(candidate.x - player.x, candidate.y - player.y) }))
         .sort((a, b) => a.distance - b.distance || a.candidate.id.localeCompare(b.candidate.id))[0]?.candidate || null;
     }
+    function looseBallRecoveryAssignments(snapshot, world) {
+      const gate = snapshot.contact.gate || {};
+      if (snapshot.ball.ownerId || !gate.livePlay || gate.restartActive || gate.replayActive ||
+          gate.keeperAuthority || gate.offsideInvolvementPending || gate.specialActionAuthority) return { byId: {}, rows: [] };
+      const flightType = String(snapshot.ball.flightType || '').toLowerCase();
+      if (/(shot|cross|corner|free-kick|penalty|clearance)/.test(flightType)) return { byId: {}, rows: [] };
+      const ball = metricBall(snapshot.ball, snapshot), speed = Math.hypot(ball.velocity.x, ball.velocity.y);
+      if (ball.position.z > LOOSE_BALL_MAX_HEIGHT_METRES || speed > LOOSE_BALL_MAX_SPEED_METRES_PER_SECOND) {
+        return { byId: {}, rows: [] };
+      }
+      const horizon = clamp(0.08 + Math.min(speed, 16) * 0.012, 0.08, 0.28);
+      const target = {
+        x: clamp(ball.position.x + ball.velocity.x * horizon, METRIC_PITCH.xMin + 0.4, METRIC_PITCH.xMax - 0.4),
+        y: clamp(ball.position.y + ball.velocity.y * horizon, METRIC_PITCH.yMin + 0.4, METRIC_PITCH.yMax - 0.4)
+      };
+      const intendedId = String(snapshot.contact.intendedReceiverId || snapshot.ball.targetId || '');
+      const byId = {}, rows = [];
+      for (const team of snapshot.teams) {
+        const candidates = world.players.map(statePlayer => {
+          const livePlayer = snapshot.players.find(player => player.id === statePlayer.id);
+          if (!livePlayer || livePlayer.teamId !== team.id || livePlayer.sentOff || livePlayer.isGK ||
+              !livePlayer.contactEligible) return null;
+          const distance = Math.hypot(target.x - statePlayer.position.x, target.y - statePlayer.position.y);
+          const attrs = livePlayer.attrs || {}, pace = clamp(finite(attrs.pace, 70), 1, 99);
+          const awareness = clamp(finite(attrs.awareness, 70), 1, 99), topSpeed = 5.1 + pace / 99 * 2.25;
+          const intended = livePlayer.id === intendedId;
+          const goalSide = team.attackingDirection * (target.x - statePlayer.position.x) >= 0;
+          const etaSeconds = Math.max(0, distance / topSpeed + (99 - awareness) * 0.0035 - (intended ? 1.35 : 0) - (goalSide ? 0.06 : 0));
+          return { playerId: livePlayer.id, teamId: team.id, target, distance, etaSeconds, intended,
+            human: snapshot.humanPlayerIds.has(livePlayer.id) };
+        }).filter(Boolean).sort((left, right) => left.etaSeconds - right.etaSeconds ||
+          Number(right.intended) - Number(left.intended) || left.playerId.localeCompare(right.playerId));
+        const selected = candidates[0];
+        if (!selected || selected.etaSeconds > (selected.intended ? LOOSE_BALL_MAX_ETA_SECONDS + 1 : LOOSE_BALL_MAX_ETA_SECONDS)) continue;
+        const row = {
+          playerId: selected.playerId, teamId: selected.teamId,
+          target: { x: selected.target.x, y: selected.target.y },
+          distanceMetres: +selected.distance.toFixed(3), etaSeconds: +selected.etaSeconds.toFixed(3),
+          intended: selected.intended, human: selected.human, authority: 'v2-loose-ball-recovery'
+        };
+        byId[row.playerId] = row; rows.push(row);
+      }
+      rows.sort((left, right) => left.teamId.localeCompare(right.teamId));
+      return { byId, rows };
+    }
     function movementCommands(snapshot, world, formations, decisions) {
-      const commands = [], maps = targetMaps(formations, decisions), nextTick = world.tick + 1;
+      const commands = [], maps = targetMaps(formations, decisions), recovery = looseBallRecoveryAssignments(snapshot, world), nextTick = world.tick + 1;
       const currentTackles = new Set(snapshot.players.filter(player => player.tackleActive).map(player => player.id));
       for (const statePlayer of world.players) {
         const livePlayer = snapshot.players.find(player => player.id === statePlayer.id); if (!livePlayer) continue;
@@ -554,19 +763,41 @@
             targetId: target && target.id, direction }); continue;
         }
         let desired = { x: 0, y: 0 }, intensity = 0, mode = 'idle';
+        const recoveryIntent = recovery.byId[livePlayer.id] || null;
         if (isHuman) {
           const control = livePlayer.control || { x: 0, y: 0, strength: 0, sprint: false };
-          desired = control.strength > 0.02 ? unit(control, statePlayer.facing) : desired;
-          intensity = control.strength; mode = intensity <= 0.02 ? 'idle' : control.sprint ? 'sprint' : intensity > 0.38 ? 'run' : 'walk';
+          const rawDirection = control.strength > 0.02 ? unit(control, statePlayer.facing) : null;
+          if (recoveryIntent) {
+            const toward = { x: recoveryIntent.target.x - statePlayer.position.x, y: recoveryIntent.target.y - statePlayer.position.y };
+            const recoveryDirection = unit(toward, statePlayer.facing), distance = vectorLength(toward);
+            const opposing = rawDirection && control.strength > 0.55 &&
+              rawDirection.x * recoveryDirection.x + rawDirection.y * recoveryDirection.y < -0.2;
+            if (!opposing) {
+              const weight = rawDirection ? clamp((recoveryIntent.intended ? 0.68 : 0.48) - control.strength * 0.24, 0.22, 0.68) : 1;
+              desired = rawDirection ? unit({ x: rawDirection.x * (1 - weight) + recoveryDirection.x * weight,
+                y: rawDirection.y * (1 - weight) + recoveryDirection.y * weight }, recoveryDirection) : recoveryDirection;
+              intensity = Math.max(control.strength, clamp(distance / 4.5, 0.3, 0.82));
+              mode = control.shield ? 'shield' : control.sprint ? 'sprint' : intensity > 0.38 ? 'run' : 'walk';
+            } else {
+              desired = rawDirection; intensity = control.strength;
+              mode = control.shield ? 'shield' : control.sprint ? 'sprint' : intensity > 0.38 ? 'run' : 'walk';
+            }
+          } else {
+            desired = rawDirection || desired;
+            intensity = control.strength; mode = intensity <= 0.02 ? 'idle' : control.shield ? 'shield' : control.sprint ? 'sprint' : intensity > 0.38 ? 'run' : 'walk';
+          }
         } else {
           const metric = metricPoint(livePlayer, snapshot), runTarget = maps.run[livePlayer.id];
           const carrierTarget = snapshot.ball.ownerId === livePlayer.id ? maps.carrier[livePlayer.teamId] : null;
           const defensiveTarget = defensiveIntent && defensiveIntent.target || null;
-          const target = defensiveTarget || runTarget || carrierTarget || maps.shape[livePlayer.id];
+          const target = recoveryIntent && recoveryIntent.target || defensiveTarget || runTarget || carrierTarget || maps.shape[livePlayer.id];
           if (target) {
             const toward = { x: target.x - metric.x, y: target.y - metric.y }, distance = vectorLength(toward);
             desired = unit(toward, statePlayer.facing);
-            if (defensiveIntent) {
+            if (recoveryIntent) {
+              intensity = clamp(distance / 4.2, 0.52, 1);
+              mode = distance > 2.2 ? 'sprint' : 'run';
+            } else if (defensiveIntent) {
               intensity = clamp(finite(defensiveIntent.targetSpeed, defensiveIntent.type === 'press' ? .88 : .62), .18, 1);
               mode = defensiveIntent.accelerate || defensiveIntent.urgency === 'sprint' ? 'sprint' : intensity > .42 ? 'run' : 'walk';
             } else {
@@ -578,7 +809,8 @@
         commands.push(mode === 'idle' ? { id: 'stop:' + livePlayer.id + ':' + nextTick, tick: nextTick, playerId: livePlayer.id, type: 'stop' }
           : { id: 'move:' + livePlayer.id + ':' + nextTick, tick: nextTick, playerId: livePlayer.id, type: 'move', move: desired, facing: desired, mode, intensity, durationTicks: 1 });
       }
-      return { commands, stagedTackleState: new Set([...currentTackles, ...snapshot.players.filter(player => player.shoulderActive).map(player => 'shoulder:' + player.id)]) };
+      return { commands, recoveryAssignments: recovery.rows,
+        stagedTackleState: new Set([...currentTackles, ...snapshot.players.filter(player => player.shoulderActive).map(player => 'shoulder:' + player.id)]) };
     }
     function intelligenceProjection(snapshot, decisions) {
       const projection = [], stagedCarrierEmission = { ...domain.lastCarrierEmission };
@@ -686,7 +918,7 @@
           isGK: player.isGK,
           sentOff: player.sentOff,
           available: !player.sentOff,
-          contactEligible: !player.sentOff && !player.isGK,
+          contactEligible: !player.sentOff && !player.isGK && player.contactEligible,
           heightM: player.heightM,
           attributes: clone(player.attrs)
         })),
@@ -706,26 +938,152 @@
           !dependencies.ball.isBallState(result.ballState)) throw new Error('live contact composer result contract failed');
       return result;
     }
+    function hasPhysicalDribblingLease(state) {
+      return Boolean(state && state.physicalSeparated === true &&
+        [dependencies.dribbling.PHASES.SEPARATED_TOUCH, dependencies.dribbling.PHASES.CHASE_RECOVERY].includes(state.phase) &&
+        state.logicalOwnerId);
+    }
+    function controlledBallState(snapshot, ownerId, preferredState) {
+      const metric = metricBall(snapshot.ball, snapshot);
+      const base = dependencies.ball.isBallState(preferredState) ? preferredState
+        : dependencies.ball.isBallState(domain.ballState) ? domain.ballState : null;
+      return dependencies.ball.createBallState({
+        ...(base || {}),
+        id: snapshot.ball.id,
+        position: metric.position,
+        velocity: metric.velocity,
+        regime: dependencies.ball.REGIMES.CONTROLLED,
+        grounded: true,
+        settled: false,
+        settleTime: 0,
+        lastOuterTick: snapshot.tick,
+        metadata: {
+          ...(base && base.metadata || {}),
+          liveV2ControlledOwnerId: ownerId,
+          adapterVersion: VERSION
+        }
+      });
+    }
+    function cpuDribblingAction(snapshot, intelligence, carrierId) {
+      if (!carrierId || snapshot.humanPlayerIds.has(carrierId)) return null;
+      const row = intelligence.projection.find(intent => intent.playerId === carrierId && ['pass', 'shot'].includes(intent.type));
+      if (!row) return null;
+      return {
+        id: ['cpu-dribble-action', resetEpoch, carrierId, row.type, row.targetPlayerId || 'none', Math.floor(snapshot.tick / 6)].join(':'),
+        type: row.type,
+        actorId: carrierId,
+        targetPlayerId: row.targetPlayerId,
+        target: row.target,
+        power: clamp(finite(row.confidence, 0.65), 0, 1),
+        source: 'cpu-v2',
+        commandTick: snapshot.tick
+      };
+    }
+    function dribblingPlan(snapshot, movementState, logicalOwnerId, candidateBallState, intelligence, activeLeaseAtStart) {
+      if (!dependencies.ball.isBallState(candidateBallState)) throw new Error('Dribbling V2 requires a complete staged Ball V2 state');
+      const carrierId = activeLeaseAtStart && domain.dribblingState.logicalOwnerId
+        ? String(domain.dribblingState.logicalOwnerId)
+        : logicalOwnerId;
+      const movementCarrier = carrierId && movementState.players.find(player => player.id === carrierId);
+      const liveCarrier = carrierId && snapshot.players.find(player => player.id === carrierId);
+      const human = Boolean(carrierId && snapshot.humanPlayerIds.has(carrierId));
+      const humanControl = human && liveCarrier && liveCarrier.control;
+      const movementSpeed = movementCarrier ? vectorLength(movementCarrier.velocity) : 0;
+      let actionIntent = null;
+      if (activeLeaseAtStart && carrierId) {
+        const hostAction = snapshot.dribbling.actionIntent;
+        actionIntent = hostAction && (!hostAction.actorId || String(hostAction.actorId) === carrierId)
+          ? { ...clone(hostAction), actorId: carrierId }
+          : cpuDribblingAction(snapshot, intelligence, carrierId);
+      }
+      const result = dependencies.dribbling.resolve({
+        schema: dependencies.dribbling.REQUEST_SCHEMA,
+        workflow: capability.workflow,
+        online: false,
+        tick: snapshot.tick,
+        epoch: resetEpoch,
+        seed: deterministicSeed,
+        fixedTickSeconds: FIXED_TICK_SECONDS,
+        state: domain.dribblingState,
+        movementWorld: movementState,
+        ballState: candidateBallState,
+        roster: movementState.players.map(player => {
+          const profile = snapshot.players.find(row => row.id === player.id), attrs = profile && profile.attrs || {};
+          return {
+            id: player.id,
+            teamId: player.teamId,
+            isGK: Boolean(profile && profile.isGK),
+            sentOff: Boolean(profile && profile.sentOff),
+            available: Boolean(profile && !profile.isGK && !profile.sentOff),
+            contactEligible: Boolean(profile && profile.contactEligible),
+            attributes: {
+              control: finite(attrs.control, 70),
+              technique: finite(attrs.technique, attrs.control || 70),
+              agility: finite(attrs.agility, attrs.accel || attrs.acceleration || 70)
+            }
+          };
+        }),
+        logicalOwnerId: carrierId,
+        carrierInput: {
+          // Source is presentation/telemetry only. The resolver deliberately
+          // applies one ratings-neutral physical model to both paths.
+          source: human ? 'human' : 'cpu',
+          direction: humanControl && humanControl.strength > 0.02
+            ? { x: humanControl.x, y: humanControl.y }
+            : movementCarrier && (movementSpeed > 0.05 ? movementCarrier.velocity : movementCarrier.facing),
+          intensity: humanControl ? humanControl.strength : clamp(movementSpeed / 7.2, 0, 1),
+          sprint: humanControl ? humanControl.sprint : Boolean(movementCarrier && movementCarrier.locomotionState === 'sprint'),
+          shield: Boolean(humanControl && humanControl.shield)
+        },
+        surface: snapshot.dribbling.surface,
+        actionIntent,
+        gate: snapshot.contact.gate
+      }, dribblingCapability);
+      if (!result || result.schema !== dependencies.dribbling.RESULT_SCHEMA || result.version !== dependencies.dribbling.VERSION ||
+          result.tick !== snapshot.tick || result.epoch !== resetEpoch || result.workflow !== capability.workflow || result.online !== false ||
+          !dependencies.ball.isBallState(result.ballState) || !result.serializedState ||
+          dependencies.dribbling.restoreState(result.serializedState).schema !== dependencies.dribbling.STATE_SCHEMA) {
+        throw new Error('live Dribbling V2 result contract failed');
+      }
+      return result;
+    }
     function planTick(rawSnapshot) {
       if (!enabled) return null;
       try {
-        const snapshot = normalizeSnapshot(rawSnapshot);
+        if (activePrepared) {
+          const previous = privatePrepared.get(activePrepared);
+          if (!previous || !previous.finalized || previous.rolledBack || previous.aborted) {
+            throw new Error('live V2 prepared tick remains unresolved');
+          }
+          previous.sealed = true;
+          privatePrepared.delete(activePrepared);
+          activePrepared = null;
+        }
+        const snapshot = normalizeSnapshot(rawSnapshot, capability.workflow);
         const expectedTick = lastCommittedTick < 0 ? 1 : lastCommittedTick + 1;
         if (snapshot.tick !== expectedTick) throw new RangeError('live V2 snapshot tick must be exactly sequential');
-        const possession = derivePossession(snapshot), phaseState = phaseAuthority(snapshot, possession);
-        const formations = formationOutputs(snapshot, phaseState), cpu = cpuOutputs(snapshot, formations, possession);
-        const currentMovement = movementWorld(snapshot), commands = movementCommands(snapshot, currentMovement.world, formations, cpu.outputs);
+        const activeLeaseAtStart = hasPhysicalDribblingLease(domain.dribblingState);
+        const leaseOwnerId = activeLeaseAtStart ? String(domain.dribblingState.logicalOwnerId) : null;
+        // The carrier retains action and decision authority during a short
+        // physical touch lease. The physical snapshot remains ownerless below;
+        // only this control snapshot carries the logical owner.
+        const controlSnapshot = leaseOwnerId
+          ? { ...snapshot, ball: { ...snapshot.ball, ownerId: leaseOwnerId } }
+          : snapshot;
+        const possession = derivePossession(controlSnapshot), phaseState = phaseAuthority(controlSnapshot, possession);
+        const formations = formationOutputs(controlSnapshot, phaseState), cpu = cpuOutputs(controlSnapshot, formations, possession);
+        const currentMovement = movementWorld(controlSnapshot), commands = movementCommands(controlSnapshot, currentMovement.world, formations, cpu.outputs);
         const movement = dependencies.movement.advance(currentMovement.world, commands.commands, 1, { fixedTickSeconds: FIXED_TICK_SECONDS });
         const movementProjection = movement.state.players.map(player => {
           const position = livePoint(player.position, snapshot), velocity = liveVelocity(player.velocity, snapshot);
           return { id: player.id, x: position.x, y: position.y, vx: velocity.x, vy: velocity.y, fx: player.facing.x, fy: player.facing.y,
             stamina: player.stamina, locomotionState: player.locomotionState, visibleAction: player.visibleAction, action: player.action ? clone(player.action) : null };
         });
-        const intelligence = intelligenceProjection(snapshot, cpu.outputs);
+        const intelligence = intelligenceProjection(controlSnapshot, cpu.outputs);
         const movementOwnerId = movement.state.ballOwnerId == null ? null : String(movement.state.ballOwnerId);
-        const movementOwner = movementOwnerId && snapshot.players.find(player => player.id === movementOwnerId);
-        const snapshotOwner = snapshot.ball.ownerId && snapshot.players.find(player => player.id === snapshot.ball.ownerId);
-        let effectiveOwnerId = (movementOwnerId || snapshotOwner && snapshotOwner.isGK) ? movementOwnerId || snapshotOwner.id : null;
+        const snapshotOwner = controlSnapshot.ball.ownerId && snapshot.players.find(player => player.id === controlSnapshot.ball.ownerId);
+        let effectiveOwnerId = leaseOwnerId || ((movementOwnerId || snapshotOwner && snapshotOwner.isGK)
+          ? movementOwnerId || snapshotOwner.id : null);
         let postMovementPossession = effectiveOwnerId ? (() => {
           const owner = snapshot.players.find(player => player.id === effectiveOwnerId);
           return { teamId: owner.teamId, ownerId: owner.id, inFlight: false,
@@ -735,11 +1093,14 @@
           // respect that loss instead of silently preserving pre-tick ownership.
           ? { teamId: null, ownerId: null, inFlight: false, intendedReceiverId: null, releaseTick: null, offsideCandidate: null }
           : possession;
-        const ballSnapshot = { ...snapshot, ball: { ...snapshot.ball, ownerId: effectiveOwnerId } };
+        const ballSnapshot = {
+          ...controlSnapshot,
+          ball: { ...snapshot.ball, ownerId: activeLeaseAtStart ? null : effectiveOwnerId }
+        };
         // Ball V2 sees the post-Movement owner. A loose ball claimed by a
         // tackle can therefore never be integrated again in the same tick.
         const plannedBall = ballPlan(ballSnapshot);
-        const contact = contactPlan(ballSnapshot, movement.state, plannedBall);
+        const contact = activeLeaseAtStart ? null : contactPlan(ballSnapshot, movement.state, plannedBall);
         let stagedWorld = movement.state;
         let stagedBallState = plannedBall.stagedState;
         let stagedBallProjection = plannedBall.stagedProjection;
@@ -749,9 +1110,11 @@
           stagedBallProjection = contact.ownedContact && contact.ownerCandidateId
             ? null : liveBall(contact.ballState, snapshot);
           hostBallProjection = stagedBallProjection && clone(stagedBallProjection);
+          let contactOwner = null;
           if (contact.ownedContact && contact.ownerCandidateId) {
             const owner = snapshot.players.find(player => player.id === contact.ownerCandidateId);
             if (!owner || owner.isGK || owner.sentOff) throw new Error('live contact owner candidate is ineligible');
+            contactOwner = owner;
             effectiveOwnerId = owner.id;
             postMovementPossession = {
               teamId: owner.teamId,
@@ -761,15 +1124,92 @@
               releaseTick: null,
               offsideCandidate: null
             };
+          }
+          const directionalTouchPlayerId = contact.ownedContact && snapshot.contact.firstTouchIntent &&
+            snapshot.contact.firstTouchIntent.type === 'directional-touch' && contact.presentation
+            ? String(contact.presentation.playerId || '') : '';
+          if (contactOwner || directionalTouchPlayerId) {
+            const activeOwnerId = contactOwner ? contactOwner.id : stagedWorld.ballOwnerId;
             stagedWorld = dependencies.movement.createWorldState({
               tick: movement.state.tick,
               fixedTickSeconds: FIXED_TICK_SECONDS,
               bounds: movement.state.bounds,
-              ballOwnerId: owner.id,
-              players: movement.state.players.map(player => ({ ...player, hasBall: player.id === owner.id }))
+              ballOwnerId: activeOwnerId,
+              players: movement.state.players.map(player => {
+                if (player.id !== directionalTouchPlayerId) return { ...player, hasBall: player.id === activeOwnerId };
+                const profile = snapshot.players.find(row => row.id === player.id), attrs = profile && profile.attrs || {};
+                const acceleration = clamp(finite(attrs.accel, attrs.pace || 70), 1, 99);
+                return { ...player, hasBall: player.id === activeOwnerId,
+                  touchBurstUntilTick: snapshot.tick + 2,
+                  touchBurstAccelerationMultiplier: 1.04 + acceleration / 99 * 0.04 };
+              })
             });
           }
         }
+        const effectiveProfile = effectiveOwnerId && snapshot.players.find(player => player.id === effectiveOwnerId);
+        const dribblingOwnerId = effectiveProfile && !effectiveProfile.isGK && !effectiveProfile.sentOff
+          ? effectiveOwnerId : null;
+        const candidateBallState = dependencies.ball.isBallState(stagedBallState)
+          ? stagedBallState
+          : controlledBallState(snapshot, dribblingOwnerId, contact && contact.ballState);
+        const dribbling = dribblingPlan(controlSnapshot, stagedWorld, dribblingOwnerId,
+          candidateBallState, intelligence, activeLeaseAtStart);
+        const dribblingRelevant = activeLeaseAtStart || dribblingOwnerId || domain.dribblingState.carrierId;
+        if (dribblingRelevant) effectiveOwnerId = dribbling.logicalOwnerId;
+        stagedBallState = dribbling.ballState;
+        const physicalSeparated = dribbling.physicalSeparated === true;
+        const projectedOwner = effectiveOwnerId && snapshot.players.find(player => player.id === effectiveOwnerId);
+        if (effectiveOwnerId) {
+          if (!projectedOwner || projectedOwner.sentOff || (dribblingRelevant && projectedOwner.isGK)) {
+            throw new Error('Dribbling V2 returned an ineligible owner');
+          }
+          postMovementPossession = {
+            teamId: projectedOwner.teamId,
+            ownerId: projectedOwner.id,
+            inFlight: false,
+            intendedReceiverId: null,
+            releaseTick: null,
+            offsideCandidate: null
+          };
+        } else if (!possession.inFlight || activeLeaseAtStart) {
+          postMovementPossession = {
+            teamId: null,
+            ownerId: null,
+            inFlight: false,
+            intendedReceiverId: null,
+            releaseTick: null,
+            offsideCandidate: null
+          };
+        }
+        const stagedWorldOwnerId = effectiveOwnerId && stagedWorld.players.some(player => player.id === effectiveOwnerId)
+          ? effectiveOwnerId : null;
+        stagedWorld = dependencies.movement.createWorldState({
+          tick: stagedWorld.tick,
+          fixedTickSeconds: FIXED_TICK_SECONDS,
+          bounds: stagedWorld.bounds,
+          ballOwnerId: stagedWorldOwnerId,
+          players: stagedWorld.players.map(player => ({ ...player, hasBall: player.id === stagedWorldOwnerId }))
+        });
+        hostBallProjection = physicalSeparated || !effectiveOwnerId ? liveBall(stagedBallState, snapshot) : null;
+        stagedBallProjection = hostBallProjection && clone(hostBallProjection);
+        const suppressedLeaseActions = new Set();
+        if (activeLeaseAtStart && leaseOwnerId) suppressedLeaseActions.add(leaseOwnerId);
+        if (dribbling.releasedAction && dribbling.releasedAction.actorId) suppressedLeaseActions.add(String(dribbling.releasedAction.actorId));
+        const hostIntelligence = intelligence.projection.filter(intent =>
+          !(suppressedLeaseActions.has(intent.playerId) && ['pass', 'shot'].includes(intent.type)));
+        const dribblingProjection = {
+          schema: dribbling.schema,
+          version: dribbling.version,
+          phase: dribbling.state.phase,
+          logicalOwnerId: dribbling.logicalOwnerId,
+          physicalSeparated,
+          bufferedAction: clone(dribbling.state.bufferedAction),
+          releasedAction: clone(dribbling.releasedAction),
+          authorityHandoff: clone(dribbling.authorityHandoff),
+          serializedState: clone(dribbling.serializedState),
+          telemetry: clone(dribbling.telemetry),
+          presentation: clone(dribbling.presentation)
+        };
         let stagedTransition = phaseState.transition;
         if (domain.possession.teamId && postMovementPossession.teamId &&
             domain.possession.teamId !== postMovementPossession.teamId) {
@@ -782,24 +1222,28 @@
         }
         const frame = {
           schema: 'football-legacy-live-v2-tick-frame', version: VERSION, planSequence: ++planSequence, snapshotTick: snapshot.tick,
-          hostProjection: { snapshotTick: snapshot.tick, movement: movementProjection, intelligence: intelligence.projection,
+          hostProjection: { snapshotTick: snapshot.tick, movement: movementProjection, intelligence: hostIntelligence,
             ball: hostBallProjection, contact: contact ? clone(contact) : null,
-            movementTelemetry: clone(movement.telemetry), ballTrace: clone(plannedBall.trace),
+            movementTelemetry: clone(movement.telemetry), recoveryAssignments: clone(commands.recoveryAssignments), ballTrace: clone(plannedBall.trace),
             possession: clone(postMovementPossession), movementBallOwnerId: effectiveOwnerId,
+            logicalBallOwnerId: effectiveOwnerId, physicalBallSeparated: physicalSeparated,
+            dribbling: dribblingProjection,
             authorityCounters: { legacyOutfieldLocomotion: 0, legacyCpu: 0, legacyLooseBallIntegration: 0, candidateTicks: 1 } },
           staged: { world: stagedWorld, rosterSignature: currentMovement.signature, cpuMemories: cpu.memories,
             ballState: stagedBallState, ballContext: plannedBall.stagedContext, lastBallProjection: stagedBallProjection,
             lastLaunchSequence: plannedBall.stagedLaunchSequence, lastTackleState: commands.stagedTackleState,
             lastCarrierEmission: intelligence.stagedCarrierEmission, possession: postMovementPossession, transition: stagedTransition,
             consumedFirstTouchIds: contact ? clone(contact.consumedFirstTouchIds) : domain.consumedFirstTouchIds,
-            consumedAerialIds: contact ? clone(contact.consumedAerialIds) : domain.consumedAerialIds },
+            consumedAerialIds: contact ? clone(contact.consumedAerialIds) : domain.consumedAerialIds,
+            dribblingState: dependencies.dribbling.restoreState(dribbling.serializedState) },
           formation: formations, cpu: cpu.outputs, movementTelemetry: movement.telemetry, ballTrace: plannedBall.trace,
-          contact
+          contact, dribbling
         };
         const publicFrame = deepFreeze({
           schema: frame.schema, version: frame.version, planSequence: frame.planSequence, snapshotTick: frame.snapshotTick,
           hostProjection: clone(frame.hostProjection), formation: clone(frame.formation), cpu: clone(frame.cpu),
-          movementTelemetry: clone(frame.movementTelemetry), ballTrace: clone(frame.ballTrace), contact: clone(frame.contact)
+          movementTelemetry: clone(frame.movementTelemetry), ballTrace: clone(frame.ballTrace), contact: clone(frame.contact),
+          dribbling: clone(frame.dribbling)
         });
         latestPlanSequence = frame.planSequence; issuedFrames.add(publicFrame); privateFrames.set(publicFrame, frame); return publicFrame;
       } catch (error) { freeze(error); return null; }
@@ -812,7 +1256,8 @@
     }
     function prepareCommit(publicFrame) {
       const frame = validFrame(publicFrame);
-      if (!frame) return null;
+      if (!frame || reservedFrames.has(publicFrame) || activePrepared) return null;
+      reservedFrames.add(publicFrame);
       try {
         const transaction = host.prepareTick(clone(frame.hostProjection));
         if (!transaction || typeof transaction.commit !== 'function' || typeof transaction.rollback !== 'function') throw new Error('host tick transaction is invalid');
@@ -825,13 +1270,15 @@
           lastFormation, lastCpuDecision, latestTelemetry, lifecycle, failure
         };
         issuedPrepared.add(prepared);
-        privatePrepared.set(prepared, { publicFrame, frame, transaction, prior, applied: false, finalized: false });
+        privatePrepared.set(prepared, { publicFrame, frame, transaction, prior, generation: attachmentGeneration, applied: false, finalized: false });
+        activePrepared = prepared;
         return prepared;
       } catch (error) { freeze(error); return null; }
     }
     function preparedRecord(prepared) {
       const record = prepared && privatePrepared.get(prepared);
-      if (!enabled || !record || !issuedPrepared.has(prepared) || record.rolledBack || record.aborted) return null;
+      if (!enabled || !record || !issuedPrepared.has(prepared) || record.generation !== attachmentGeneration ||
+          record.rolledBack || record.aborted) return null;
       return record;
     }
     function applyPrepared(prepared) {
@@ -845,6 +1292,7 @@
         try { record.transaction.rollback(); } catch (_) {}
         record.rolledBack = true;
         consumedFrames.add(record.publicFrame);
+        if (activePrepared === prepared) activePrepared = null;
         return freeze(error);
       }
     }
@@ -861,7 +1309,9 @@
           targets: frame.formation[teamId].targets.map(row => ({ playerId: row.playerId, slotId: row.slotId, target: clone(row.target) })) }]));
         lastCpuDecision = Object.fromEntries(['you', 'opp'].map(teamId => [teamId, { tick: frame.cpu[teamId].tick,
           runs: clone(frame.cpu[teamId].runs), carrierIntent: clone(frame.cpu[teamId].carrierIntent) }]));
-        latestTelemetry = { movement: clone(frame.movementTelemetry), ball: clone(frame.ballTrace), contact: clone(frame.contact), possession: clone(domain.possession),
+        latestTelemetry = { movement: clone(frame.movementTelemetry), recoveryAssignments: clone(frame.hostProjection.recoveryAssignments),
+          ball: clone(frame.ballTrace), contact: clone(frame.contact), dribbling: clone(frame.dribbling.telemetry),
+          possession: clone(domain.possession),
           formation: Object.fromEntries(['you', 'opp'].map(teamId => [teamId, clone(frame.formation[teamId].telemetry)])),
           cpu: Object.fromEntries(['you', 'opp'].map(teamId => [teamId, clone(frame.cpu[teamId].telemetry)])) };
         lifecycle = 'live'; consumedFrames.add(record.publicFrame); record.finalized = true; return true;
@@ -884,11 +1334,15 @@
       try { record.transaction.rollback(); } catch (_) {}
       record.aborted = true;
       privatePrepared.delete(prepared);
+      if (activePrepared === prepared) activePrepared = null;
       return true;
     }
     function rollbackPrepared(prepared, reason) {
       const record = prepared && privatePrepared.get(prepared);
-      if (!record || !issuedPrepared.has(prepared) || record.rolledBack || record.aborted) return false;
+      if (!record || !issuedPrepared.has(prepared) || record.generation !== attachmentGeneration ||
+          record.rolledBack || record.aborted) return false;
+      const expectedTick = record.finalized ? lastCommittedTick : (lastCommittedTick < 0 ? 1 : lastCommittedTick + 1);
+      if (record.frame.snapshotTick !== expectedTick || record.frame.planSequence !== latestPlanSequence || record.sealed) return false;
       try { record.transaction.rollback(); } catch (_) {}
       if (record.finalized) {
         domain = record.prior.domain; lastCommittedTick = record.prior.lastCommittedTick;
@@ -899,6 +1353,7 @@
       }
       record.rolledBack = true;
       consumedFrames.add(record.publicFrame);
+      if (activePrepared === prepared) activePrepared = null;
       return freeze(reason || 'outer live V2 host transaction rolled back');
     }
     function commitTick(publicFrame) {
@@ -908,14 +1363,15 @@
     }
     function reset(reason) {
       if (!enabled) return false;
-      resetEpoch += 1; domain = freshDomain(); latestPlanSequence = ++planSequence; lastCommittedTick = -1;
+      resetEpoch += 1; attachmentGeneration += 1; domain = freshDomain(); latestPlanSequence = ++planSequence; lastCommittedTick = -1;
+      activePrepared = null;
       lastFormation = { you: null, opp: null }; lastCpuDecision = { you: null, opp: null }; latestTelemetry = null;
       lifecycle = 'armed'; failure = null;
       return { schema: 'football-legacy-live-v2-reset', version: VERSION, resetEpoch, reason: String(reason || 'build-173-restart-handoff') };
     }
     return Object.freeze({ schema: 'football-legacy-live-v2-attachment', version: VERSION, planTick, prepareCommit, applyPrepared,
-      finalizePrepared, abortPrepared, rollbackPrepared, commitTick, reset, status,
-      disable: reason => freeze(reason || 'manual one-switch rollback') });
+      finalizePrepared, abortPrepared, rollbackPrepared, commitTick, reset, status, exportState, restoreState,
+      disable: reason => freeze(reason || 'manual adapter freeze') });
   }
 
   return Object.freeze({

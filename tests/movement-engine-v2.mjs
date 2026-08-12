@@ -30,6 +30,8 @@ function player(id, teamId, x, y, data = {}) {
     radius: data.radius,
     mass: data.mass,
     staminaLevel: data.staminaLevel ?? 100,
+    touchBurstUntilTick: data.touchBurstUntilTick,
+    touchBurstAccelerationMultiplier: data.touchBurstAccelerationMultiplier,
     attributes: {
       pace: 78,
       acceleration: 78,
@@ -155,6 +157,35 @@ test('contextual run, jockey and shield states have explicit distinct caps', () 
   assert.equal(byId(result, 'shield').locomotionState, 'shield');
   assert.ok(speed(byId(result, 'run')) > speed(byId(result, 'jockey')));
   assert.ok(speed(byId(result, 'jockey')) > speed(byId(result, 'shield')));
+});
+
+test('ball carriers keep a small control-scaled pace cost while off-ball pace stays unchanged', () => {
+  const command = id => [{ tick: 1, playerId: id, type: 'move', move: { x: 1, y: 0 }, mode: 'sprint', durationTicks: 240 }];
+  const sample = (id, control, owner) => Movement.advance(world([
+    player(id, 'home', -40, 0, { attributes: { pace: 88, acceleration: 88, control } })
+  ], { ballOwnerId: owner ? id : null }), command(id), 180).state.players[0];
+  const lowCarrier = sample('low-carrier', 45, true), lowRunner = sample('low-runner', 45, false);
+  const eliteCarrier = sample('elite-carrier', 96, true), eliteRunner = sample('elite-runner', 96, false);
+  const lowPenalty = 1 - speed(lowCarrier) / speed(lowRunner), elitePenalty = 1 - speed(eliteCarrier) / speed(eliteRunner);
+  assert.ok(lowPenalty > elitePenalty, 'elite control reduces the carrier penalty');
+  assert.ok(lowPenalty > 0.008 && lowPenalty < 0.036, lowPenalty);
+  assert.ok(elitePenalty > 0.007 && elitePenalty < 0.014, elitePenalty);
+  assert.equal(speed(lowRunner), speed(eliteRunner), 'off-ball top speed does not depend on control');
+});
+
+test('directional first-touch burst lasts two ticks, affects acceleration only and never raises terminal speed', () => {
+  const move = id => [{ tick: 1, playerId: id, type: 'move', move: { x: 1, y: 0 }, mode: 'sprint', durationTicks: 240 }];
+  const baseWorld = world([player('base', 'home', -40, 0, { attributes: { pace: 86, acceleration: 84 } })]);
+  const burstWorld = world([player('burst', 'home', -40, 0, {
+    attributes: { pace: 86, acceleration: 84 }, touchBurstUntilTick: 2, touchBurstAccelerationMultiplier: 1.08
+  })]);
+  const baseOne = Movement.advance(baseWorld, move('base'), 1).state;
+  const burstOne = Movement.advance(burstWorld, move('burst'), 1).state;
+  assert.ok(speed(byId(burstOne, 'burst')) > speed(byId(baseOne, 'base')), 'burst changes early acceleration');
+  const baseTerminal = Movement.advance(baseOne, move('base'), 179).state;
+  const burstTerminal = Movement.advance(burstOne, move('burst'), 179).state;
+  assert.equal(speed(byId(burstTerminal, 'burst')), speed(byId(baseTerminal, 'base')), 'terminal maximum remains identical');
+  assert.equal(byId(burstTerminal, 'burst').touchBurstUntilTick, 2, 'burst chronology is serialized in state');
 });
 
 test('DECELERATION FIXTURE: released input brakes monotonically to rest', () => {
