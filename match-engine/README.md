@@ -1,6 +1,12 @@
-# Latest match build: v0.28
+# Current match build: Build 174 offline FL V2 playtest
 
-# Football Legacy — Classic FIFA Visual Pass
+The main 3D match remains the shared renderer, rules, camera, goalkeeper, restart and replay host. Build 173 is the default authority. An explicit offline Quick Play opt-in can activate FL V2 for Single Player and Free Kick Practice; any unsupported, online or failed candidate route stays on or returns visibly to Build 173.
+
+Build 174 adds deterministic Ball, Movement, CPU, Formation, First Touch, Aerial, Match Clock, Restart and Set-Piece candidates behind strict workflow and transaction boundaries. It does not remove Local 2P, same-team co-op, CPU vs CPU, Online, Career or creation workflows.
+
+The visual-pass notes below are retained as historical implementation context; their old claim that gameplay systems were unchanged no longer describes the current opt-in FL V2 route.
+
+# Historical visual pass — v0.28
 
 This build starts from the last stable cross-field-passing version. The working match engine has been protected while the visible match has been rebuilt toward a late-2000s football-game style.
 

@@ -11,3 +11,14 @@
 .bench-select-grid{display:grid;gap:7px;margin-top:9px}.bench-select-row{display:grid!important;grid-template-columns:26px minmax(0,1fr);align-items:center;gap:8px}.bench-select-row>span{display:grid;place-items:center;width:25px;height:25px;border:1px solid rgba(255,255,255,.12);color:var(--muted);font-size:10px}.bench-select-row select{height:38px}
 @media(max-width:760px){.tactic-controls{grid-template-columns:1fr}}
 .online-quick-play .online-locked{position:relative;opacity:.68}.online-quick-play .online-locked::after{content:'Opponent controls this side';position:absolute;top:10px;right:10px;z-index:3;padding:5px 8px;background:rgba(3,16,31,.90);border:1px solid rgba(255,255,255,.16);color:#aab7c5;font-size:.52rem;font-weight:900;letter-spacing:.10em;text-transform:uppercase;pointer-events:none}.online-quick-play select:disabled{cursor:not-allowed;filter:saturate(.45)}
+
+/* FL V2 stays an explicit, offline Single Player playtest; this status always names the effective engine. */
+.engine-status{margin-top:14px;padding:13px 14px;border:1px solid rgba(255,255,255,.09);border-left:4px solid var(--orange);background:rgba(255,255,255,.035);color:var(--muted);font-size:12px;line-height:1.5}.engine-status strong{color:var(--cream)}.engine-status[data-effective-engine="fl-v2"]{border-color:rgba(77,157,107,.62);border-left-color:var(--green);background:rgba(77,157,107,.09)}
+
+/* The confirmation-page stadium strip previously had markup but no layout,
+   leaving Night, venue and Matchday concatenated above the fixture card. */
+.stadium-preview{position:relative;min-height:116px;margin:14px 0;border:1px solid rgba(255,255,255,.10);overflow:hidden;background:radial-gradient(circle at 72% 34%,rgba(232,120,36,.20),transparent 30%),linear-gradient(135deg,#102d49,#06182c 62%,#0d2945)}
+.stadium-preview-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(3,16,31,.16),rgba(3,16,31,.72));pointer-events:none}
+.stadium-preview-copy{position:relative;z-index:1;min-height:116px;padding:20px 23px;display:grid;align-content:center;justify-items:end;text-align:right}
+.stadium-preview-copy span,.stadium-preview-copy small{color:var(--muted);font-size:9px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}
+.stadium-preview-copy strong{display:block;margin:5px 0 3px;color:var(--cream);font:700 25px Georgia,"Times New Roman",serif;text-transform:uppercase}

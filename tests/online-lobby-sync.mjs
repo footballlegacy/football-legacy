@@ -37,7 +37,7 @@ check(quickApp.includes('getProtocolTrace:()=>onlineProtocolTrace.slice()'), 'Lo
 check(!quickApp.match(/function applyOnlineSide\([^\n]+remoteReady=false/), 'Team replication must not silently erase Ready state');
 check(!quickApp.match(/function applyOnlineSettings\([^\n]+remoteReady=false/), 'Settings replication must not silently erase Ready state');
 check(onlineHtml.includes('app.js?v=172-online-quality-1'), 'Online shell must bypass the old cached parent script');
-check(quickHtml.includes('app.js?v=172-online-quality-1'), 'Quick Play must bypass the old cached lobby script');
+check(quickHtml.includes('app.js?v=174-fl-v2-1'), 'Quick Play must use the Build 174 cache token while preserving the Build 172 lobby protocol');
 
 class ReadyPeer {
   constructor(side) {

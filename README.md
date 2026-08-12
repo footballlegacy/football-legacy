@@ -1,6 +1,21 @@
-# Football Legacy — Build 172 Online quality freeze
+# Football Legacy — Build 174 FL V2 offline playtest
 
 Football Legacy is a browser football game prototype with Quick Play, local controller multiplayer, an early friends-only Online Versus mode, creation tools, Career Mode and Grassroots to Glory.
+
+## Playtest FL V2
+
+Use the hosted game and open **Quick Play**:
+
+**[Open Football Legacy](https://footballlegacy.github.io/football-legacy/)**
+
+1. Choose **Quick Play**, select the teams and continue to Match Setup.
+2. Choose **Single Player** or **Free Kick Practice**.
+3. Set **Gameplay Engine** to **FL V2 · Experimental Offline**.
+4. Finish setup and launch the match normally.
+
+FL V2 is an explicit offline playtest route. Single Player activates the new deterministic Ball, Movement, CPU, Formation, First Touch and Aerial systems. Free Kick Practice activates the reviewed Clock, Restart, Set-Piece and coordinate systems. **Build 173 · Stable** remains the default and the immediate safety fallback. Local 2P, same-team co-op, CPU vs CPU, Online, Career, Create-a-Club, Player Career and the creation tools retain their established workflows.
+
+Known playtest issue: the Invincibles 4-4-2 currently uses overly static attacking anchors and assigns the wrong full-back to rest defence, so forward support can become too sparse. This remains a post-release priority rather than being hidden as fixed.
 
 ## Play Online with a friend
 

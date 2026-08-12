@@ -1,12 +1,25 @@
 # Football Legacy — Changelog
 
-Last reviewed: 10 August 2026 — build 173 gameplay baseline
+Last reviewed: 12 August 2026 — Build 174 FL V2 release preparation
 
 This file records the two source lines and the combined build produced from them:
 
 - **Combined integration build v0.31.0** — the complete v0.30.1 career/data build plus Josh's complete v0.96 match branch, with the overlapping Quick Play page merged rather than replaced.
 - **Career and data build v0.30.1** — the current Player Career/original-names copy with the Create-a-Club career fixes below.
 - **Match Engine v0.96** — Josh's GitHub pull request #1, included unchanged except for the intentional Quick Play integration described below.
+
+## Build 174 — explicit offline FL V2 playtest
+
+- Adds **FL V2 · Experimental Offline** to the existing Quick Play setup while retaining **Build 173 · Stable** as the default.
+- Limits FL V2 to explicit offline **Single Player** and **Free Kick Practice** selections. Local 2P, same-team co-op, CPU vs CPU, Online and all career/creation workflows remain on their established authority.
+- Promotes deterministic Ball, Movement, CPU, Formation, First Touch and Aerial systems for the Single Player playtest, with one visible fail-closed switch back to Build 173 if candidate preparation or commit fails.
+- Promotes the reviewed Match Clock, Restart, Set-Piece and coordinate systems for the Free Kick Practice route while preserving the normal Quick Play entry flow.
+- Adds Ancelotti's representative 2013/14 Real Madrid BBC squad, preferred 4-3-3 selection and team-behaviour overlay alongside the existing Invincibles and Conte Chelsea historic teams. Ratings are Football Legacy playtest values, not official EA ratings.
+- Removes the temporary deferred normal-match free-kick replay queue. Goal, immediate dead-ball and per-attempt practice replays remain.
+- Adds the whistle, assistant-referee flag and exact-once free-kick handoff presentation for offside, plus the requested human/CPU restart-camera ownership policy.
+- Preserves Build 172's Online signalling, lobby, controller and quality/recovery protocols; FL V2 cannot arm in Online.
+- Known post-release P1: the Invincibles 4-4-2 uses overly static attacking anchors and currently assigns the wrong full-back to rest defence, which can leave attacks under-supported. This is recorded, not presented as fixed.
+- Final release gate counts and public verification are recorded at publication; this section does not claim a branch-only build is live.
 
 ## Mandatory GitHub setup for Connor's AI agent
 
@@ -43,7 +56,7 @@ This is a mandatory workstation prerequisite for Connor's AI agent, not an optio
 - The expanded current browser gate passes **192/192** in normal Single Player, Local 2P with Controller 1 Home versus Controller 2 Away, and Home same-team co-op with both controllers on Home and Away left to the CPU. This new result is appended rather than replacing the historical 191/191 gate above.
 - The current unchanged Create-a-Club form test passes, while its playable-save test reaches the fixed 120-second limit before assertions because the older `createStartYear(..., 2026)` path is still simulating 138 seasons from 1888 and has no cancellation hook. Build 173 touches none of the Create-a-Club, career-mode or test files; this pre-existing slow-gate limitation is recorded alongside the earlier successful 1/1 result rather than erasing it or misreporting the timed-out rerun as a pass.
 - One resource-path 404 for the local Three.js file remains non-blocking because the existing CDN fallback loads. The four existing exhaustive career-world missing-fixture recovery failures remain outside this match-engine change.
-- Build 173 is a prepared local baseline and has **not** been published. Replay and walkout now have the requested baseline implementation, while human visual acceptance remains open. Every CPU, positional-contract, defending, goalkeeper, stadium, FLARE, career and later ball-physics workflow already recorded below remains in the request log.
+- Build 173 was published as the offline gameplay baseline. Replay and walkout retained the requested baseline implementation, while human visual acceptance remained open. Every CPU, positional-contract, defending, goalkeeper, stadium, FLARE, career and later ball-physics workflow already recorded below remains in the request log.
 
 ## Build 172 — Online quality and recovery freeze
 

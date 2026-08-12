@@ -1,0 +1,433 @@
+{
+  "schema": "football-legacy-overhaul-baseline-v1",
+  "schemaVersion": "2.0.0",
+  "build": 173,
+  "candidateBuild": 174,
+  "capturedOn": "2026-08-11",
+  "authority": {
+    "currentRung": "offline-opt-in",
+    "defaultAuthority": "build-173-legacy",
+    "liveGameplayOwner": "match-engine/match.html",
+    "candidateMayControlLiveGameplay": true,
+    "candidateAuthorityScope": ["single-player-quick-play", "set-piece-suite"],
+    "candidateAuthorityRequiresExplicitSelection": true,
+    "sameTickVisibleFailback": "build-173-legacy",
+    "scopedLegacyMaintenanceAllowed": true,
+    "onlineChangesAllowed": false,
+    "offlineOptInApprovedByJoshua": true,
+    "furtherMigrationRequiresExplicitJoshuaApproval": true
+  },
+  "reference": {
+    "id": "football-legacy-main-2-read-only-build-173-snapshot",
+    "storagePolicy": "external-local-read-only-reference",
+    "pathRecordedInManifest": false,
+    "verification": "Each protected file is pinned below by SHA-256. The reference path is supplied only to the test process through FL_BUILD_173_REFERENCE when a full external recheck is wanted."
+  },
+  "allowedCandidateDelta": {
+    "path": "match-engine/match.html",
+    "kind": "build-173-default-plus-exact-offline-opt-in-authority-plus-exact-flag-read-only-shadow-plus-scoped-legacy-maintenance-plus-additive-historic-team",
+    "exactLine": "<script src=\"ball-physics.js?v=174-dormant-kernel\"></script>",
+    "occurrences": 1,
+    "effectPolicy": "Build 173 remains the default and owns every unselected or unsupported path. FL V2 may own only an explicitly selected offline Single Player Quick Play match or the Set-Piece Suite when query, payload, workflow, version and deterministic seed agree exactly. Any validation or runtime failure restores Build 173 in the same tick and shows the fallback. The v2Shadow attachment remains exact-flag and read-only. Online and all other workflows remain Build 173-authoritative.",
+    "baselineSha256": "8380734db3a142293c5bca2a22f6b6cc9e6a0fa658f9f0c26cce8ad1801cf678",
+    "offlineOptInAuthority": {
+      "id": "build-174-exact-offline-fl-v2-authority",
+      "engine": "fl-v2",
+      "engineVersion": "1.0.0-offline-live-authority-playtest",
+      "defaultEngine": "build-173",
+      "selector": "quick-play/index.html#gameplayEngine",
+      "selectorDefault": "build-173",
+      "selectorOptIn": "fl-v2",
+      "onlinePolicy": "frozen-to-build-173",
+      "unsupportedWorkflowPolicy": "visible-build-173-fallback",
+      "sameTickFailurePolicy": "rollback-candidate-transaction-and-continue-build-173-with-visible-badge",
+      "oneSwitchRollback": "window.FLLiveV2.disable",
+      "queryContract": {
+        "engine": "fl-v2",
+        "simulationSeed": "one-positive-uint32-decimal"
+      },
+      "payloadContract": {
+        "transport": "#flMatch",
+        "mode": "quickPlay",
+        "engine.requested": "fl-v2",
+        "engine.effective": "fl-v2",
+        "engine.version": "1.0.0-offline-live-authority-playtest",
+        "engine.fallbackReason": null,
+        "simulationSeed": "same-positive-uint32-as-query"
+      },
+      "workflows": [
+        {
+          "protectedWorkflow": "single-player-quick-play",
+          "quickPlayMatchType": "single-player",
+          "runtimeWorkflow": "single-player",
+          "authority": ["gameplay", "match-control"]
+        },
+        {
+          "protectedWorkflow": "set-piece-suite",
+          "quickPlayMatchType": "free-kick-suite",
+          "runtimeWorkflow": "set-piece-suite",
+          "authority": ["match-control", "set-piece-suite"]
+        }
+      ],
+      "orderedScripts": [
+        "ball-engine-v2.js",
+        "movement-engine-v2.js",
+        "cpu-intelligence-v2.js",
+        "formation-behaviour-v2.js",
+        "first-touch-v2.js",
+        "first-touch-authority-adapter-v2.js",
+        "aerial-contact-v2.js",
+        "live-v2-contact-authority-composer.js",
+        "match-clock-v2.js",
+        "restart-presentation-v2.js",
+        "set-piece-coordinate-contract-v2.js",
+        "set-piece-suite-v2.js",
+        "live-v2-match-control-composition.js",
+        "live-v2-authority-adapter.js"
+      ],
+      "scriptCacheVersion": "174-fl-v2-1",
+      "workflowRemovalAllowed": false
+    },
+    "liveShadowAttachment": {
+      "id": "build173-exact-flag-offline-read-only-shadow",
+      "exactFlag": "v2Shadow=1",
+      "defaultLoadsV2": false,
+      "onlinePolicy": "preflight-and-capture-frozen",
+      "armingPolicy": "exact-workflow-method-bound-fail-closed",
+      "authority": "build-173-legacy-update-only",
+      "orderedScripts": [
+        "ball-engine-v2.js",
+        "ball-shadow-bridge-v2.js",
+        "cpu-intelligence-v2.js",
+        "movement-engine-v2.js",
+        "formation-behaviour-v2.js",
+        "match-clock-v2.js",
+        "overhaul-shadow-orchestrator-v2.js",
+        "build173-live-shadow-adapter-v2.js",
+        "build173-shadow-host-capture-v2.js",
+        "build173-live-shadow-hook-v2.js"
+      ],
+      "adapter": "match-engine/build173-live-shadow-adapter-v2.js",
+      "adapterSha256": "b7cbd0f9366c97b966962c2a2c26c16d592cdb46358c0a7eb9e25cd3e60600e5",
+      "capture": "match-engine/build173-shadow-host-capture-v2.js",
+      "captureSha256": "c6556fafdb0caf1877e4b6b78f27bc4784d2dff5cfcee21b501849db96ea16c5",
+      "hook": "match-engine/build173-live-shadow-hook-v2.js",
+      "hookSha256": "61c4ab42563f3b4b8585371b37e8e2527073bdab4eb5598cb75b677fd1c12fca",
+      "contract": "research/overhaul/build173-live-shadow-hook-v2-contract.md",
+      "contractSha256": "963d849b05a52d0e2f55490657c6f1c4e9e19915e785c391e49a6cb26f51f3e0",
+      "regressionGate": "tests/build173-live-shadow-hook-v2.mjs",
+      "regressionGateSha256": "e820198d99cee78daf0aff94422ab0d7b2e457d5e7d920b9ec9e99762c45082f",
+      "liveProjectionAllowed": false,
+      "workflowRemovalAllowed": false
+    },
+    "historicTeamAddition": {
+      "id": "madrid-real-2013-14",
+      "season": "2013/14",
+      "manager": "Carlo Ancelotti",
+      "quickPlayData": "quick-play/historic-playtest-squads.js",
+      "neutralPhilosophyOverlay": "match-engine/formation-behaviour-v2.js#ancelotti-bbc-433",
+      "liveIdentity": "ancelotti-real-madrid-bbc-4-3-3",
+      "contract": "research/overhaul/ancelotti-real-madrid-bbc-2013-14-contract.md",
+      "contractSha256": "6e05598a90660e7c2451de0f4ad03dd403f5ece87796720c7749c09f23289607",
+      "regressionGate": "tests/historic-real-madrid-bbc.mjs",
+      "regressionGateSha256": "175b7184fcac628049621a9e71de91a1de0106af7318ee3271956b8b5ffed716",
+      "onlineChangesAllowed": false,
+      "workflowRemovalAllowed": false
+    },
+    "liveMaintenance": {
+      "id": "offside-restart-presentation-camera-policy",
+      "authority": "legacy-inline-only",
+      "scope": [
+        "offside whistle-freeze-assistant-flag-free-kick sequence",
+        "real-time dead-ball clock during that sequence",
+        "human-versus-CPU restart camera ownership policy",
+        "removal of the temporary deferred normal-match free-kick replay observation path while retaining permanent replay routes",
+        "read-only diagnostics and regression metadata"
+      ],
+      "onlinePolicy": "broadcast-camera-frozen",
+      "regressionGate": "tests/live-offside-camera-policy.mjs",
+      "regressionGateSha256": "d6b8c6372f01f0d7ef882c01f7ce4ee5212d6c928ce54911e917f834bb862a7a",
+      "replayCleanupRegressionGate": "tests/free-kick-replay-queue-removal.mjs",
+      "replayCleanupRegressionGateSha256": "0a99e9ca4297828aa009593cbe6c8bd60843655869251637784f179df3372f66"
+    }
+  },
+  "protectedFiles": [
+    {
+      "path": "index.html",
+      "purpose": "main menu and mode links",
+      "baselineSha256": "a86ce73e7221560c384ba3f87c6befff0e35b54edc838ce4a869c5c45e70c81b",
+      "candidateSha256": "a86ce73e7221560c384ba3f87c6befff0e35b54edc838ce4a869c5c45e70c81b",
+      "expectedRelation": "byte-identical"
+    },
+    {
+      "path": "app.js",
+      "purpose": "main application routing",
+      "baselineSha256": "adf0b36cc22dbabcf56631036856e7ee0873824dc45ea0ce6ba7654d26594036",
+      "candidateSha256": "adf0b36cc22dbabcf56631036856e7ee0873824dc45ea0ce6ba7654d26594036",
+      "expectedRelation": "byte-identical"
+    },
+    {
+      "path": "controller-ui.js",
+      "purpose": "shared controller presentation and navigation",
+      "baselineSha256": "f3408f2e1a4cf6a72b04874c03778cc8ea9f45eb8961dcdad5ca745d527d2b11",
+      "candidateSha256": "f3408f2e1a4cf6a72b04874c03778cc8ea9f45eb8961dcdad5ca745d527d2b11",
+      "expectedRelation": "byte-identical"
+    },
+    {
+      "path": "settings.js",
+      "purpose": "shared settings and controller configuration",
+      "baselineSha256": "602f839c59050764a64640a2d30f4966c8a4b7d0e6d2e430a75316cf66b8296a",
+      "candidateSha256": "602f839c59050764a64640a2d30f4966c8a4b7d0e6d2e430a75316cf66b8296a",
+      "expectedRelation": "byte-identical"
+    },
+    {
+      "path": "match-engine/match.html",
+      "purpose": "Build 173 default authority and exact offline FL V2 host bridge",
+      "baselineSha256": "8380734db3a142293c5bca2a22f6b6cc9e6a0fa658f9f0c26cce8ad1801cf678",
+      "candidateSha256": "0d0bc4ea63368722d7220526b717bf04769aa6ce074a90a4bf174a6105e0df82",
+      "pinState": "frozen",
+      "expectedRelation": "build-173-default-plus-exact-two-workflow-offline-opt-in-plus-exact-flag-read-only-shadow-plus-scoped-legacy-maintenance-plus-additive-historic-team-delta"
+    },
+    {
+      "path": "match-engine/set-piece-system.js",
+      "purpose": "normal-match and suite set-piece support",
+      "baselineSha256": "063f2f4dcd613c03fa74f4d0ff792990b6c310bfc1d292ef54a1c4305569a077",
+      "candidateSha256": "063f2f4dcd613c03fa74f4d0ff792990b6c310bfc1d292ef54a1c4305569a077",
+      "expectedRelation": "byte-identical"
+    },
+    {
+      "path": "quick-play/index.html",
+      "purpose": "Quick Play launcher with explicit Build 173 default and FL V2 selector",
+      "baselineSha256": "6732f88581b00dfb5651d3bdfae4bc440b7891c3763b9b8e13e482a4fe04fef1",
+      "candidateSha256": "4a71856d4d5512c07ddbcefa5bf491b720bf47cabde718c28b5e07c06153405f",
+      "expectedRelation": "additive-explicit-offline-engine-selector"
+    },
+    {
+      "path": "quick-play/app.js",
+      "purpose": "Quick Play mode, controller, deterministic seed and exact engine payload routing",
+      "baselineSha256": "ae18e09bb8fef49c3da25b5187cf26b9b2d7bbb91c46f51dd044a8e75fd44ac6",
+      "candidateSha256": "3a525405e256b9c63dc08589fd9532e384cd578d7560b7c31c76fc0535d394c5",
+      "expectedRelation": "additive-historic-team-and-exact-offline-engine-payload-routing"
+    },
+    {
+      "path": "quick-play/styles.css",
+      "purpose": "Quick Play engine selector and visible authority/fallback status presentation",
+      "baselineSha256": "63b746a7ce7bcb39684983ad52bb40002ed6560af86acdf8305cce0e1b1746c0",
+      "candidateSha256": "44475e3adc0518d7d50148bdfdb347e1416e4c4923fcab3bd7383f0b85eb62d9",
+      "expectedRelation": "additive-engine-selector-status-presentation"
+    },
+    {
+      "path": "quick-play/historic-playtest-squads.js",
+      "purpose": "additive historic Quick Play squad registry",
+      "baselineSha256": "31202be14b3af688e9678a4af012160111a611d5e54b20e7cc6d20c7460d268b",
+      "candidateSha256": "d73acc66679cc40f4db9d7f5584b48d2b5237b5ac276e4f3d950f5d7c9bb8a94",
+      "expectedRelation": "additive-ancelotti-bbc-historic-team"
+    },
+    {
+      "path": "quick-play/teams.js",
+      "purpose": "team, formation and squad inputs",
+      "baselineSha256": "4115f4c784b4836ead1e575ca034cc17696a152fa498a023b85a0155a3447037",
+      "candidateSha256": "4115f4c784b4836ead1e575ca034cc17696a152fa498a023b85a0155a3447037",
+      "expectedRelation": "byte-identical"
+    },
+    {
+      "path": "online/index.html",
+      "purpose": "online-versus lobby UI",
+      "baselineSha256": "6bb25a5d49a25966e57853801d4d7d878d4c43d923c873eaeae15e8bc247d9d1",
+      "candidateSha256": "6bb25a5d49a25966e57853801d4d7d878d4c43d923c873eaeae15e8bc247d9d1",
+      "expectedRelation": "byte-identical-frozen"
+    },
+    {
+      "path": "online/app.js",
+      "purpose": "online signaling, streaming and controller bridge",
+      "baselineSha256": "208e31dcdb3f1fc563d6dc8091ed565429956f6d8f4275a313a9d0ea70418c03",
+      "candidateSha256": "208e31dcdb3f1fc563d6dc8091ed565429956f6d8f4275a313a9d0ea70418c03",
+      "expectedRelation": "byte-identical-frozen"
+    },
+    {
+      "path": "career-mode/index.html",
+      "purpose": "Career Mode entry",
+      "baselineSha256": "de384f34f4ec1138c5f02f992c6bd869c969cbafec6b4d33458344ece8db3b6b",
+      "candidateSha256": "de384f34f4ec1138c5f02f992c6bd869c969cbafec6b4d33458344ece8db3b6b",
+      "expectedRelation": "byte-identical"
+    },
+    {
+      "path": "career-mode/game.html",
+      "purpose": "Career Mode runtime UI",
+      "baselineSha256": "a32da9f760c6c7fe18ea18798464edab820cf8dafb44b0dbdb883a300e417108",
+      "candidateSha256": "a32da9f760c6c7fe18ea18798464edab820cf8dafb44b0dbdb883a300e417108",
+      "expectedRelation": "byte-identical"
+    },
+    {
+      "path": "career-mode/js/game.js",
+      "purpose": "Career Mode world and save runtime",
+      "baselineSha256": "490d4cc26e1f5d05152e6e799d5fdac259babf2a13c8633c0e8898067a897080",
+      "candidateSha256": "490d4cc26e1f5d05152e6e799d5fdac259babf2a13c8633c0e8898067a897080",
+      "expectedRelation": "byte-identical"
+    },
+    {
+      "path": "create-club/index.html",
+      "purpose": "Create-a-Club workflow",
+      "baselineSha256": "2c786bf766931d9eaadd0b4f3ced9feebbba8462c7e24632fa86201fc5e1532a",
+      "candidateSha256": "2c786bf766931d9eaadd0b4f3ced9feebbba8462c7e24632fa86201fc5e1532a",
+      "expectedRelation": "byte-identical"
+    },
+    {
+      "path": "player-career/game.html",
+      "purpose": "Player Career runtime UI",
+      "baselineSha256": "34609357cc34ffa3e1336cb26e47551241a98588c1808d3aee5e2ec692cacff8",
+      "candidateSha256": "34609357cc34ffa3e1336cb26e47551241a98588c1808d3aee5e2ec692cacff8",
+      "expectedRelation": "byte-identical"
+    },
+    {
+      "path": "player-career/player-career.js",
+      "purpose": "Player Career state and progression",
+      "baselineSha256": "e51910b39d201d9befe3972d44a9a16478f2c6f87a5c1ecf6e1158a8ccbb937b",
+      "candidateSha256": "e51910b39d201d9befe3972d44a9a16478f2c6f87a5c1ecf6e1158a8ccbb937b",
+      "expectedRelation": "byte-identical"
+    }
+  ],
+  "promotedFiles": [
+    {
+      "path": "match-engine/ball-physics.js",
+      "purpose": "dormant compatibility facade loaded by the Build 173 page",
+      "baselineAbsent": true,
+      "candidateSha256": "447fb77a7440a881b38dd94c5df7dd09a8f1f6bfb81315ac65238075d523e2b2",
+      "authorityScope": ["dormant-api"]
+    },
+    {
+      "path": "match-engine/ball-engine-v2.js",
+      "purpose": "deterministic FL V2 ball launch, flight and ground regimes",
+      "baselineAbsent": true,
+      "candidateSha256": "4084ff8968859af2a4149703ce02eb37e0691fa20a542dbc97d793c33342c504",
+      "authorityScope": ["single-player-quick-play", "set-piece-suite", "v2-shadow"]
+    },
+    {
+      "path": "match-engine/movement-engine-v2.js",
+      "purpose": "deterministic FL V2 locomotion and player collision authority",
+      "baselineAbsent": true,
+      "candidateSha256": "72df57ceaf2eab4d7eae46360a21cd6f1c1d9187d5efeefe2c033ad3d9fa864f",
+      "authorityScope": ["single-player-quick-play", "v2-shadow"]
+    },
+    {
+      "path": "match-engine/cpu-intelligence-v2.js",
+      "purpose": "deterministic FL V2 player and team decision authority",
+      "baselineAbsent": true,
+      "candidateSha256": "a9e2924e7edb1881d19aa8d9ad8a04a4e549778c794f5b65d9f3cb05d0a84488",
+      "authorityScope": ["single-player-quick-play", "v2-shadow"]
+    },
+    {
+      "path": "match-engine/formation-behaviour-v2.js",
+      "purpose": "neutral formation contracts and additive historic-team overlays",
+      "baselineAbsent": true,
+      "candidateSha256": "45337e1e7753fed82eedfca4f330bf47167c29d3b2aa7fa10031917c3af26df7",
+      "authorityScope": ["single-player-quick-play", "v2-shadow"]
+    },
+    {
+      "path": "match-engine/first-touch-v2.js",
+      "purpose": "deterministic FL V2 first-touch resolver",
+      "baselineAbsent": true,
+      "candidateSha256": "da75f9cc3ab3458df67c08f7868e45ae2c8d4ad1ef50ff07c78c3c100370b77d",
+      "authorityScope": ["single-player-quick-play"]
+    },
+    {
+      "path": "match-engine/first-touch-authority-adapter-v2.js",
+      "purpose": "first-touch capability and transaction adapter",
+      "baselineAbsent": true,
+      "candidateSha256": "fbbea7ff774015fff32806c32eeb012e23ff2197f86470d4441a9aec27ea4c3e",
+      "authorityScope": ["single-player-quick-play"]
+    },
+    {
+      "path": "match-engine/aerial-contact-v2.js",
+      "purpose": "deterministic FL V2 aerial contact resolver",
+      "baselineAbsent": true,
+      "candidateSha256": "54bf086bef9e0f149f9ed2445454da510fca5908e79aa77d95ba5f70d5e8b1ba",
+      "authorityScope": ["single-player-quick-play"]
+    },
+    {
+      "path": "match-engine/live-v2-contact-authority-composer.js",
+      "purpose": "ordered first-touch, aerial and protected legacy-contact arbitration",
+      "baselineAbsent": true,
+      "candidateSha256": "bc277f91b9b4a49c5243355b0f7ca1846302cc817d37f948f64de317ef24412f",
+      "authorityScope": ["single-player-quick-play"]
+    },
+    {
+      "path": "match-engine/match-clock-v2.js",
+      "purpose": "one simulation-time source with accelerated live-ball and real-time dead-ball presentation",
+      "baselineAbsent": true,
+      "candidateSha256": "281be0604de488a870376cf73c7a3718f8555f868bf0ef423742c1272c03d408",
+      "authorityScope": ["single-player-quick-play", "set-piece-suite", "v2-shadow"]
+    },
+    {
+      "path": "match-engine/restart-presentation-v2.js",
+      "purpose": "deterministic restart and camera presentation policy",
+      "baselineAbsent": true,
+      "candidateSha256": "1d6e6c17c240152f2279a96f69431b9cf4ff38954b35a50a87e063704ebbf54c",
+      "authorityScope": ["single-player-quick-play", "set-piece-suite"]
+    },
+    {
+      "path": "match-engine/set-piece-coordinate-contract-v2.js",
+      "purpose": "canonical set-piece coordinate and direction conversion",
+      "baselineAbsent": true,
+      "candidateSha256": "7f5226aba8a58a4132501c3519820a536b921a6344bca99e65d2e49ec87247e0",
+      "authorityScope": ["single-player-quick-play", "set-piece-suite"]
+    },
+    {
+      "path": "match-engine/set-piece-suite-v2.js",
+      "purpose": "repeatable FL V2 set-piece scenario state machine and export contract",
+      "baselineAbsent": true,
+      "candidateSha256": "ac49f9edce6120bfccf0c4f4f1462a0db57bdbe23a54711c7582ee38a632fcb0",
+      "authorityScope": ["set-piece-suite"]
+    },
+    {
+      "path": "match-engine/live-v2-match-control-composition.js",
+      "purpose": "exact-once clock, restart and suite transaction composer",
+      "baselineAbsent": true,
+      "candidateSha256": "e75e2d63fb57a884c829b705732714c2418fe4d3f5f4060ef58de2128e07bcc0",
+      "authorityScope": ["single-player-quick-play", "set-piece-suite"]
+    },
+    {
+      "path": "match-engine/live-v2-authority-adapter.js",
+      "purpose": "outer single-player gameplay transaction and same-tick failback adapter",
+      "baselineAbsent": true,
+      "candidateSha256": "4567ed9c55d9072e544e36c7572b5e7f07bcf0b3d0b5bcb275ff987c26faa326",
+      "pinState": "frozen",
+      "authorityScope": ["single-player-quick-play"]
+    },
+    {
+      "path": "match-engine/ball-shadow-bridge-v2.js",
+      "purpose": "read-only Build 173 to FL V2 ball comparison bridge",
+      "baselineAbsent": true,
+      "candidateSha256": "29381595bf08a3cc3494825e4039bcb88c9d1d6a37f203831658e95714a8527f",
+      "authorityScope": ["v2-shadow"]
+    },
+    {
+      "path": "match-engine/overhaul-shadow-orchestrator-v2.js",
+      "purpose": "read-only multi-engine shadow comparison orchestration",
+      "baselineAbsent": true,
+      "candidateSha256": "dbb2999b245ed49d39fb5efffb67913f08883f6a8bd5278445a294cb773a3733",
+      "authorityScope": ["v2-shadow"]
+    },
+    {
+      "path": "match-engine/build173-live-shadow-adapter-v2.js",
+      "purpose": "method-bound read-only Build 173 observation adapter",
+      "baselineAbsent": true,
+      "candidateSha256": "b7cbd0f9366c97b966962c2a2c26c16d592cdb46358c0a7eb9e25cd3e60600e5",
+      "authorityScope": ["v2-shadow"]
+    },
+    {
+      "path": "match-engine/build173-shadow-host-capture-v2.js",
+      "purpose": "read-only Build 173 host snapshot capture",
+      "baselineAbsent": true,
+      "candidateSha256": "c6556fafdb0caf1877e4b6b78f27bc4784d2dff5cfcee21b501849db96ea16c5",
+      "authorityScope": ["v2-shadow"]
+    },
+    {
+      "path": "match-engine/build173-live-shadow-hook-v2.js",
+      "purpose": "exact-flag read-only Build 173 shadow hook",
+      "baselineAbsent": true,
+      "candidateSha256": "61c4ab42563f3b4b8585371b37e8e2527073bdab4eb5598cb75b677fd1c12fca",
+      "authorityScope": ["v2-shadow"]
+    }
+  ]
+}

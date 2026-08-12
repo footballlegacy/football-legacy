@@ -94,6 +94,7 @@
         <div class="settings-panel">
           <div class="settings-grid">
             <label><span>Match Mode</span><select id="matchMode"><option value="single-player">Single Player</option><option value="free-kick-suite">Free Kick Practice</option><option value="co-op">Co-op / Local 2P</option><option value="home-co-op">Same-Team Co-op</option><option value="spectator">CPU vs CPU</option></select></label>
+            <label><span>Gameplay Engine</span><select id="gameplayEngine"><option value="build-173" selected>Build 173 · Stable</option><option value="fl-v2">FL V2 · Experimental Offline</option></select></label>
             <label><span>Stadium</span><select id="stadiumSelect"></select></label>
             <label><span>Match Time</span><select id="matchTime"><option value="afternoon">Afternoon</option><option value="evening">Evening</option><option value="night">Night</option></select></label>
             <label><span>Weather</span><select id="weather"><option value="clear">Clear</option><option value="overcast">Overcast</option><option value="rain">Rain</option></select></label>
@@ -104,6 +105,7 @@
             <label><span id="homeKitLabel">Home Kit</span><select id="homeKit"><option value="home">Home</option><option value="away">Away</option><option value="third">Third</option></select></label>
             <label><span id="awayKitLabel">Away Kit</span><select id="awayKit"><option value="away" selected>Away</option><option value="home">Home</option><option value="third">Third</option></select></label>
           </div>
+          <div class="engine-status" id="engineStatus" role="status" aria-live="polite"></div>
           <div class="controller-card" id="controllerCard"></div>
           <div class="kit-clash" id="kitClash" hidden></div>
         </div>
@@ -183,7 +185,7 @@
   <script src="teams.js"></script>
   <script src="original-names.js"></script>
   <script src="historic-playtest-squads.js"></script>
-  <script src="app.js?v=172-online-quality-1"></script>
+  <script src="app.js?v=174-fl-v2-1"></script>
   <script src="../controller-ui.js?v=172-online-quality-1"></script>
 </body>
 </html>
