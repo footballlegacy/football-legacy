@@ -1,5 +1,11 @@
 # Football Legacy V2 workflow closure ledger — 2026-08-12
 
+> **Historical pre-closure checkpoint.** This ledger is superseded by
+> `build174-release-checklist.md` and the final candidate at `87c48f9`. Any
+> “current”, “status now”, dirty-worktree, or pending-action statements below
+> describe the pre-commit 12 August worktree, not the published Build 174 FL V2
+> release.
+
 ## Purpose and status vocabulary
 
 This is the closure ledger for the protected Football Legacy workflows and the

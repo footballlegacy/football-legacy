@@ -11,7 +11,7 @@ Audited: 13 August 2026. This is a release allow-list, not permission to delete 
 - GitHub Pages currently sends `Cache-Control: max-age=600`. Verify the release with a unique query string and allow up to ten minutes for an edge cache to expire.
 - `git push --dry-run origin HEAD:refs/heads/agent/fl-v2-playtest` succeeds through the macOS keychain. Branch push is therefore available.
 - `gh` 2.97.0 is installed, but `gh auth status` reports an invalid token for `joshtoucanlearn`. Use the connected GitHub app to create the draft pull request, or re-authenticate `gh`; do not call a pushed branch “published” until it is merged to `main` and the public bytes are verified.
-- Repository-local commit identity is `Joshua Gordon Jones <joshuagordonjones@MacBookAir.lan>`, matching the preceding Build 173 and Build 174 release commits.
+- Repository-local commit identity matches the preceding Build 173 and Build 174 release commits.
 
 ## Exact public runtime allow-list
 
