@@ -1,7 +1,8 @@
 #!/bin/bash
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
+QUICK_PLAY_URL="file://$(pwd)/quick-play/index.html?mode=single-player&engine=fl-v2&candidate=4"
 if command -v open >/dev/null 2>&1; then
-  open -a "Google Chrome" "$(pwd)/index.html" 2>/dev/null || open "$(pwd)/index.html"
+  open -a "Google Chrome" "$QUICK_PLAY_URL" 2>/dev/null || open "$QUICK_PLAY_URL"
 else
-  echo "Open index.html in a browser."
+  echo "Open quick-play/index.html?mode=single-player&engine=fl-v2&candidate=4 in a browser."
 fi

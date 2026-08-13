@@ -17,7 +17,7 @@ function sourceWindow(start, end, padding = 0) {
   return match.slice(Math.max(0, from - padding), to);
 }
 
-test('an opted-in FL V2 fault freezes the match instead of continuing as Build 173', () => {
+test('an FL V2 authority fault freezes the match without a playable prior-engine fallback', () => {
   const stop = sourceWindow('function liveV2RecordStrictStop()', 'function liveV2PlayerById');
   assert.match(stop, /liveV2StrictStopped=true/);
   assert.match(stop, /paused=true;clockRunning=false/);
@@ -48,6 +48,7 @@ test('the host cannot execute a legacy tick after the V2 stop is raised', () => 
 
 test('rejected V2 preflight and the public manual stop never expose a Build 173 switch', () => {
   const attach = sourceWindow('(function attachOfflineLiveV2(){', 'const BOX_D=');
+  assert.match(attach, /if\(!LIVE_V2_PREFLIGHT\.requested\)\{liveV2Stop\('FL V2 is required:/);
   assert.match(attach, /LIVE_V2_PREFLIGHT\.eligible!==true\)\{liveV2Stop\('FL V2 preflight rejected:/);
   assert.match(attach, /stop:\(\)=>liveV2Stop\('manual FL V2 strict stop'\)/);
   assert.doesNotMatch(attach, /disable:\(\)=>|manual one-switch rollback|Build 173 active/);
@@ -55,19 +56,22 @@ test('rejected V2 preflight and the public manual stop never expose a Build 173 
 
 test('a blocking diagnostic screen provides export, V2 restart and exit only', () => {
   assert.match(match, /id="v2StrictFailurePage"[^>]*role="alertdialog"[^>]*aria-modal="true"/);
-  assert.match(match, /It has <strong>not<\/strong> continued under Build 173/);
+  assert.match(match, /No previous engine is available\./);
   assert.match(match, /id="v2StrictExportBtn"[^>]*>Export diagnostic log<\/button>/);
   assert.match(match, /id="v2StrictRestartBtn"[^>]*>Restart FL V2<\/button>/);
   assert.match(match, /id="v2StrictExitBtn"[^>]*>Exit to match setup<\/button>/);
-  assert.doesNotMatch(sourceWindow('id="v2StrictFailurePage"', 'id="previewPage"'), /Resume|Continue with Build 173/);
+  assert.doesNotMatch(sourceWindow('id="v2StrictFailurePage"', 'id="previewPage"'), /Resume|Continue with Build 173|continued under Build 173/);
   assert.match(match, /function togglePause\(force\)\{if\(!started\|\|matchOver\|\|liveV2StrictStopped\)return;/);
 });
 
-test('Quick Play explains strict V2 before launch while Build 173 remains a deliberate setup choice', () => {
-  assert.match(quickPlay, /If V2 faults, the match stops with an exportable diagnostic; it never continues as Build 173\./);
-  assert.match(quickPlay, /Build 173 selected before kickoff:/);
-  assert.match(quickPlayPage, /<option value="build-173" selected>Build 173 · Stable<\/option>/);
-  assert.match(quickPlay, /if\(!\['single-player','free-kick-suite','spectator'\]\.includes\(mode\)\)return\{requested:FL_V2_ENGINE,effective:BUILD_173_ENGINE/);
+test('the V2 requirement is applied before the animation loop can advance gameplay', () => {
+  const attachAt = match.indexOf('(function attachOfflineLiveV2(){');
+  const updateAt = match.indexOf('function update(){', attachAt);
+  const animationAt = match.lastIndexOf('requestAnimationFrame(loop)');
+  assert.ok(attachAt >= 0 && updateAt > attachAt && animationAt > updateAt);
+  const update = sourceWindow('function update(){', 'function showFlash');
+  assert.match(update, /if\(!started\)return;\s*if\(liveV2StrictStopped\)return;/);
+  assert.match(match, /\?v=174-fl-v2-final-candidate-4/);
 });
 
 test('the public practice route is consistently named Set-Piece Suite', () => {

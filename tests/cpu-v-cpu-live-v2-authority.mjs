@@ -168,8 +168,9 @@ function cpuPayload(overrides = {}) {
       version: Adapter.VERSION, fallbackReason: null
     },
     simulationSeed: 1967,
-    homeTeam: { id: 'madrid-real-2013-14' },
-    awayTeam: { id: 'woolwich-arsenal' },
+    practiceMode: null,
+    homeTeam: { id: 'madrid-real-2013-14', name: 'Madrid 2013/14' },
+    awayTeam: { id: 'woolwich-arsenal', name: 'Arsenal Invincibles' },
     ...overrides
   };
 }
@@ -383,7 +384,7 @@ test('match-control preserves CPU-v-CPU externally and uses the CPU restart/came
 });
 
 test('host preflight accepts only an exact offline all-CPU spectator launch', () => {
-  const accepted = livePreflight('?engine=fl-v2&simulationSeed=1967&autoplay=1', cpuPayload());
+  const accepted = livePreflight('?quickPlay=1&engine=fl-v2&candidate=4&simulationSeed=1967&autoplay=1', cpuPayload());
   assert.equal(accepted.preflight.eligible, true);
   assert.equal(accepted.preflight.workflow, 'cpu-v-cpu');
   assert.equal(accepted.preflight.reason, 'exact-offline-cpu-v-cpu-authority');
@@ -391,22 +392,22 @@ test('host preflight accepts only an exact offline all-CPU spectator launch', ()
   assert.ok(accepted.writes.some(value => value.includes('live-v2-authority-adapter.js')));
 
   for (const [label, query, payload] of [
-    ['missing autoplay', '?engine=fl-v2&simulationSeed=1967', cpuPayload()],
-    ['duplicate autoplay', '?engine=fl-v2&simulationSeed=1967&autoplay=1&autoplay=1', cpuPayload()],
-    ['invalid autoplay', '?engine=fl-v2&simulationSeed=1967&autoplay=0', cpuPayload()],
-    ['human home controller', '?engine=fl-v2&simulationSeed=1967&autoplay=1', cpuPayload({
+    ['missing autoplay', '?quickPlay=1&engine=fl-v2&candidate=4&simulationSeed=1967', cpuPayload()],
+    ['duplicate autoplay', '?quickPlay=1&engine=fl-v2&candidate=4&simulationSeed=1967&autoplay=1&autoplay=1', cpuPayload()],
+    ['invalid autoplay', '?quickPlay=1&engine=fl-v2&candidate=4&simulationSeed=1967&autoplay=0', cpuPayload()],
+    ['human home controller', '?quickPlay=1&engine=fl-v2&candidate=4&simulationSeed=1967&autoplay=1', cpuPayload({
       controllers: { player1Team: 'home', player2Team: null, aiTeam: 'away' }
     })],
-    ['second human controller', '?engine=fl-v2&simulationSeed=1967&autoplay=1', cpuPayload({
+    ['second human controller', '?quickPlay=1&engine=fl-v2&candidate=4&simulationSeed=1967&autoplay=1', cpuPayload({
       controllers: { player1Team: null, player2Team: 'away', aiTeam: 'you' }
     })],
-    ['cooperative controller marker', '?engine=fl-v2&simulationSeed=1967&autoplay=1', cpuPayload({
+    ['cooperative controller marker', '?quickPlay=1&engine=fl-v2&candidate=4&simulationSeed=1967&autoplay=1', cpuPayload({
       controllers: { player1Team: null, player2Team: null, aiTeam: 'both', cooperative: true }
     })],
-    ['online controller marker', '?engine=fl-v2&simulationSeed=1967&autoplay=1', cpuPayload({
+    ['online controller marker', '?quickPlay=1&engine=fl-v2&candidate=4&simulationSeed=1967&autoplay=1', cpuPayload({
       controllers: { player1Team: null, player2Team: null, aiTeam: 'both', online: true }
     })],
-    ['online payload marker', '?engine=fl-v2&simulationSeed=1967&autoplay=1', cpuPayload({
+    ['online payload marker', '?quickPlay=1&engine=fl-v2&candidate=4&simulationSeed=1967&autoplay=1', cpuPayload({
       online: { protocol: 'football-legacy-online-v1' }
     })]
   ]) {

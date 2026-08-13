@@ -243,6 +243,16 @@ h1 {
   background: var(--orange-hover);
 }
 
+.action-button:disabled,
+.action-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
+  opacity: 0.56;
+  transform: none;
+}
+
 .save-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

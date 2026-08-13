@@ -1,238 +1,151 @@
-# Build 173 Foundation / Build 174 FL V2 Offline Playtest Workflow
+# Build 174 Candidate 4 — FL V2 foundation and release workflow
 
-Status: exact-flag read-only shadow integration plus a release-gated
-`offline-opt-in` promotion. Build 173 remains the default authority everywhere.
-FL V2 can become authoritative only when it is explicitly selected in Quick
-Play for offline Single Player, CPU versus CPU, or the Set-Piece Suite and the
-query, payload, workflow, version, and deterministic seed agree exactly. CPU
-versus CPU additionally requires zero human owners, both teams assigned to the
-CPU, and one exact `autoplay=1` marker. All other workflows, including every
-online route, remain Build 173-authoritative.
+Status: FL V2-only playable authority, approved 13 August 2026.
 
-## Current implementation checkpoint — 2026-08-12
+The earlier shadow, suite-opt-in and offline-opt-in stages are complete historical migration stages. They are not engine choices in Candidate 4. FL V2 is fixed as the sole playable match authority.
 
-- F0 is frozen with a machine-checked baseline manifest and protected-workflow
-  matrix.
-- F1 now has an evidence-claim ledger, lawful FIFA 20 video/input capture,
-  immutable source hashes, alignment/exclusion manifests, and reproducible
-  analysis. The full controlled calibration/holdout shot-contact matrix is
-  still incomplete, so captured passing-heavy footage is not used to fit ball
-  coefficients.
-- F2-F8 engines now exist for deterministic ball flight/contact,
-  movement/tackles, first touch, aerial contacts, boundary/restart decisions,
-  match time, set pieces, formation/team behaviour, CPU decisions, restart
-  presentation, and their unified transaction composition. They remain dormant
-  unless an exact supported opt-in passes preflight.
-- A sealed multi-engine offline lab and pure-state authority candidate exercise
-  the ordered loop without owning any ordinary match workflow. A separate
-  engineering-canvas integration harness exposes that candidate only after the
-  exact `offlineV2=1` flag and an explicit Start action. It is a developer
-  diagnostic, not a Football Legacy playtest build and must not be presented as
-  one.
-- The normal Quick Play surface now owns the playable promotion. Its Gameplay
-  Engine selector defaults to `Build 173 · Stable`. Selecting
-  `FL V2 · Strict Offline Playtest` is accepted only for Single Player
-  (`single-player`), CPU v CPU (`spectator` -> `cpu-v-cpu`), and the Set-Piece
-  Suite (`free-kick-suite` -> `set-piece-suite`). Co-op,
-  Home Co-op, online, and every unsupported mode visibly remain on Build 173.
-- The FL V2 launch contract carries the exact engine request and a deterministic
-  positive uint32 seed in both the Quick Play payload and the match URL. The
-  match page fails closed on missing, duplicate, contradictory, online, shadow,
-  unsupported, malformed, or seed-mismatched markers before loading any live V2
-  authority module.
-- Single Player and CPU v CPU compose movement, CPU, formation, ball, first
-  touch, aerial and protected contact handling with the match-control
-  transaction. CPU v CPU preserves its external workflow identity while both
-  teams remain CPU-controlled and no human input can enter the authority tick.
-  The Set-Piece Suite uses the same match-control, clock, restart, coordinate
-  and suite contracts without claiming the normal-match gameplay adapter.
-- Candidate host changes are prepared, applied, finalized, and receipted as one
-  outer tick. A fault restores the captured host state, rolls back candidate
-  ledgers, disables further simulation, and opens a blocking diagnostic with
-  export, V2 restart, and setup-exit actions. An opted-in V2 match never
-  continues as Build 173.
-- The Build 173 observation adapter and host capture passed independent review
-  and are attached behind the exact `v2Shadow=1` flag. The default path loads
-  none of the V2 comparison stack; online-marked URLs freeze it before loading;
-  the accepted path is telemetry-only and cannot project or apply candidate
-  state to Build 173.
-- Real-browser checks verified the exact-flag load, online freeze, ordinary
-  Build 173 isolation, keyboard interaction in the playable slice, and a locked
-  no-flag slice. With the browser stress tabs closed, the representative
-  22-player 180-tick read-only comparison averaged 1.627 ms per tick and its
-  bounded-trace gate passed.
-- The protected Create-a-Club gate also passes when run without concurrent live
-  browser matches: both entry rules and full grassroots/professional career
-  generation completed. This preserves Create-a-Club rather than treating an
-  earlier contention timeout as a workflow regression.
-- Quick Play remains the real shared playtest surface for team selection,
-  Single Player, CPU v CPU, Set Piece Suite, local two-player and Home Co-op.
-  The three exact offline opt-ins use that existing surface; no parallel
-  replacement match UI was introduced.
-- The authority ladder below remains binding. Passing module tests does not
-  widen the three-workflow authority scope or change the Build 173 default.
-- Final release hash sealing is complete. Frozen-byte real-browser proof is
-  complete for Single Player and CPU versus CPU; the Set-Piece Suite still
-  needs its final confirmation. Protected regression gates, publication, and
-  public-asset verification remain mandatory before this checkpoint can be
-  called published.
+The binding policy is `research/overhaul/fl-v2-only-playable-authority-2026-08-13.md`; the machine-readable scope is `research/overhaul/protected-workflows.json`.
 
-## Non-removal contract
+## Current playable scope
 
-The overhaul is additive until an explicit migration gate is approved. It must not reduce, bypass, silently re-route, or delete any existing workflow while the replacement systems are being researched, built, or calibrated.
+Candidate 4 can launch only:
 
-Protected workflows:
+- Single Player.
+- CPU versus CPU with zero human owners, both teams assigned to the CPU and the exact autoplay contract.
+- Set-Piece Suite.
 
-- Single Player and Quick Play.
-- Local two-player and Home Co-op.
-- CPU versus CPU.
-- The existing online-versus path, which stays frozen while offline foundations change.
-- Keyboard, DualSense, generic gamepad, controller switching, pause, restart, replay, and diagnostics.
-- Normal-match free kicks, corners, penalties, throw-ins, goal kicks, and kick-offs.
-- The Set-Piece Suite, whose internal compatibility route remains `free-kick-suite`.
-- Career Mode, Create-a-Club, and Player Career. Player Career may be archived only in a separate, explicit future change; it is not removed here.
-- Existing team, formation, tactics, stadium, kit, historic-team, and save-data inputs.
-- Existing self-tests, playtest exports, and direct offline diagnostic links.
+Local two-player, same-team Home Co-op and Online Versus are unavailable until their complete V2 authority and release gates exist. They must be visibly unavailable and must not launch a previous build, silently change mode or construct a legacy gameplay envelope.
 
-The temporary free-kick replay queue was an observation tool, not a permanent
-match rule. It has now been removed in a separate machine-gated change. The
-ordinary dead-ball, goal, free-kick-goal, free-kick-shot, and practice replay
-routes remain protected; repeatable experimentation belongs in the dormant Set
-Piece Suite candidate.
+Career Mode, Create-a-Club, Player Career and the creation/data tools remain independent protected workflows. Any transition from those areas into a match must enter through the exact V2 contract.
 
-## Authority ladder
+## Current implementation checkpoint — 13 August 2026
 
-Only one rung may be authoritative at a time:
+- F0 retains the machine-checked baseline manifest and protected-workflow matrix as provenance.
+- F1 retains the evidence-claim ledger, lawful FIFA 20 video/input capture, immutable source hashes, alignment/exclusion manifests and reproducible analysis. Passing-heavy footage is not misrepresented as a complete coefficient-fitting set.
+- F2-F8 provide deterministic ball flight/contact, movement/tackles, first touch, aerial contacts, boundary/restart decisions, match time, set pieces, formation/team behaviour, CPU decisions, restart presentation and unified transaction composition.
+- Single Player and CPU versus CPU compose movement, CPU, formation, ball, first-touch, aerial and protected-contact handling with the match-control transaction.
+- Set-Piece Suite composes match control, clock, restart, coordinate and suite contracts without widening authority to unsupported modes.
+- Candidate host changes are prepared, applied, finalized and receipted as one outer tick. A fault restores captured host state, rolls back candidate ledgers, disables further simulation and opens the blocking V2 diagnostic.
+- Candidate 4 keeps pass direction, power and timing player-authored while providing bounded meeting-point assistance. Aerial miscontrols can produce reaction-rated recontrol attempts without granting possession.
+- The normal Quick Play surface remains the shared setup for teams, lineups, tactics, kits, stadium, weather and supported match modes. The engine is fixed rather than selectable.
+- Candidate 4 cache isolation uses `candidate=4` and `174-fl-v2-final-candidate-4`; neither marker changes authority or deterministic seed.
+- Publication still requires frozen-byte regression checks, reviewed commit/merge and direct verification of the hosted assets.
 
-1. `legacy`: Build 173 behavior remains the game.
-2. `shadow`: the candidate engine receives copied launch/contact inputs and logs its predicted result, but cannot move the live ball.
-3. `suite-opt-in`: the Set Piece Suite can choose legacy or candidate physics for controlled comparison. This is active only through the explicit Quick Play selector.
-4. `offline-opt-in`: selected offline modes may opt in after suite gates pass. This is active only for Single Player and CPU versus CPU Quick Play.
-5. `migration candidate`: every protected workflow passes a recorded compatibility matrix.
-6. `authoritative`: requires Joshua's explicit approval after blind/holdout playtesting.
+## Exact launch and failure boundary
 
-No phase may infer approval for the next phase.
+The Quick Play package and URL must agree on:
 
-## Foundation order
+- `engine=fl-v2` and the matching requested/effective payload values;
+- one of the three eligible runtime workflow identities;
+- offline ownership appropriate to that workflow;
+- a deterministic positive uint32 seed;
+- exact all-CPU ownership plus `autoplay=1` for CPU versus CPU;
+- the Candidate 4 cache marker where required for byte isolation.
+
+Missing, duplicate, contradictory, online, shadow-only, unsupported, malformed, stale or seed-mismatched input fails closed before simulation. A raw or bookmarked `match-engine/match.html` page is not a playable shortcut.
+
+After launch, the V2 transaction may either commit or stop. On failure it rolls back the candidate tick and blocks behind export, V2 restart and setup-exit actions. No previous-engine tick may run before the stop or after it.
+
+## Preserved engineering provenance
+
+The migration does not require cosmetic renaming of every internal symbol. Build 173 or legacy names may remain only as:
+
+- immutable baseline hashes and recovered-source provenance;
+- host-shape adapters used by the V2 composition layer;
+- read-only shadow/comparison evidence and diagnostic fixtures;
+- regression tests and rollback sentinels;
+- clearly marked historical release notes.
+
+These internals do not create a playable engine. Any dormant module header that still describes Build 173 as selectable, default or authoritative is superseded by the current V2-only contract.
+
+The separate FL V1.5 forensic archive remains untouched. It is not a Candidate 4 fallback or a source of runtime authority.
+
+## Protected release behaviours
+
+Within the three released modes, the following remain protected:
+
+- keyboard, DualSense and generic gamepad input;
+- controller switching and disconnect/reconnect acknowledgement;
+- pause, resume, restart, replay, diagnostics and full-time;
+- free kicks, corners, penalties, throw-ins, goal kicks and kick-offs;
+- team, formation, tactics, stadium, kit, historic-team and save-data inputs;
+- deterministic self-tests and playtest exports;
+- transactional rollback followed by a strict V2 stop.
+
+Unavailable modes are protected differently: their unavailable state, absence of launch authority and absence of legacy fallback are the required behaviours.
+
+## Historical migration record
+
+The authority ladder used to build V2 was:
+
+1. `legacy`: the recovered baseline remained the game.
+2. `shadow`: candidate systems observed copied state without applying it.
+3. `suite-opt-in`: controlled set-piece experiments could select the candidate.
+4. `offline-opt-in`: supported offline workflows could explicitly choose V2.
+5. `migration-candidate`: protected gates were evaluated as a release set.
+6. `authoritative-v2-only-playable`: V2 became the fixed match authority.
+
+Candidate 4 occupies rung 6. Rungs 1-5 remain useful provenance, not user-facing runtime choices.
+
+## Foundation record
 
 ### F0 — Freeze and inventory
 
-- Preserve a Build 173 reference snapshot and record hashes for authoritative files.
-- Inventory every launch, integration, collision, restart, replay, clock, and controller entry point.
-- Record current self-test and mode-link baselines.
-- Mark online gameplay as frozen rather than attempting to improve it alongside the offline overhaul.
-
-Exit gate: reproducible baseline and protected-workflow matrix exist.
+The recovered baseline, authoritative file hashes and workflow inventory provide the comparison boundary. They remain immutable evidence rather than a playable menu option.
 
 ### F1 — Evidence and capture
 
-- Maintain a claim ledger that distinguishes official FIFA 20 evidence, later EA lineage, public physics evidence, direct observation, hypothesis, and unknown proprietary detail.
-- Capture owned FIFA 20 behavior lawfully through Remote Play or console recordings.
-- Store controller settings, player/ball context, camera, frame rate, input recipe, and source hash beside each capture.
-- Split calibration and holdout samples before coefficient fitting.
+Claims distinguish official FIFA 20 evidence, later EA lineage, public physics evidence, direct observation, hypothesis and unknown proprietary detail. Calibration and holdout samples remain separated before coefficient fitting.
 
-Exit gate: the minimum launch, flight, bounce, skid, roll, post, wall, keeper, and first-touch matrix is populated and validated.
+### F2-F4 — Deterministic state, flight and contact
 
-### F2 — Stable contracts, no tuning
+Stable launch, ball, contact, deterministic-context and trace contracts underpin fixed-step flight, bounded substeps, gravity, drag, Magnus response, spin decay, impact, skid, rolling and settled regimes. Tests retain tunnelling, energy, momentum, determinism and holdout gates.
 
-Introduce dormant interfaces for:
+### F5 — Movement, touch, tackle and aerial order
 
-- launch intent and resolved launch state;
-- ball state `(position, velocity, orientation, angular velocity)`;
-- contact manifold and material profile;
-- deterministic simulation context and seeded variation;
-- per-step trace and outcome metrics.
+The ordered authority remains locomotion, collision/contact, first touch, action/contact window, ball launch, flight, secondary contact and outcome. Standing tackles, slide outcomes, volleys, headers, aerial finishes and recontrol attempts must be observable and rating-bounded.
 
-The interfaces may be loaded by the page, but they must not alter live Build 173 behavior.
+### F6 — Match time
 
-Exit gate: deterministic unit tests pass and legacy-match signatures remain unchanged.
+One simulation-time authority decides gameplay. Presentation time may accelerate live-ball football and use real-time dead-ball staging, but it cannot decide collisions, restarts, advantage, fouls or ball outcomes.
 
-### F3 — Candidate flight in shadow
+### F7 — Set-Piece Suite
 
-- Fixed simulation time step with bounded substeps.
-- Gravity, aerodynamic drag, vector Magnus lift, angular decay, and optional deterministic knuckle perturbation.
-- Coefficients are bounded surfaces over speed/spin regimes, not copied constants.
-- Reverse Magnus stays disabled until direct observations justify it.
-- Every candidate step is traceable and replayable from the same seed.
+The suite provides direct free-kick, corner and penalty scenarios plus deterministic export/replay. It remains isolated from normal-match award and restart rules.
 
-Exit gate: calibration error improves without degrading holdout error or determinism.
+### F8 — Formation and CPU behaviour
 
-### F4 — Candidate contact and ground regimes in shadow
+Neutral positional contracts define defensive shape, attacking shape, transition anchors, width, depth, rest defence, pressing triggers and role constraints. Historic-team overlays calibrate those contracts without hard-coding the entire engine to one team.
 
-- Separate impact, skid, rolling, and settled states.
-- Surface/contact profiles for grass, player body regions, boots, wall, goal frame, keeper hands, and net.
-- Continuous or substepped collision checks for fast balls.
-- Energy and momentum sanity bounds, with explicit gameplay clamps where physical fidelity alone feels wrong.
+### F9 — V2-only release
 
-Exit gate: no tunnelling in the test envelope; bounce, skid, roll, post, wall, and body-contact gates pass.
-
-### F5 — Locomotion, touch, tackle, and aerial contracts
-
-- Ordered pipeline: locomotion -> collision/contact -> first touch -> action/contact window -> ball launch -> flight -> secondary contact -> outcome.
-- Repair standing-tackle input visibility and animation acknowledgement.
-- Improve tackle reach, timing, ball-winning windows, and deflection without making tackles magnetic.
-- Make volley, half-volley, header, and aerial-shot contact states executable and observable.
-- Improve free-kick run-up timing without coupling the animation directly to aerodynamic coefficients.
-
-Exit gate: action acknowledgement, contact timing, and outcome suites pass before gameplay tuning is split across contributors.
-
-### F6 — Match-time contract
-
-- One simulation-time authority.
-- Live-ball play uses FIFA-style accelerated presentation time.
-- Dead-ball sequences, out-of-play transitions, and set-piece preparation use real-time presentation.
-- Presentation time never decides a collision, restart, advantage, foul, or ball outcome.
-
-Exit gate: identical input traces give identical gameplay results under different presentation/render rates.
-
-### F7 — Set Piece Suite
-
-- Rename Free Kick Suite to Set Piece Suite.
-- Hidden menu toggled by Options/Escape.
-- Direct scenarios for left corner, right corner, penalty, and free-kick locations.
-- D-pad Up in the penalty area can stage a penalty in suite mode only.
-- Copyable/exportable raw log containing input recipe, launch state, trajectory, contacts, outcome, settings, build, engine, and seed.
-- Preserve all normal-match set-piece workflows.
-
-Exit gate: controlled A/B comparison, export, replay, and every ordinary set-piece route pass.
-
-### F8 — Formation behavior contracts
-
-- Audit every supported position and formation.
-- Define defensive shape, attacking shape, transition anchors, width, depth, rest defence, pressing triggers, and role constraints.
-- Add philosophy/team overlays only after the neutral formation contract works.
-- Use imported historic teams such as the Invincibles, Conte Chelsea, and a future BBC-era Real Madrid sample to calibrate overlays rather than hard-coding formations to one team.
-
-Exit gate: neutral contracts pass before team-specific philosophy tuning.
-
-### F9 — Controlled migration
-
-- Suite opt-in plus Single Player and CPU versus CPU offline opt-ins are now
-  wired behind the exact Quick Play engine-selection contract. Build 173
-  remains selected by default.
-- Never use online play as the first integration environment.
-- Compare legacy/candidate traces and human ratings.
-- Run protected-workflow, performance, determinism, save-data, controller, replay, restart, set-piece, clock, and mode-link gates.
-- Keep same-tick transaction rollback, but enforce a strict V2 stop after any
-  authority fault. Build 173 may be chosen before kickoff; it is not a hidden
-  mid-match continuation path for an opted-in V2 playtest.
+The release gate removes user-accessible previous-build selection and fallback, disables unsupported modes, verifies every old launcher/direct route fails closed, runs the protected matrix on frozen bytes, then publishes through a reviewed merge and verifies GitHub Pages directly.
 
 ## Safe parallel-work boundary
 
-Parallel work is safe now for evidence, capture tooling, deterministic candidate modules, test fixtures, data schemas, and formation inventory. It is not safe to independently tune free kicks, corners, penalties, tackles, volleys, or AI against the legacy ball model while the authoritative ball/contact/locomotion contracts are still changing.
+Evidence, capture tooling, deterministic modules, fixtures, data schemas and formation analysis can proceed in separate files behind shared contracts. Changes that alter live authority, contact order, launch validation or supported-mode scope require one integration owner and the complete focused regression set.
 
-Each contributor must own separate files, use the same contracts, avoid live integration, and hand back tests plus an evidence note. Runtime integration remains single-owner until F5 is stable.
+## Restoring an unavailable mode
+
+Local two-player, Home Co-op or Online may return only when the mode:
+
+1. has a complete V2 ownership and simulation contract;
+2. passes its controller, lifecycle, deterministic, restart, replay and failure gates;
+3. cannot enter a previous-engine path through UI, URL, payload or cached assets;
+4. receives an explicit release change.
+
+Retained UI, transport code or historical test coverage alone is not sufficient.
 
 ## Create-a-Club future contract
 
 Create-a-Club remains available. Its later gameplay design should support three presets:
 
-1. Grassroots: manager plus roughly ten mates, local free agents, and a ground-up league path.
+1. Grassroots: manager plus roughly ten mates, local free agents and a ground-up league path.
 2. Established: a stable club roughly two divisions below the top level.
 3. Elite: a top-flight Arsenal/United/Madrid-adjacent club.
 
-For the grassroots preset, the local pub and social media initially replace the conventional transfer market. Repeated use inside a short window can reduce recruitment appeal and, if habitual, contribute to an `overbearing` manager trait. Division structure and balancing are deferred until the world/career loop is audited.
+For Grassroots, the local pub and social media initially replace the conventional transfer market. Repeated use inside a short window can reduce recruitment appeal and, if habitual, contribute to an `overbearing` manager trait. Division structure and balancing remain deferred until the world/career loop is audited.
 
 ## Definition of done
 
-The overhaul is not done when a new ball looks impressive in one free kick. It is done only when the evidence is auditable, the simulation is deterministic, holdout behavior is credible, the complete protected-workflow matrix passes, rollback works, and explicit migration approval has been given.
+The overhaul is not complete because one free kick or one through-ball sequence looks impressive. It is complete only when the evidence is auditable, simulation is deterministic, holdout behaviour is credible, the protected workflow matrix passes, rollback and strict-stop behaviour are proven, unsupported modes cannot fall back, the reviewed release is merged and the hosted Candidate 4 bytes are verified.

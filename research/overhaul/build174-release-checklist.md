@@ -1,201 +1,120 @@
-# Football Legacy Build 174 release checklist
+# Football Legacy Build 174 — Candidate 4 V2-only release checklist
 
-Audited: 13 August 2026. This is a release allow-list, not permission to delete anything outside it.
+Audited: 13 August 2026. Candidate 4 supersedes the unpublished local Candidate 3 commit `c44b74d`.
 
-## Release route confirmed
+## Binding playable-authority decision
 
-- Candidate-3 closure began on `agent/fl-v2-playtest` from `435a5ff`. Published `origin/main` is merge `9668f52`, containing candidate 2 plus its evidence-sanitization follow-up. This checklist curates the subsequent candidate-3 closure batch; publication remains pending.
-- Remote: `https://github.com/footballlegacy/football-legacy.git`; remote default branch is `main`.
-- At the release-route audit, the public root, Quick Play and match-engine assets were byte-for-byte identical to `origin/main`. No tracked `.github` deployment workflow exists, so merging a later release into `main` remains the observed GitHub Pages publication trigger; re-verify public bytes after this closure batch is merged.
-- Public endpoints are live: `https://footballlegacy.github.io/football-legacy/`, `/quick-play/`, and `/match-engine/match.html` all return HTTP 200.
-- GitHub Pages currently sends `Cache-Control: max-age=600`. Verify the release with a unique query string and allow up to ten minutes for an edge cache to expire.
-- `git push --dry-run origin HEAD:refs/heads/agent/fl-v2-playtest` succeeds through the macOS keychain. Branch push is therefore available.
-- `gh` 2.97.0 is installed, but `gh auth status` reports an invalid token for `joshtoucanlearn`. Use the connected GitHub app to create the draft pull request, or re-authenticate `gh`; do not call a pushed branch “published” until it is merged to `main` and the public bytes are verified.
-- Repository-local commit identity matches the preceding Build 173 and Build 174 release commits.
+- FL V2 is the only playable match authority in the main Football Legacy repository.
+- The playable routes are Single Player, CPU versus CPU, and Set-Piece Suite.
+- Local two-player, same-team co-op, and Online are visibly unavailable until they have complete V2 authority.
+- No public selector, default, malformed URL, cached payload, unsupported mode, or runtime fault may start or fall back to the previous engine.
+- A match starts only from an exact Candidate 4 V2 contract. Every other direct or constructed match request strict-stops before the simulation loop.
+- Internal Build 173-named host scaffolding, reference hashes, adapters, fixtures, and sentinels remain solely because the live V2 composition and its regression evidence depend on them. They are not playable entry points or fallback authority.
+- The separate `footballlegacy/fl-v1.5` forensic archive is not part of this cutover and remains untouched.
 
-## Exact public runtime allow-list
+The binding policy is `research/overhaul/fl-v2-only-playable-authority-2026-08-13.md`. `research/overhaul/protected-workflows.json` is the machine-readable workflow matrix.
 
-Stage these tracked entry-point changes explicitly after the runtime freezes:
+## Public entry-point contract
 
-- `quick-play/index.html`
-- `quick-play/app.js`
-- `quick-play/styles.css`
-- `quick-play/historic-playtest-squads.js`
-- `match-engine/match.html`
-- `controller-ui.js` (reconnect-safe input transport only)
-- `online/app.js` and `online/index.html` (matching reconnect-safe input bridge
-  and cache keys; Online gameplay authority remains Build 173)
+Publicly playable:
 
-Stage every new file loaded by those entry points. Omitting any one would create a public 404 and must trigger the blocking FL V2 diagnostic rather than legacy continuation:
+- `/quick-play/?mode=single-player&engine=fl-v2&candidate=4`
+- `/quick-play/?mode=spectator&engine=fl-v2&candidate=4`
+- `/quick-play/?mode=free-kick-suite&engine=fl-v2&candidate=4`
 
-- `match-engine/ball-physics.js` (unconditional compatibility kernel)
-- `match-engine/ball-engine-v2.js`
-- `match-engine/movement-engine-v2.js`
-- `match-engine/cpu-intelligence-v2.js`
-- `match-engine/formation-behaviour-v2.js`
-- `match-engine/first-touch-v2.js`
-- `match-engine/first-touch-authority-adapter-v2.js`
-- `match-engine/aerial-contact-v2.js`
-- `match-engine/live-v2-contact-authority-composer.js`
-- `match-engine/match-clock-v2.js`
-- `match-engine/restart-presentation-v2.js`
-- `match-engine/set-piece-coordinate-contract-v2.js`
-- `match-engine/set-piece-suite-v2.js`
-- `match-engine/live-v2-match-control-composition.js`
-- `match-engine/dribbling-state-v2.js`
-- `match-engine/instant-replay-review-v2.js`
-- `match-engine/playtest-full-state-replay-v1.js`
-- `match-engine/live-v2-authority-adapter.js`
+Unavailable rather than downgraded:
 
-The public match page still exposes the exact-flag, read-only `v2Shadow=1` diagnostic workflow. To preserve that existing workflow without 404s, also stage its directly referenced dependencies:
+- Co-op / local two-player
+- Same-Team Co-op
+- Online versus
 
-- `match-engine/ball-shadow-bridge-v2.js`
-- `match-engine/overhaul-shadow-orchestrator-v2.js`
-- `match-engine/build173-live-shadow-adapter-v2.js`
-- `match-engine/build173-shadow-host-capture-v2.js`
-- `match-engine/build173-live-shadow-hook-v2.js`
+Entry-point requirements:
 
-Do not use `git add -A`; the worktree contains unrelated research captures and unfinished labs.
+- Quick Play displays one fixed `FL V2 · Current` authority label and no engine selector.
+- Root navigation exposes only the three V2 routes; unavailable modes are disabled notices.
+- Online is a static migration notice with no PeerJS transport, host/join controls, iframe, or match launch.
+- `match-engine/index.html` and desktop launchers route through Candidate 4 Quick Play, never a raw legacy match URL.
+- The two-player launcher reports that the mode is unavailable.
+- An exact match request contains one payload, Candidate 4 query markers, a matching uint32 seed, named teams, an exact controller envelope, and one of the three supported mode contracts.
+- `v2Shadow`, Online markers, co-op controllers, missing payloads, duplicate payloads, stale candidates, previous-engine envelopes, and malformed team/controller data all fail closed.
 
-## Release evidence to stage
+## Candidate 4 cache boundary
 
-Stage the final, corrected release gates and their direct fixtures:
+- Quick Play application URL: `174-fl-v2-final-candidate-4`.
+- Dynamically loaded V2 runtime URL: `174-fl-v2-final-candidate-4`.
+- Quick Play writes `engine=fl-v2&candidate=4` to every supported match URL.
+- Unchanged historical-squad and replay-export assets retain their previous content tokens; their bytes did not change.
+- GitHub Pages previously served `Cache-Control: max-age=600`; public verification must use Candidate 4 URLs and compare bytes after merge.
 
-- V2 engines: `tests/ball-engine-v2.mjs`, `tests/ball-aerodynamics-v2-adversarial.mjs`, `tests/movement-engine-v2.mjs`, `tests/cpu-intelligence-v2.mjs`, `tests/formation-behaviour-v2.mjs`.
-- Touch/contact: `tests/first-touch-v2.mjs`, `tests/first-touch-v2-independent-adversarial.mjs`, `tests/first-touch-authority-adapter-v2.mjs`, `tests/first-touch-authority-adapter-independent-adversarial-v2.mjs`, `tests/aerial-contact-v2.mjs`, `tests/live-v2-contact-authority-composer.mjs`, `tests/live-v2-contact-independent-adversarial.mjs`.
-- Dribbling and pause review: `tests/dribbling-state-v2.mjs`,
-  `tests/dribbling-state-v2-independent-adversarial.mjs`,
-  `tests/live-v2-dribbling-authority-integration.mjs`,
-  `tests/live-v2-dribbling-host-seam-adversarial.mjs`,
-  `tests/live-v2-dribbling-independent-live-review.mjs` and
-  `tests/instant-replay-review-v2.mjs`.
-- Match control and set pieces: `tests/match-clock-v2.mjs`, `tests/restart-presentation-v2.mjs`, `tests/set-piece-coordinate-contract-v2.mjs`, `tests/set-piece-suite-v2.mjs`, `tests/live-v2-match-control-composition.mjs`, `tests/live-v2-match-control-independent-adversarial.mjs`.
-- Live selection/integration: `tests/quick-play-fl-v2-engine-selection.mjs`,
-  `tests/cpu-v-cpu-live-v2-authority.mjs`,
-  `tests/quick-play-live-v2-independent-adversarial.mjs`,
-  `tests/overhaul-foundation.mjs`, `tests/overhaul-v2-cross-engine.mjs`,
-  `tests/overhaul-v2-unified-promotion-adversarial.mjs`.
-- Gameplay preservation: `tests/free-kick-replay-queue-removal.mjs`,
-  `tests/live-offside-camera-policy.mjs`, `tests/historic-real-madrid-bbc.mjs`,
-  `tests/historic-conte-chelsea-fifa18.mjs`,
-  `tests/historic-invincibles-fifa05.mjs`,
-  `tests/human-control-v2-recovery.mjs`,
-  `tests/human-normal-x-pass-acceptance.mjs`,
-  `tests/human-normal-x-rendezvous-v2.mjs`,
-  `tests/human-through-pass-golden-sequence.mjs`,
-  `tests/v2-aerial-service-trajectory.mjs`,
-  `tests/contact-gesture-presentation-v2.mjs`,
-  `tests/human-aerial-finish-and-free-kick-input-authority.mjs`,
-  `tests/human-free-kick-ground-channel-authority.mjs`,
-  `tests/playtest-free-kick-staging-closure.mjs`,
-  `tests/playtest-shot-knockon-authority.mjs`,
-  `tests/playtest-slide-discipline-closure.mjs`,
-  `tests/playtest-full-state-replay-v1.mjs`,
-  `tests/set-piece-camera-replay-integration.mjs` and the current
-  playtest-contact/restart/replay/performance regression files.
-- Preserved public workflows: the existing Online connection, controller, lobby
-  and quality gates, the reconnect-specific
-  `tests/controller-reconnect-and-quick-play-launch.mjs` and
-  `tests/online-controller-hotfix.mjs` gates, plus original-name, Player Career
-  link and Create-a-Club gates. Do not regenerate
-  `tests/career-world-integrity-report.json` in this release.
-- Shadow diagnostic preservation: the shadow tests and `tests/fixtures/build173-*.mjs` files whose five shadow runtime modules are included above.
+## Frozen production hashes
 
-Stage the final contracts and frozen manifests that describe the shipped authority boundary:
+The final manifest must match these SHA-256 values after the last edit:
 
-- `OVERHAUL-FOUNDATION-WORKFLOW.md`
-- `research/overhaul/protected-workflows.json`
-- `research/overhaul/build-173-baseline-manifest.json`
-- The contracts/reviews corresponding to each staged V2 runtime module.
-- This checklist.
+- `match-engine/match.html`: `f37e49a3ada723ece4f09e1641e84625fd5b26cd502d944e6e65609cbee825e8`
+- `match-engine/live-v2-authority-adapter.js`: `185340bd57f0fc257ec29babc7cf02c78e23aa8b098d0f151c7a99691d97b3e6`
+- `match-engine/live-v2-contact-authority-composer.js`: `15f87890f25012412dff34d1d8f0dcdf44694d14d107b859f260cde3c4e6c10b`
+- `quick-play/app.js`: `06090e804060265a6df5656e55242d3bc75cbe908664e05e92ce1ba9b1d8c537`
+- `quick-play/index.html`: `22ef3a563ae1015e2ab4a5a430b6d20254122bd9ed6024e3216c594a66666b1c`
+- `quick-play/styles.css`: `ed49a7f9f80f876373c38feafa1599b3a1248faa513b39d67788f5221fc53532`
+- `index.html`: `879f9e28f5c864a73bf7c0c85337bcbe51ca4319e59cfea6ecdf0e1718348a75`
+- `styles.css`: `a60b5b114ce5d41ddd4d54717dce27ce51ba5bea0fedf14e11d42da2010e40b4`
+- `online/index.html`: `2a69791287542fecd17b936f744101973a14b35080ac01e442fab757d0f652d9`
+- `match-engine/index.html`: `c4d1cfe418494852e4fe9782d57834776b3bfdb9f6dfa3d4aa51b5f1b3d125f5`
 
-Before staging research, remove or generalise absolute local paths. At audit time these two overhaul notes contain private machine paths and must not be published unchanged:
+`research/overhaul/build-173-baseline-manifest.json` must validate every protected current byte while preserving baseline hashes as provenance.
 
-- `research/overhaul/free-kick-replay-queue-removal-matrix.md`
-- `research/overhaul/offline-v2-first-touch-integration-independent-review.md`
+## Verification gates
 
-## Explicitly excluded from the Build 174 public commit
+Required automated evidence:
 
-Keep these files locally; do not delete them and do not silently publish them:
+1. V2-only public-entry scan: no selectable/default/fallback previous engine and no raw playable match link.
+2. Exact-match preflight: supported contracts arm; every missing, stale, malformed, unsupported, shadow, Online, co-op, or prior-engine contract stops before animation/simulation.
+3. Quick Play selection and launch: supported modes always resolve to V2 Candidate 4; unsupported modes cannot materialize a launch payload.
+4. Root/launcher/Online gates: V2 routes only; unavailable modes remain inert.
+5. Foundation/manifest and frozen-byte gates.
+6. Single Player, CPU versus CPU, and Set-Piece Suite live-authority tests.
+7. Passing, rendezvous, aerial, restart, free-kick, contact, discipline, dribbling, replay, match-control, movement, Ball V2, First Touch, and deterministic checkpoint regressions.
+8. Inline match scripts and changed standalone JavaScript parse cleanly.
+9. Browser smoke through the real Quick Play UI for all three routes, plus unsupported-mode and direct-invalid-link fail-closed checks.
 
-- `research/ball-physics/captures/fifa20-two-match-20260811/raw/dualsense-trace.jsonl` (about 13 MB).
-- Generated input ledgers under `research/ball-physics/captures/fifa20-two-match-20260811/input-audit/` (about 1.6 MB combined).
-- Any research artifact containing `/Users/...`, `/var/folders/...`, `file://...`, or another machine-specific path until sanitised.
-- Unfinished public lab pages and their browser glue: `match-engine/offline-v2-playable-slice-*`, `match-engine/offline-v2-vertical-slice-lab.js`, and `match-engine/set-piece-v2-browser-lab-*`.
-- Non-authoritative candidates not referenced by the shipped match page: `match-engine/offline-v2-authority-kernel-candidate.js` and `match-engine/boundary-restart-v2.js`.
-- Controller-capture tooling and exploratory analysis tools unless a separate engineering-evidence commit is intentionally approved.
+Candidate 3 gameplay evidence remains applicable where no gameplay bytes changed: the bounded closure tests were green, and the four-seed CPU characterization passed 13/15 quality gates. It produced 102 passes, 19 three-pass chains, 15 multi-pass chances, 34 moving-runner rendezvous, eight interceptions, and no strict stop, continuity failure, or overshoot. The two honest warnings remain: 91.8% completion exceeded the 90% ceiling, and Mac p95 tick time was 15.821 ms against a 12 ms target. Candidate 4 changes the playable boundary and public surfaces, not those CPU gameplay decisions.
 
-Exclusion from this release is not removal of a workflow. These artifacts remain in the worktree for later engineering work.
+## Curated commit boundary
 
-## Documentation state before candidate-3 commit
+Stage only the reviewed Candidate 4 authority, public-entry, manifest, documentation, and test files. Do not use `git add -A`.
 
-- Updated on 2026-08-13: `README.md`, `CHANGELOG.md`, `quick-play/README.md`
-  and `match-engine/README.md` distinguish published candidate 2 from local
-  candidate 3, preserve the exact three FL V2 routes and strict-stop behavior,
-  and document the current Cross/A ground, Square aerial and explicit Circle
-  aerial-finish controls. Complete Online instructions and historical Build
-  172/173 evidence remain intact.
-- Do not call the candidate-3 human football closed before the next PC playtest.
-- Do not claim Bluetooth controller input is fixed. The reconnect decoder and UI state handling are hardened, but the latest Mac/browser playtest still enumerated a Bluetooth DualSense without receiving gameplay input. USB-C is the verified playtest route.
+Must remain unstaged:
 
-## Final release gates
+- `tests/career-world-integrity-report.json`
+- raw ball-physics captures and generated input ledgers
+- unfinished offline V2 labs and browser labs
+- Golden reconstruction/viewer experiments
+- non-authoritative authority-kernel/boundary candidates
+- local analysis tools and any research containing private machine paths
 
-1. Freeze `match.html`, Quick Play and every runtime module; then update all content hashes/manifests once, after the last code edit.
-2. Pass syntax checks and the focused V2, selector, contact, match-control, replay-removal, offside-camera and Real Madrid tests.
-3. Pass protected Build 173 routes: default Single Player, Local 2P, same-team
-   co-op, default CPU-v-CPU and Online setup/connection remain Build 173;
-   Career, Player Career, Create-a-Club and creation tools still launch.
-4. Launch through the real Quick Play UI, not a lab:
-   - Single Player + FL V2: visible V2 authority badge, advancing committed ticks, no strict stop, controller movement/pass/receive/aerial/tackle/pause/restart, and no console errors.
-   - CPU versus CPU + FL V2: visible CPU-versus-CPU V2 authority badge,
-     advancing committed ticks, both teams autonomous, zero human control,
-     deterministic seed retained, broadcast CPU restart/penalty camera policy,
-     and no strict stop or console errors.
-   - Set-Piece Suite + FL V2: suite authority armed, free kick/corner/penalty staging and repeat/reset work, clock/camera rules hold, and no console errors.
-   - Force one bounded candidate fault in a test fixture and prove the match freezes behind the export/restart/exit diagnostic without executing a Build 173 gameplay tick.
-   - Unsupported modes requesting FL V2 visibly select Build 173 before kickoff.
-5. Review `git diff --cached --stat` and `git diff --cached`; confirm no capture, lab, cache, ZIP, generated career report or private path is staged.
-6. Commit on `agent/fl-v2-playtest`, push the explicit ref with `git push origin HEAD:refs/heads/agent/fl-v2-playtest` (setting that upstream only if deliberately required), open a draft pull request against `main`, and record the exact checks in the PR body.
-7. Merge only after the release gates pass. A branch push or draft PR is not the published game.
-8. Verify GitHub Pages with cache-busting URLs. Confirm HTTP 200 for all newly referenced JavaScript files, compare the public `quick-play/app.js`, `quick-play/index.html` and `match-engine/match.html` hashes with the merged `origin/main`, then perform one final public Quick Play launch.
+Before commit:
 
-## Current candidate-3 status at this audit
+- inspect `git diff --cached --stat` and the full staged diff;
+- verify no staged file has an unstaged overlap;
+- scan staged additions for secrets, private paths, temporary paths, captures, archives, binary/media payloads, and oversized data;
+- rerun `git diff --cached --check`;
+- confirm the generated career report remains outside the index.
 
-- Runtime bytes are frozen with a cache-only `candidate=3` match marker and the
-  one-time `174-fl-v2-final-candidate-3` V2 module token. Unchanged historic
-  squads and replay capture retain their candidate-2 URLs. Frozen production
-  SHA-256 values are match `7bdb604227a39b2e560dccb23edb8b3e88515f6d957583cba6ad0aa123526d0a`,
-  adapter `185340bd57f0fc257ec29babc7cf02c78e23aa8b098d0f151c7a99691d97b3e6`,
-  contact composer `15f87890f25012412dff34d1d8f0dcdf44694d14d107b859f260cde3c4e6c10b`,
-  Quick Play app `ea0f3569cc8d7555aa2cd0ca263bccf3628b67a0368c9096d39bb28eba8d05a8`
-  and Quick Play index `fb97d370eb96ab32d84554da8e925b57211bd3f3032b8c41ef21fc729d1b88d0`.
-- Independent review reports no open P0, P1 or P2 in the gameplay batch. The
-  current core closure run passes 105/105; the repaired composer/restart pair
-  passes 23/23; rollback/replay/match-control/strict-stop coverage passes 50/50.
-  Candidate-3 browser smoke passed on 13 August 2026 through the real local
-  Quick Play route. Single Player emitted `engine=fl-v2&candidate=3`, reached
-  `FL V2 live · Single Player`, and advanced committed ticks; CPU versus CPU
-  emitted the same candidate marker, ran both teams autonomously, and advanced
-  live V2 ticks; the Set-Piece Suite armed V2, staged a free kick, reached the
-  whistle-ready state, completed a shot, and cleared its repeat blocker after
-  replay exit. All three routes had empty browser warning/error logs.
-- The same smoke initially exposed an unsupported-mode launch-envelope fault:
-  Co-op removed the V2 URL marker but still serialized a V2 request, causing a
-  strict preflight stop. `launchEngineSelection` now preserves the preference
-  only in setup while materializing a clean Build 173 launch envelope. The
-  repeated Co-op browser launch contained neither `engine` nor `candidate`, did
-  not strict-stop, loaded no V2 badge, and had no browser warning/error logs.
-- The final bounded candidate-3 rerun after that browser-found fix passes
-  163/163 across the five new direct regressions, through/rendezvous, reaction
-  retry, CPU commitment, dribbling, restart/keeper, Quick Play selection,
-  protected Build 173, Online, manifest/foundation and frozen-byte gates.
-- CPU versus CPU passes 13/15 enforced football-quality gates across four
-  60-second simulations: 15 multi-pass chances, 19 three-pass chains, 102
-  passes, 34 moving-runner rendezvous, eight interceptions and no strict stop,
-  continuity fault or overshoot. The two honest reds are 91.8% completion
-  against a 90% ceiling and Mac p95 tick time 15.821 ms against 12 ms. The
-  six-tick rejected-pass commitment reduced actual MR evaluations to 690 while
-  2,815 identical decisions were safely held. No further tuning is hidden in
-  this candidate; PC human playtesting is the next decision gate.
-- The GitHub CLI token is invalid. This does not block the verified Git push route, but PR creation must use the connected GitHub app or a repaired `gh` login.
-- README, CHANGELOG, Quick Play and Match Engine release summaries now describe the current three-route FL V2 candidate and directional set-piece closure. Historical Build 172/173 evidence is retained rather than rewritten.
+## Publication route
+
+- Local branch: `agent/fl-v2-playtest`.
+- Push explicitly with `git push origin HEAD:refs/heads/agent/fl-v2-playtest`; do not use its stale configured upstream.
+- Open a pull request against `main`, record the exact Candidate 4 evidence, review the immutable PR delta, then merge.
+- A local commit, branch push, or pull request is not publication. GitHub Pages is published only after merge to `main` and public-byte verification.
+- After merge, verify HTTP 200 and SHA-256 equality for root, Quick Play, match page, V2 adapter/composer, and every newly referenced asset. Then run a final public Single Player launch using the Candidate 4 link.
+- The GitHub CLI token was invalid at the last audit. Normal HTTPS push used the macOS credential path; PR creation/merge can use the signed-in GitHub browser if CLI authentication remains unavailable.
+
+## Current status
+
+- Candidate 4 V2-only production and public-entry changes are local and unpublished.
+- Candidate 4 boundary/public/selection regression passed 95/95. The independent current-byte preflight/match-control set passed 87/87 plus 1,138 match-control assertions. The final bounded gameplay and engine sweep passed 393/393. Five repaired Candidate 4 static/fixture gates separately passed 95/95. No P0 or P1 remained in independent review.
+- Local browser smoke passed through the real Quick Play UI for Single Player, CPU versus CPU, and Set-Piece Suite. Each produced an exact `engine=fl-v2&candidate=4` URL, reached its live V2 authority badge, did not strict-stop, and emitted no browser warning/error logs.
+- A stale Co-op/Build 173 URL exposed no Start Match control and the visible mode options were migration-disabled. The Online page loaded no script, iframe, input, or button. A raw `match-engine/match.html` URL stopped at gameplay tick 0, stated that no previous engine is available, and offered only export, V2 restart, and setup exit.
+- Public-entry audit covered 110 tracked HTML/JavaScript/launcher files (excluding tests, research, and the unlinked historical prototype) and found no playable prior-engine selector, default, fallback, or raw match entry.
+- Curated staged-index audit passed: all 38 staged paths matched the explicit allow-list; the generated career report and every unrelated lab, capture, golden experiment and tool remained unstaged; no staged/unstaged overlap, secret, private path, binary or oversized new artifact was present; and every staged manifest/checklist hash matched the exact index bytes.
+- Commit/push/PR/merge/Pages verification: pending.
