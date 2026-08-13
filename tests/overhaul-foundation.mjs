@@ -119,6 +119,7 @@ test('Quick Play defaults to Build 173 and emits exact FL V2 payload/query agree
   assert.deepEqual(cpuWorkflow.controlOwnership, { humanPlayerIds: [], cpuTeamIds: ['you', 'opp'] });
   assert.deepEqual(cpuWorkflow.queryRequirement, { autoplay: '1' });
   assert.equal(authority.queryContract.autoplay, 'exactly-one-value-1-for-cpu-versus-cpu-only');
+  assert.equal(authority.queryContract.candidate, '3-cache-only');
   assert.deepEqual(authority.payloadContract['controllers.cpu-versus-cpu'], {
     player1Team: null, player2Team: null, aiTeam: 'both', online: 'not-true', cooperative: 'not-true'
   });
@@ -129,7 +130,7 @@ test('Quick Play defaults to Build 173 and emits exact FL V2 payload/query agree
   assert.match(quickPlayApp, /return\{requested:FL_V2_ENGINE,effective:FL_V2_ENGINE,version:QUICK_PLAY_ENGINE_VERSION,fallbackReason:null\}/);
   assert.match(quickPlayApp, /function finalizeMatchPayload\(payload,requested,online=false\)[\s\S]*?result\.simulationSeed=deterministicSimulationSeed\(result\)/);
   assert.match(quickPlayApp, /params\.set\('simulationSeed',String\(simulationSeed\)\)/);
-  assert.match(quickPlayApp, /if\(engine\?\.effective===FL_V2_ENGINE\)params\.set\('engine',FL_V2_ENGINE\);else params\.delete\('engine'\)/);
+  assert.match(quickPlayApp, /if\(engine\?\.effective===FL_V2_ENGINE\)\{params\.set\('engine',FL_V2_ENGINE\);params\.set\('candidate',FL_V2_CANDIDATE\);\}else\{params\.delete\('engine'\);params\.delete\('candidate'\);\}/);
   assert.match(quickPlayApp, /if\(data\.matchType==='spectator'\)params\.set\('autoplay','1'\)/);
 });
 
@@ -164,8 +165,8 @@ test('the match page conditionally loads the exact FL V2 runtime only after fail
     priorIndex = index;
     assert.doesNotMatch(matchHtml, new RegExp(`<script\\s+src=["'][^"']*${filename.replace(/\./g, '\\.')}`, 'i'), `${filename} must not load unconditionally`);
   }
-  assert.equal(authority.scriptCacheVersion, '174-fl-v2-final-candidate-2');
-  assert.match(preflight, /pieces\.forEach\(src=>document\.write\('<script src="'\+src\+'\?v=174-fl-v2-final-candidate-2/);
+  assert.equal(authority.scriptCacheVersion, '174-fl-v2-final-candidate-3');
+  assert.match(preflight, /pieces\.forEach\(src=>document\.write\('<script src="'\+src\+'\?v=174-fl-v2-final-candidate-3/);
   assert.match(matchHtml, /trueFeelPhysicalTouchAuthority:false,cpuPassRaceFilter:true/);
 });
 

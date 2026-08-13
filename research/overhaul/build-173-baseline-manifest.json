@@ -44,6 +44,7 @@
       "manualRuntimeControl": "window.FLLiveV2.stop",
       "queryContract": {
         "engine": "fl-v2",
+        "candidate": "3-cache-only",
         "simulationSeed": "one-positive-uint32-decimal",
         "autoplay": "exactly-one-value-1-for-cpu-versus-cpu-only"
       },
@@ -107,7 +108,7 @@
         "live-v2-match-control-composition.js",
         "live-v2-authority-adapter.js"
       ],
-      "scriptCacheVersion": "174-fl-v2-final-candidate-2",
+      "scriptCacheVersion": "174-fl-v2-final-candidate-3",
       "workflowRemovalAllowed": false
     },
     "liveShadowAttachment": {
@@ -188,7 +189,7 @@
         "online/index.html": "28e3c4e93f39fc15d2b3d42b65a30f69de646e137ecece8ca4efd526b47a66a3"
       },
       "regressionGates": {
-        "tests/controller-reconnect-and-quick-play-launch.mjs": "f8df7ae527e4f6774a1cd140cd20e4b21563925933f498b15a623b0c0febe925",
+        "tests/controller-reconnect-and-quick-play-launch.mjs": "f5ba81f3700c99fb67b2b58b04a6ad877867dcf2de8223e3a72586aebc05c5b5",
         "tests/online-controller-hotfix.mjs": "029fa4c195e098be3fb54b0602db717e01d300f31f77ee3dca685ac4592437ab"
       }
     }
@@ -226,7 +227,7 @@
       "path": "match-engine/match.html",
       "purpose": "Build 173 default authority and exact offline FL V2 host bridge",
       "baselineSha256": "8380734db3a142293c5bca2a22f6b6cc9e6a0fa658f9f0c26cce8ad1801cf678",
-      "candidateSha256": "22aa09cca9c2e4124f5b3594b44e44296ce015ad9148d588efbe158b7548a8fa",
+      "candidateSha256": "7bdb604227a39b2e560dccb23edb8b3e88515f6d957583cba6ad0aa123526d0a",
       "pinState": "frozen",
       "expectedRelation": "build-173-default-plus-exact-three-workflow-offline-opt-in-plus-exact-flag-read-only-shadow-plus-scoped-legacy-maintenance-plus-additive-historic-team-delta"
     },
@@ -241,14 +242,14 @@
       "path": "quick-play/index.html",
       "purpose": "Quick Play launcher with explicit Build 173 default and FL V2 selector",
       "baselineSha256": "6732f88581b00dfb5651d3bdfae4bc440b7891c3763b9b8e13e482a4fe04fef1",
-      "candidateSha256": "0c8a093bfa95f41375c113989aa28d267d983681b9f96fef4c147a0a867911bf",
+      "candidateSha256": "fb97d370eb96ab32d84554da8e925b57211bd3f3032b8c41ef21fc729d1b88d0",
       "expectedRelation": "additive-explicit-three-workflow-offline-engine-selector-plus-controller-cache-bust"
     },
     {
       "path": "quick-play/app.js",
       "purpose": "Quick Play mode, controller, deterministic seed and exact engine payload routing",
       "baselineSha256": "ae18e09bb8fef49c3da25b5187cf26b9b2d7bbb91c46f51dd044a8e75fd44ac6",
-      "candidateSha256": "fd6b615f789ab9d8240198ad17d4ba776937f9c37dc1b31bc9759821a0aa560a",
+      "candidateSha256": "ea0f3569cc8d7555aa2cd0ca263bccf3628b67a0368c9096d39bb28eba8d05a8",
       "expectedRelation": "additive-historic-team-and-exact-three-workflow-offline-engine-payload-routing"
     },
     {
@@ -411,7 +412,7 @@
       "path": "match-engine/live-v2-contact-authority-composer.js",
       "purpose": "ordered reaction-rated first-touch, passive body-deflection, aerial and protected legacy-contact arbitration",
       "baselineAbsent": true,
-      "candidateSha256": "e54bd7576164aefe5a1a2e8926d4183c0773f9ed25ba5a2f02d6407665b6f838",
+      "candidateSha256": "15f87890f25012412dff34d1d8f0dcdf44694d14d107b859f260cde3c4e6c10b",
       "authorityScope": ["single-player-quick-play", "cpu-versus-cpu"]
     },
     {
@@ -453,7 +454,7 @@
       "path": "match-engine/live-v2-authority-adapter.js",
       "purpose": "outer offline normal-match gameplay transaction with rollback and host-level strict-stop enforcement",
       "baselineAbsent": true,
-      "candidateSha256": "65e510d65fd27079758d4bd93137774810a735a8b4406cb9d6770fc30a2fdce4",
+      "candidateSha256": "185340bd57f0fc257ec29babc7cf02c78e23aa8b098d0f151c7a99691d97b3e6",
       "pinState": "frozen",
       "authorityScope": ["single-player-quick-play", "cpu-versus-cpu"]
     },

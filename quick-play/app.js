@@ -18,6 +18,7 @@ const preferences=readSettings();
 const QUICK_PLAY_ENGINE_VERSION='1.0.0-offline-live-authority-playtest';
 const BUILD_173_ENGINE='build-173';
 const FL_V2_ENGINE='fl-v2';
+const FL_V2_CANDIDATE='3';
 function normalizeEngineRequest(value){return value===FL_V2_ENGINE?FL_V2_ENGINE:BUILD_173_ENGINE}
 function resolveEngineSelection(requested,matchType,online=false){
   const normalized=normalizeEngineRequest(requested),mode=String(matchType||'single-player');
@@ -38,8 +39,9 @@ function deterministicSimulationSeed(payload){
   const engine=payload?.engine||resolveEngineSelection(BUILD_173_ENGINE,payload?.matchType,false);
   return stableHash(stableSerialize({schemaVersion:payload?.schemaVersion,mode:payload?.mode,season:payload?.season,year:payload?.year,matchType:payload?.matchType,practiceMode:payload?.practiceMode,effectiveEngine:engine.effective,engineVersion:engine.version,homeTeam:seedTeamRecord(payload?.homeTeam),awayTeam:seedTeamRecord(payload?.awayTeam),controllers:payload?.controllers||null,settings:payload?.settings||null}));
 }
-function finalizeMatchPayload(payload,requested,online=false){const engine=resolveEngineSelection(requested,payload?.matchType,online),result={...payload,engine};result.simulationSeed=deterministicSimulationSeed(result);return result}
-function applyEngineQueryMarkers(params,engine,simulationSeed){params.set('simulationSeed',String(simulationSeed));if(engine?.effective===FL_V2_ENGINE)params.set('engine',FL_V2_ENGINE);else params.delete('engine');return params}
+function launchEngineSelection(requested,matchType,online=false){const selection=resolveEngineSelection(requested,matchType,online);return selection.effective===FL_V2_ENGINE?selection:resolveEngineSelection(BUILD_173_ENGINE,matchType,online)}
+function finalizeMatchPayload(payload,requested,online=false){const engine=launchEngineSelection(requested,payload?.matchType,online),result={...payload,engine};result.simulationSeed=deterministicSimulationSeed(result);return result}
+function applyEngineQueryMarkers(params,engine,simulationSeed){params.set('simulationSeed',String(simulationSeed));if(engine?.effective===FL_V2_ENGINE){params.set('engine',FL_V2_ENGINE);params.set('candidate',FL_V2_CANDIDATE);}else{params.delete('engine');params.delete('candidate');}return params}
 // QUICK_PLAY_ENGINE_CONTRACT_END
 function encodeMatchPayload(value){
   const bytes=new TextEncoder().encode(JSON.stringify(value));

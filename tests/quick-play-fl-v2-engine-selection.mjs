@@ -27,8 +27,10 @@ ${appSource.slice(contractStart, contractEnd)}
 ${appSource.slice(codecStart, codecEnd)}
 this.engineContract={
   version:QUICK_PLAY_ENGINE_VERSION,
+  candidate:FL_V2_CANDIDATE,
   normalizeEngineRequest,
   resolveEngineSelection,
+  launchEngineSelection,
   deterministicSimulationSeed,
   finalizeMatchPayload,
   applyEngineQueryMarkers,
@@ -75,6 +77,7 @@ const samplePayload = (matchType = 'single-player', createdAt = '2026-08-12T12:0
 
 test('Build 173 is the default request and effective engine', () => {
   assert.equal(Engine.version, '1.0.0-offline-live-authority-playtest');
+  assert.equal(Engine.candidate, '3');
   assert.equal(Engine.normalizeEngineRequest(null), 'build-173');
   assert.equal(Engine.normalizeEngineRequest('unknown-engine'), 'build-173');
   const payload = plain(Engine.finalizeMatchPayload(samplePayload(), 'build-173', false));
@@ -106,6 +109,7 @@ test('explicit strict FL V2 promotion covers offline Single Player, CPU vs CPU a
   });
   const markers = Engine.applyEngineQueryMarkers(new URLSearchParams('quickPlay=1'), payload.engine, payload.simulationSeed);
   assert.equal(markers.get('engine'), 'fl-v2');
+  assert.equal(markers.get('candidate'), '3');
   assert.equal(markers.get('simulationSeed'), String(payload.simulationSeed));
   assert.match(htmlSource, /FL V2 · Strict Offline Playtest/);
   assert.match(appSource, /FL V2 active · Strict Single Player/);
@@ -115,6 +119,7 @@ test('explicit strict FL V2 promotion covers offline Single Player, CPU vs CPU a
   assert.equal(suite.engine.fallbackReason, null);
   const suiteMarkers = Engine.applyEngineQueryMarkers(new URLSearchParams('quickPlay=1'), suite.engine, suite.simulationSeed);
   assert.equal(suiteMarkers.get('engine'), 'fl-v2');
+  assert.equal(suiteMarkers.get('candidate'), '3');
   assert.match(appSource, /FL V2 active · Strict Set-Piece Suite/);
   const spectator = plain(Engine.finalizeMatchPayload(samplePayload('spectator'), 'fl-v2', false));
   assert.equal(spectator.engine.requested, 'fl-v2');
@@ -123,19 +128,26 @@ test('explicit strict FL V2 promotion covers offline Single Player, CPU vs CPU a
   assert.deepEqual(spectator.controllers, { player1Team: null, player2Team: null, aiTeam: 'both' });
   const spectatorMarkers = Engine.applyEngineQueryMarkers(new URLSearchParams('quickPlay=1'), spectator.engine, spectator.simulationSeed);
   assert.equal(spectatorMarkers.get('engine'), 'fl-v2');
+  assert.equal(spectatorMarkers.get('candidate'), '3');
   assert.match(appSource, /FL V2 active · Strict CPU vs CPU/);
   assert.match(appSource, /if\(data\.matchType==='spectator'\)params\.set\('autoplay','1'\)/);
 });
 
-test('mode switches recompute effective authority without deleting the FL V2 request', () => {
+test('mode switches retain the setup preference but launch a clean Build 173 envelope', () => {
   const requested = 'fl-v2';
   for (const mode of ['co-op', 'home-co-op']) {
+    const setupSelection = plain(Engine.resolveEngineSelection(requested, mode, false));
+    assert.equal(setupSelection.requested, 'fl-v2', `${mode} setup preference`);
+    assert.equal(setupSelection.effective, 'build-173', `${mode} setup effective engine`);
+    assert.equal(setupSelection.fallbackReason, `unsupported-offline-mode:${mode}`);
     const fallback = plain(Engine.finalizeMatchPayload(samplePayload(mode), requested, false));
-    assert.equal(fallback.engine.requested, 'fl-v2', `${mode} requested preference`);
-    assert.equal(fallback.engine.effective, 'build-173', `${mode} effective engine`);
-    assert.equal(fallback.engine.fallbackReason, `unsupported-offline-mode:${mode}`);
+    assert.deepEqual(fallback.engine, {
+      requested: 'build-173', effective: 'build-173',
+      version: '1.0.0-offline-live-authority-playtest', fallbackReason: null
+    }, `${mode} launch envelope must not arm strict V2 preflight`);
     const markers = Engine.applyEngineQueryMarkers(new URLSearchParams('engine=fl-v2'), fallback.engine, fallback.simulationSeed);
     assert.equal(markers.has('engine'), false, `${mode} must not emit a live V2 marker`);
+    assert.equal(markers.has('candidate'), false, `${mode} must not retain a V2 cache marker`);
   }
   const restored = plain(Engine.finalizeMatchPayload(samplePayload('single-player'), requested, false));
   assert.equal(restored.engine.requested, 'fl-v2');
@@ -145,16 +157,31 @@ test('mode switches recompute effective authority without deleting the FL V2 req
 });
 
 test('Online is frozen visibly and effectively to Build 173', () => {
-  const payload = plain(Engine.finalizeMatchPayload(samplePayload('online'), 'fl-v2', true));
-  assert.deepEqual(payload.engine, {
+  const setupSelection = plain(Engine.resolveEngineSelection('fl-v2', 'online', true));
+  assert.deepEqual(setupSelection, {
     requested: 'fl-v2', effective: 'build-173',
     version: '1.0.0-offline-live-authority-playtest', fallbackReason: 'online-authority-frozen'
   });
+  const payload = plain(Engine.finalizeMatchPayload(samplePayload('online'), 'fl-v2', true));
+  assert.deepEqual(payload.engine, {
+    requested: 'build-173', effective: 'build-173',
+    version: '1.0.0-offline-live-authority-playtest', fallbackReason: null
+  });
   const markers = Engine.applyEngineQueryMarkers(new URLSearchParams('engine=fl-v2'), payload.engine, payload.simulationSeed);
   assert.equal(markers.has('engine'), false);
+  assert.equal(markers.has('candidate'), false);
   assert.equal(markers.get('simulationSeed'), String(payload.simulationSeed));
   assert.match(appSource, /setDisabled\(\[elements\.matchMode,elements\.gameplayEngine\],true\)/);
   assert.match(appSource, /Online is frozen to the proven engine/);
+});
+
+test('candidate marker is fixed by effective authority rather than trusted from an incoming URL', () => {
+  const live = plain(Engine.finalizeMatchPayload(samplePayload('single-player'), 'fl-v2', false));
+  const liveMarkers = Engine.applyEngineQueryMarkers(new URLSearchParams('candidate=2&candidate=999'), live.engine, live.simulationSeed);
+  assert.deepEqual(liveMarkers.getAll('candidate'), ['3']);
+  const stable = plain(Engine.finalizeMatchPayload(samplePayload('single-player'), 'build-173', false));
+  const stableMarkers = Engine.applyEngineQueryMarkers(new URLSearchParams('candidate=3'), stable.engine, stable.simulationSeed);
+  assert.equal(stableMarkers.has('candidate'), false);
 });
 
 test('simulation seed is deterministic and engine envelope survives URL-safe payload transport', () => {

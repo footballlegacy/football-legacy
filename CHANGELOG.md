@@ -1,6 +1,6 @@
 # Football Legacy — Changelog
 
-Last reviewed: 12 August 2026 — current local Build 174 FL V2 integration
+Last reviewed: 13 August 2026 — published Build 174 candidate 2 and local candidate-3 closure
 
 This file records the two source lines and the combined build produced from them:
 
@@ -10,9 +10,14 @@ This file records the two source lines and the combined build produced from them
 
 ## Build 174 — explicit offline FL V2 playtest
 
+- Candidate 2 was published through pull requests #10 and #11. Candidate 3 is the next local playtest batch and remains unpublished until its own pull request is merged and the public hashes are verified.
+- Candidate 3 preserves player-authored normal-pass and ground-through channels while solving the Ball V2 rendezvous, adds reaction-rated genuine recontrol attempts after loose aerial cushions, closes keeper/shot and directional-knock-on double resolution, binds explicit aerial finishes to one cross flight, repairs free-kick staging and ground-pass input, grades slide cards from challenge physics, and holds repeated rejected CPU pass decisions for six committed ticks.
+- Candidate 3 uses a cache-only `candidate=3` match marker and `174-fl-v2-final-candidate-3` V2 module token. These markers do not alter authority or deterministic seed.
+- Unsupported Co-op, same-team Co-op and Online selections may retain the user's V2 preference in the setup screen, but now launch a clean Build 173 engine envelope with no V2 query/cache marker. This prevents the strict V2 preflight from arming on a protected Build 173 route.
+
 - Adds **FL V2 · Strict Offline Playtest** to the existing Quick Play setup while retaining **Build 173 · Stable** as the deliberate pre-match default.
 - Limits FL V2 to explicit offline **Single Player**, all-CPU **CPU vs CPU**, and **Set-Piece Suite** selections. Local 2P, same-team co-op and Online remain on Build 173; all career/creation workflows remain intact.
-- Promotes deterministic Ball, Movement, CPU, Formation, First Touch and Aerial systems for Single Player and all-CPU CPU vs CPU, with one visible fail-closed switch back to Build 173 if candidate preparation or commit fails.
+- Promotes deterministic Ball, Movement, CPU, Formation, First Touch and Aerial systems for Single Player and all-CPU CPU vs CPU. If candidate preparation or commit fails, the tick rolls back and the V2 match freezes behind the diagnostic screen; it never switches back to Build 173.
 - Promotes the reviewed Match Clock, Restart, Set-Piece and coordinate systems for the Set-Piece Suite while preserving the normal Quick Play entry flow.
 - Replaces silent mid-match fallback with strict playtest enforcement: any FL V2 authority fault rolls back the candidate tick, freezes the match, and presents export/restart/exit actions without executing a Build 173 gameplay tick.
 - Adds Ancelotti's representative 2013/14 Real Madrid BBC squad, preferred 4-3-3 selection and team-behaviour overlay alongside the existing Invincibles and Conte Chelsea historic teams. Ratings are Football Legacy playtest values, not official EA ratings.
@@ -27,7 +32,7 @@ This file records the two source lines and the combined build produced from them
 - Gives free kicks a slower preferred-foot and technique-sensitive 3.5–4.3 metre approach, and moves the set-piece camera farther behind the player while keeping the ball, full taker, wall and goal framed together.
 - Adds one consistent directional service vocabulary to free kicks, corners and goal kicks: Square for normal loft and bend, R1 + Square for a lower/faster service, and L1 + R1 + Square for a driven flatter ball. The left stick at release supplies the line and spin bias; direct free-kick Circle shots remain separate.
 - Preserves Build 172's Online signalling, lobby, controller and quality/recovery protocols; FL V2 cannot arm in Online.
-- Build 173 is already published as the stable baseline. This section records the current local Build 174 release candidate; publication still requires the deliberate branch/PR/merge and public cache-bust verification.
+- Build 173 remains the deliberate default. Build 174 candidate 2 is already public; this section now also records the local candidate-3 delta, which still requires deliberate branch/PR/merge and public cache-bust verification.
 
 ## Mandatory GitHub setup for Connor's AI agent
 

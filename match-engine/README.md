@@ -1,14 +1,14 @@
-# Current match build: local Build 174 offline FL V2 playtest
+# Current match build: Build 174 offline FL V2 playtest
 
 The main 3D match remains the shared renderer, rules, camera, goalkeeper, restart and replay host. Build 173 is the deliberate default authority. An explicit offline Quick Play opt-in can activate FL V2 for Single Player, all-CPU CPU vs CPU, and the Set-Piece Suite. Unsupported and online modes select Build 173 before kickoff. A launched FL V2 match never returns to Build 173: a candidate fault rolls back its tick, freezes the simulation and opens the strict diagnostic screen.
 
 Build 174 adds deterministic Ball, Movement, CPU, Formation, First Touch, Aerial, Match Clock, Restart and Set-Piece candidates behind strict workflow and transaction boundaries. Single Player and all-CPU CPU vs CPU use the live gameplay authority; the Set-Piece Suite uses the reviewed set-piece authority. Local 2P, same-team co-op and Online remain on Build 173, and no Career or creation workflow is removed.
 
-The latest three-log gameplay batch calibrates pass, through-ball, lob, cross and throw-in delivery; prevents the kicker immediately reclaiming their own release; improves first-touch acceleration, shielding, collision ownership, goalkeeper possession and loose-ball decisions; and adds targeted carrier-support corrections for the Invincibles and Conte Chelsea. Arsenal's full-match support/pressing shape still needs visual calibration and is not claimed closed. CPU free kicks, restart camera ownership, incident-anchored replays, the three-view set-piece replay package, controller reconnection and single-launch loading feedback are included. Ancelotti's representative 2013/14 Real Madrid BBC team is part of the current historic-team set.
+The current candidate-3 gameplay batch preserves authored normal-pass and ground-through channels while solving their Ball V2 meeting point; adds bounded, input-subordinate receiver guidance; permits reaction-rated second cushions after a loose aerial touch without granting possession; closes shot/keeper and directional-knock-on double-authority paths; binds explicit aerial finishes to one cross flight; repairs free-kick staging and grounded Cross/A delivery; and grades slide cards from the physical challenge rather than treating every slide foul as a yellow. CPU pass-race rejection now holds one decision briefly instead of recalculating it every frame. Human acceptance remains open, and the current CPU characterization is recorded honestly rather than claimed perfect.
 
 The current set-piece closure adds a dedicated slower free-kick approach that mirrors preferred foot and strike technique, plus a ball-anchored behind-player camera with bounded pan. Free kicks, corners and goal kicks now share normal, low and driven directional service physics while direct free-kick shooting remains a separate Circle action.
 
-Build 173 has already been published as the stable baseline. This document describes the local Build 174 working state and makes no public-release claim for FL V2.
+Build 174 candidate 2 is already published. This document also describes the local candidate-3 closure batch; its `candidate=3` URL marker and fresh V2 script token are cache isolation, not a claim that those bytes are public before merge and hosted verification.
 
 The visual-pass notes below are retained as historical implementation context; their old claim that gameplay systems were unchanged no longer describes the current opt-in FL V2 route.
 

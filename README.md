@@ -1,4 +1,4 @@
-# Football Legacy — local Build 174 FL V2 playtest
+# Football Legacy — Build 174 FL V2 playtest
 
 Football Legacy is a browser football game prototype with Quick Play, local controller multiplayer, an early friends-only Online Versus mode, creation tools, Career Mode and Grassroots to Glory.
 
@@ -13,9 +13,9 @@ Launch the current checkout and open **Quick Play**:
 
 FL V2 is an explicit offline playtest route. Single Player and all-CPU CPU vs CPU activate the deterministic Ball, Movement, CPU, Formation, First Touch and Aerial systems. The Set-Piece Suite activates the reviewed Clock, Restart, Set-Piece and coordinate systems. **Build 173 · Stable** remains the deliberate default before kickoff. Once an FL V2 match launches, a V2 authority fault freezes the simulation behind an exportable diagnostic screen; the match never silently continues as Build 173. Local 2P, same-team co-op and Online remain on Build 173; Career, Create-a-Club, Player Career and the creation tools retain their established workflows.
 
-This local Build 174 state incorporates the three latest playtest logs: calibrated passing, through balls, lobs, crosses and throw-ins; more responsive first touches, shielding, collisions, goalkeeper possession and support runs; corrected CPU restarts and replay anchoring; set-piece camera/replay revisions; and controller reconnect plus single-launch loading feedback. Targeted carrier-relative support corrections were added for the Invincibles and Conte Chelsea, but Arsenal's full-match support/pressing shape still needs visual calibration and is not claimed closed. Ancelotti's representative 2013/14 Real Madrid BBC team is available alongside them.
+The published Build 174 candidate-2 route is now followed by a local candidate-3 closure batch. Candidate 3 keeps pass direction and power player-authored while solving normal-pass and ground-through rendezvous against Ball V2; permits reaction-rated second attempts after an aerial miscontrol without granting possession; repairs shot, knock-on, aerial-finish, free-kick staging and free-kick ground-pass authority; calibrates slide-card severity from the physical challenge; and prevents the CPU from re-evaluating the same rejected pass every frame. It is independently cleared for playtesting, but final human acceptance remains open. Ancelotti's representative 2013/14 Real Madrid BBC team remains available alongside the Invincibles and Conte Chelsea.
 
-Build 173 has already been published as the stable baseline. This README describes the current local Build 174 working state and does not claim that FL V2 has been publicly released.
+Build 174 candidate 2 is published on GitHub Pages. Candidate 3 is the current local, cache-isolated playtest build and is not public until its own reviewed pull request is merged and the hosted bytes are verified.
 
 ## Play Online with a friend
 
@@ -61,7 +61,7 @@ Menu controls are available across the game:
 - Left stick: move
 - R2: sprint
 - Cross: pass
-- Circle: shoot or standing tackle; rapid defensive taps pull a shirt
+- Circle: shoot or standing tackle; on an authored cross it explicitly requests a header/volley finish, while the physical contest still decides who reaches the ball; rapid defensive taps pull a shirt
 - Square: lob pass or slide tackle
 - Triangle: through pass; L1 + Triangle sends it over the top
 - L1: nearest-player manual switch when defending
@@ -72,7 +72,7 @@ Menu controls are available across the game:
 - L2 + right-stick vertical flick: chained stepovers
 - Right stick down half-circle: roulette
 
-At a free kick, corner or goal kick, the left stick chooses the service line. Square gives the normal lofted delivery, R1 + Square gives a lower/faster ball, and L1 + R1 + Square gives the driven delivery. Direct free-kick shots remain on Circle with their existing dipping, driven and curved modifiers.
+At a free kick, Cross/A gives a grounded pass inside the selected left-stick and power channel. Square gives the aerial service, R1 + Square gives a lower/faster ball, and L1 + R1 + Square gives the driven delivery. Corners and goal kicks retain the same directional Square-service family. Direct free-kick shots remain on Circle with their existing dipping, driven and curved modifiers.
 
 Read `research/overhaul/set-piece-directional-camera-runup-closure-2026-08-12.md` for the current set-piece controls and visual evidence, and `PLAYTEST-NOTES-v0.28.6.md` for the older visual-pass history.
 

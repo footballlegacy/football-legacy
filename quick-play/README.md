@@ -18,9 +18,9 @@ This directory contains the five-stage Quick Play setup flow and its validated h
 - Once an FL V2 match launches, a V2 authority fault freezes the simulation behind an exportable diagnostic screen. It never silently continues as Build 173.
 - Local 2P, same-team co-op and Online select Build 173 visibly before kickoff because those workflows do not support V2 authority.
 
-Inside the Set-Piece Suite, free kicks, corners and goal kicks share directional service controls: left stick selects the line, Square supplies the normal loft, R1 + Square the lower/faster ball, and L1 + R1 + Square the driven ball. Circle remains the separate direct-free-kick shot route.
+At free kicks, Cross/A is the grounded pass and stays inside the authored left-stick and power channel. Square supplies the aerial service, R1 + Square the lower/faster ball, and L1 + R1 + Square the driven ball. Corners and goal kicks retain the directional Square-service family; Circle remains the separate direct-free-kick shot route.
 
-The match package records the requested and effective engine, the engine version, any pre-launch selection reason (stored in the compatibility field `fallbackReason`) and a deterministic simulation seed. The URL uses `engine=fl-v2` only when FL V2 is genuinely effective; that field is never used to continue a launched V2 match as Build 173.
+The setup UI retains the user's engine preference and shows any pre-launch compatibility reason. The launched match package is stricter: an effective V2 route records `requested=effective=fl-v2`, while an unsupported or frozen route receives a clean `requested=effective=build-173` envelope with no V2 fallback marker. The URL uses `engine=fl-v2` only when FL V2 is genuinely effective; that field is never used to continue a launched V2 match as Build 173. Candidate 3 also emits the fixed cache-only marker `candidate=3`, so a PC cannot silently reuse candidate-2 match HTML for an otherwise identical fixture.
 
 Quick Play now treats match launch as a single transaction: the Start action immediately shows loading feedback and ignores a second activation. Shared controller discovery also clears stale held input across disconnect/reconnect, and text-entry fields are isolated from gameplay navigation.
 

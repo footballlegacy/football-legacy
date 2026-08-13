@@ -119,6 +119,45 @@ function runTick(live, snapshot) {
   return frame;
 }
 
+function groundThroughSnapshot(receiverControl) {
+  const snapshot = initialSnapshot('single-player');
+  const passer = snapshot.players.find(player => player.id === 'you-CAM');
+  const receiver = snapshot.players.find(player => player.id === 'you-RW');
+  for (const player of snapshot.players) player.control = null;
+  receiver.control = { x: receiverControl.x, y: receiverControl.y,
+    strength: receiverControl.strength, sprint: receiverControl.sprint === true, shield: false };
+  snapshot.humanPlayerIds = [receiver.id];
+  const target = { x: receiver.x + 8, y: receiver.y };
+  const dx = target.x - passer.x, dy = target.y - passer.y, distance = Math.hypot(dx, dy) || 1;
+  Object.assign(snapshot.ball, {
+    x: passer.x, y: passer.y, z: 1, vx: dx / distance * 0.25, vy: dy / distance * 0.25, zv: 0,
+    ownerId: null, targetId: receiver.id, lastKickerId: passer.id, lastKickerTeamId: passer.teamId,
+    flightType: 'ground-through-ball',
+    launchIntent: {
+      sequence: 'human-ground-through-guidance-1',
+      sourcePlayerId: passer.id,
+      sourceTeamId: passer.teamId,
+      targetPlayerId: receiver.id,
+      origin: { x: passer.x, y: passer.y, z: 1 },
+      target,
+      direction: { x: dx / distance, y: dy / distance },
+      speedMetresPerSecond: 14.2,
+      liftAngleDeg: 0,
+      sideSpinRpm: 0,
+      topSpinRpm: 0,
+      source: 'ground-through-ball',
+      authoredMeeting: { ...target },
+      authoredMeetingDistanceMetres: distance,
+      predictedArrivalTicks: 92,
+      predictedTerminalPaceMetresPerSecond: 6.4,
+      authoredPower: 0.222,
+      meetingContract: 'mr-v2-ground-triangle-rendezvous-2026-08-13'
+    }
+  });
+  snapshot.contact.intendedReceiverId = receiver.id;
+  return { snapshot, passer, receiver, target };
+}
+
 test('adapter pins Dribbling V2 dependency and capability provenance without renaming V2', () => {
   assert.equal(Adapter.DEPENDENCY_CONTRACTS.dribbling.version, Dribbling.VERSION);
   assert.equal(Adapter.DEPENDENCY_CONTRACTS.dribbling.schemas.STATE_SCHEMA, Dribbling.STATE_SCHEMA);
@@ -228,6 +267,43 @@ test('a separated True Feel carrier is guided back to the physical MR ball', () 
     snapshot = advanceSnapshot(snapshot, projection, tick + 1);
   }
   assert.ok(recovery, 'the lease owner must chase the physical touch instead of an unrelated shape target');
+});
+
+test('human intended receiver shares the MR meeting contract while strong opposing input remains authoritative', () => {
+  const neutralFixture = groundThroughSnapshot({ x: 0, y: 0, strength: 0, sprint: false });
+  const neutralAttachment = attachment('single-player');
+  const neutralFrame = runTick(neutralAttachment.live, neutralFixture.snapshot);
+  const neutralMovement = neutralFrame.hostProjection.movement.find(row => row.id === neutralFixture.receiver.id);
+  const neutralGuidance = neutralFrame.hostProjection.recoveryAssignments.find(row =>
+    row.authority === 'v2-human-reception-guidance' && row.playerId === neutralFixture.receiver.id);
+  assert.ok(neutralGuidance, JSON.stringify(neutralFrame.hostProjection.recoveryAssignments));
+  assert.deepEqual(neutralGuidance.target, neutralFixture.target);
+  assert.equal(neutralGuidance.meetingContract, 'mr-v2-ground-triangle-rendezvous-2026-08-13');
+  assert.equal(neutralGuidance.predictedArrivalTick, 93);
+  assert.equal(neutralGuidance.predictedTerminalPaceMetresPerSecond, 6.4);
+  assert.ok(neutralGuidance.guidanceWeight > 0);
+  assert.equal(neutralGuidance.inputOverride, false);
+  assert.ok(neutralMovement.x > neutralFixture.receiver.x, 'neutral receiver should be helped toward the authored meeting');
+  assert.equal(neutralFrame.hostProjection.possession.inFlight, true);
+  assert.deepEqual(neutralFrame.hostProjection.possession.intendedTarget, neutralFixture.target);
+  assert.equal(neutralFrame.hostProjection.possession.predictedArrivalTick, 93);
+  assert.equal(neutralFrame.hostProjection.movementBallOwnerId, null);
+  assert.equal(neutralFrame.hostProjection.logicalBallOwnerId, null);
+
+  const opposingFixture = groundThroughSnapshot({ x: -1, y: 0, strength: 1, sprint: true });
+  const opposingAttachment = attachment('single-player');
+  const opposingFrame = runTick(opposingAttachment.live, opposingFixture.snapshot);
+  const opposingMovement = opposingFrame.hostProjection.movement.find(row => row.id === opposingFixture.receiver.id);
+  const opposingGuidance = opposingFrame.hostProjection.recoveryAssignments.find(row =>
+    row.authority === 'v2-human-reception-guidance' && row.playerId === opposingFixture.receiver.id);
+  assert.ok(opposingGuidance);
+  assert.equal(opposingGuidance.guidanceWeight, 0);
+  assert.equal(opposingGuidance.inputOverride, true);
+  assert.ok(opposingMovement.x < opposingFixture.receiver.x, 'strong opposing stick input must win instead of being rerouted');
+  assert.equal(opposingFrame.hostProjection.movementBallOwnerId, null);
+  assert.equal(opposingFrame.hostProjection.logicalBallOwnerId, null);
+  assert.equal(Adapter.HUMAN_RECEPTION_GUIDANCE_MAX_DISTANCE_METRES, 18);
+  assert.equal(Adapter.HUMAN_RECEPTION_GUIDANCE_STRONG_INPUT, 0.62);
 });
 
 test('adapter buffers one action ID during a lease and suppresses duplicate CPU/host emission', () => {

@@ -4,7 +4,7 @@ Audited: 13 August 2026. This is a release allow-list, not permission to delete 
 
 ## Release route confirmed
 
-- Local release branch: `agent/fl-v2-playtest` at the published Build 174 baseline `dbafc3a` (`origin/main`). It tracks `origin/agent/fl-v2-playtest`; this checklist curates the subsequent V2 closure batch for its local release commit.
+- Candidate-3 closure began on `agent/fl-v2-playtest` from `435a5ff`. Published `origin/main` is merge `9668f52`, containing candidate 2 plus its evidence-sanitization follow-up. This checklist curates the subsequent candidate-3 closure batch; publication remains pending.
 - Remote: `https://github.com/footballlegacy/football-legacy.git`; remote default branch is `main`.
 - At the release-route audit, the public root, Quick Play and match-engine assets were byte-for-byte identical to `origin/main`. No tracked `.github` deployment workflow exists, so merging a later release into `main` remains the observed GitHub Pages publication trigger; re-verify public bytes after this closure batch is merged.
 - Public endpoints are live: `https://footballlegacy.github.io/football-legacy/`, `/quick-play/`, and `/match-engine/match.html` all return HTTP 200.
@@ -85,6 +85,11 @@ Stage the final, corrected release gates and their direct fixtures:
   `tests/human-through-pass-golden-sequence.mjs`,
   `tests/v2-aerial-service-trajectory.mjs`,
   `tests/contact-gesture-presentation-v2.mjs`,
+  `tests/human-aerial-finish-and-free-kick-input-authority.mjs`,
+  `tests/human-free-kick-ground-channel-authority.mjs`,
+  `tests/playtest-free-kick-staging-closure.mjs`,
+  `tests/playtest-shot-knockon-authority.mjs`,
+  `tests/playtest-slide-discipline-closure.mjs`,
   `tests/playtest-full-state-replay-v1.mjs`,
   `tests/set-piece-camera-replay-integration.mjs` and the current
   playtest-contact/restart/replay/performance regression files.
@@ -122,14 +127,15 @@ Keep these files locally; do not delete them and do not silently publish them:
 
 Exclusion from this release is not removal of a workflow. These artifacts remain in the worktree for later engineering work.
 
-## Documentation corrections required before commit
+## Documentation state before candidate-3 commit
 
-- Completed on 2026-08-12: `README.md`, `CHANGELOG.md`, `quick-play/README.md`
-  and `match-engine/README.md` now describe Build 174 as a local release
-  candidate, the exact three FL V2 routes, strict-stop behavior and the current
-  directional set-piece closure. Complete Online instructions and historical
-  Build 172/173 evidence remain intact.
-- Do not claim the known Arsenal support/pressing shape defect is fixed. Record it as a post-publication P1.
+- Updated on 2026-08-13: `README.md`, `CHANGELOG.md`, `quick-play/README.md`
+  and `match-engine/README.md` distinguish published candidate 2 from local
+  candidate 3, preserve the exact three FL V2 routes and strict-stop behavior,
+  and document the current Cross/A ground, Square aerial and explicit Circle
+  aerial-finish controls. Complete Online instructions and historical Build
+  172/173 evidence remain intact.
+- Do not call the candidate-3 human football closed before the next PC playtest.
 - Do not claim Bluetooth controller input is fixed. The reconnect decoder and UI state handling are hardened, but the latest Mac/browser playtest still enumerated a Bluetooth DualSense without receiving gameplay input. USB-C is the verified playtest route.
 
 ## Final release gates
@@ -149,30 +155,47 @@ Exclusion from this release is not removal of a workflow. These artifacts remain
    - Force one bounded candidate fault in a test fixture and prove the match freezes behind the export/restart/exit diagnostic without executing a Build 173 gameplay tick.
    - Unsupported modes requesting FL V2 visibly select Build 173 before kickoff.
 5. Review `git diff --cached --stat` and `git diff --cached`; confirm no capture, lab, cache, ZIP, generated career report or private path is staged.
-6. Commit on `agent/fl-v2-playtest`, push with upstream, open a draft pull request against `main`, and record the exact checks in the PR body.
+6. Commit on `agent/fl-v2-playtest`, push the explicit ref with `git push origin HEAD:refs/heads/agent/fl-v2-playtest` (setting that upstream only if deliberately required), open a draft pull request against `main`, and record the exact checks in the PR body.
 7. Merge only after the release gates pass. A branch push or draft PR is not the published game.
 8. Verify GitHub Pages with cache-busting URLs. Confirm HTTP 200 for all newly referenced JavaScript files, compare the public `quick-play/app.js`, `quick-play/index.html` and `match-engine/match.html` hashes with the merged `origin/main`, then perform one final public Quick Play launch.
 
-## Current release status at this audit
+## Current candidate-3 status at this audit
 
-- Runtime bytes and manifests are frozen and hash-sealed with the one-time
-  `174-fl-v2-final-candidate-2` cache token. The exact production match
-  SHA-256 is
-  `22aa09cca9c2e4124f5b3594b44e44296ce015ad9148d588efbe158b7548a8fa`.
-- The protected launch, authority, ratings, replay and pin batch passes 98/98.
-  The bounded gameplay/physics/input batch passes after updating two stale
-  extraction harnesses for the new presentation helpers. The final local
-  exact-byte browser smoke passed on 2026-08-13 through the real Quick Play UI:
-  Single Player advanced under `FL V2 live · Single Player`, CPU versus CPU
-  advanced autonomously under `FL V2 live · CPU vs CPU`, and the Set-Piece
-  Suite armed under `FL V2 live · Set-Piece Suite`. All three used the
-  recalibrated historic squads and produced no browser console errors. The
-  public smoke is still required after merge.
-- CPU versus CPU passes all 15 football-quality gates across four varied
-  60-second simulations: five multi-pass chances from nine shots, twelve
-  three-pass chains, 104 passes at 87.1% completion, 43 progressive passes,
-  34 moving-runner rendezvous, 13 interceptions, and no strict stop or
-  continuity failure. No scripted chance or fixture-only gameplay change was
-  added.
+- Runtime bytes are frozen with a cache-only `candidate=3` match marker and the
+  one-time `174-fl-v2-final-candidate-3` V2 module token. Unchanged historic
+  squads and replay capture retain their candidate-2 URLs. Frozen production
+  SHA-256 values are match `7bdb604227a39b2e560dccb23edb8b3e88515f6d957583cba6ad0aa123526d0a`,
+  adapter `185340bd57f0fc257ec29babc7cf02c78e23aa8b098d0f151c7a99691d97b3e6`,
+  contact composer `15f87890f25012412dff34d1d8f0dcdf44694d14d107b859f260cde3c4e6c10b`,
+  Quick Play app `ea0f3569cc8d7555aa2cd0ca263bccf3628b67a0368c9096d39bb28eba8d05a8`
+  and Quick Play index `fb97d370eb96ab32d84554da8e925b57211bd3f3032b8c41ef21fc729d1b88d0`.
+- Independent review reports no open P0, P1 or P2 in the gameplay batch. The
+  current core closure run passes 105/105; the repaired composer/restart pair
+  passes 23/23; rollback/replay/match-control/strict-stop coverage passes 50/50.
+  Candidate-3 browser smoke passed on 13 August 2026 through the real local
+  Quick Play route. Single Player emitted `engine=fl-v2&candidate=3`, reached
+  `FL V2 live · Single Player`, and advanced committed ticks; CPU versus CPU
+  emitted the same candidate marker, ran both teams autonomously, and advanced
+  live V2 ticks; the Set-Piece Suite armed V2, staged a free kick, reached the
+  whistle-ready state, completed a shot, and cleared its repeat blocker after
+  replay exit. All three routes had empty browser warning/error logs.
+- The same smoke initially exposed an unsupported-mode launch-envelope fault:
+  Co-op removed the V2 URL marker but still serialized a V2 request, causing a
+  strict preflight stop. `launchEngineSelection` now preserves the preference
+  only in setup while materializing a clean Build 173 launch envelope. The
+  repeated Co-op browser launch contained neither `engine` nor `candidate`, did
+  not strict-stop, loaded no V2 badge, and had no browser warning/error logs.
+- The final bounded candidate-3 rerun after that browser-found fix passes
+  163/163 across the five new direct regressions, through/rendezvous, reaction
+  retry, CPU commitment, dribbling, restart/keeper, Quick Play selection,
+  protected Build 173, Online, manifest/foundation and frozen-byte gates.
+- CPU versus CPU passes 13/15 enforced football-quality gates across four
+  60-second simulations: 15 multi-pass chances, 19 three-pass chains, 102
+  passes, 34 moving-runner rendezvous, eight interceptions and no strict stop,
+  continuity fault or overshoot. The two honest reds are 91.8% completion
+  against a 90% ceiling and Mac p95 tick time 15.821 ms against 12 ms. The
+  six-tick rejected-pass commitment reduced actual MR evaluations to 690 while
+  2,815 identical decisions were safely held. No further tuning is hidden in
+  this candidate; PC human playtesting is the next decision gate.
 - The GitHub CLI token is invalid. This does not block the verified Git push route, but PR creation must use the connected GitHub app or a repaired `gh` login.
 - README, CHANGELOG, Quick Play and Match Engine release summaries now describe the current three-route FL V2 candidate and directional set-piece closure. Historical Build 172/173 evidence is retained rather than rewritten.
