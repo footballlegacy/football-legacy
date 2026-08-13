@@ -394,6 +394,93 @@ test('pressured weak receiver produces a deterministic heavy touch that remains 
   assert.equal(Composer.stableJson(first), Composer.stableJson(second));
 });
 
+test('a miscontrolling player may recover again only after their reaction-rated reset', () => {
+  const close = player('defender', 'opp', 54.0, {
+    y: 0.4,
+    attributes: { control: 70, technique: 65, awareness: 90, strength: 94 }
+  });
+  const weakReceiver = player('receiver', 'you', 52.5, {
+    attributes: { control: 20, agility: 25, balance: 25, strength: 30 }
+  });
+  const weakRoster = { attributes: {
+    control: 20, technique: 18, awareness: 20, agility: 25, balance: 25, strength: 30
+  } };
+  const first = Composer.compose(request({
+    tick: 17,
+    defender: close,
+    receiver: weakReceiver,
+    receiverRoster: weakRoster
+  }), capability());
+  assert.equal(first.presentation.playerId, 'receiver');
+  assert.equal(first.presentation.outcome, 'loose');
+
+  const farDefender = player('defender', 'opp', 80, {
+    attributes: { control: 70, technique: 65, awareness: 90, strength: 94 }
+  });
+  const retryInput = (tick, reactions, receiverState = weakReceiver) => {
+    const input = request({
+      tick,
+      defender: farDefender,
+      receiver: receiverState,
+      receiverRoster: { ...weakRoster, attributes: { ...weakRoster.attributes, reactions } },
+      ballPosition: first.ballState.position,
+      ballVelocity: first.ballState.velocity,
+      contactCount: first.ballState.contactCount,
+      consumedFirstTouchIds: first.consumedFirstTouchIds,
+      consumedFirstTouchThroughTick: first.consumedFirstTouchThroughTick
+    });
+    input.ballState = Ball.createBallState({
+      ...structuredClone(first.ballState),
+      lastOuterTick: tick,
+      simulationTime: tick / 60
+    });
+    return input;
+  };
+
+  // A 99-reactions player resets in five ticks; a 20-reactions player needs
+  // fourteen. Neither gets an instant second control roll, but both can make a
+  // genuine later attempt if they physically meet the loose ball again.
+  const eliteEarly = Composer.compose(retryInput(21, 99), capability());
+  const poorAtEliteWindow = Composer.compose(retryInput(22, 20), capability());
+  assert.notEqual(eliteEarly.contactType, 'first-touch');
+  assert.notEqual(poorAtEliteWindow.contactType, 'first-touch');
+  assert.equal(eliteEarly.ownerCandidateId, null);
+  assert.equal(poorAtEliteWindow.ownerCandidateId, null);
+  const eliteRecovered = Composer.compose(retryInput(22, 99), capability());
+  assert.equal(eliteRecovered.contactType, 'first-touch');
+  assert.equal(eliteRecovered.presentation.outcome, 'loose');
+  assert.equal(eliteRecovered.ownerCandidateId, null);
+  const poorEarly = Composer.compose(retryInput(30, 20), capability());
+  assert.notEqual(poorEarly.contactType, 'first-touch');
+  assert.equal(poorEarly.ownerCandidateId, null);
+  const poorRecovered = Composer.compose(retryInput(31, 20), capability());
+  assert.equal(poorRecovered.contactType, 'first-touch');
+  assert.equal(poorRecovered.presentation.outcome, 'loose');
+  assert.equal(poorRecovered.ownerCandidateId, null);
+
+  const outsideGeometry = Composer.compose(retryInput(31, 99,
+    player('receiver', 'you', first.ballState.position.x - 2, {
+      attributes: { control: 20, agility: 25, balance: 25, strength: 30 }
+    })), capability());
+  assert.notEqual(outsideGeometry.contactType, 'first-touch');
+  assert.equal(outsideGeometry.ownerCandidateId, null);
+
+  const otherPlayerTouchedInput = retryInput(18, 20);
+  otherPlayerTouchedInput.ballState = Ball.createBallState({
+    ...structuredClone(otherPlayerTouchedInput.ballState),
+    lastOuterTick: 18,
+    lastContact: {
+      ...structuredClone(otherPlayerTouchedInput.ballState.lastContact),
+      colliderId: 'defender',
+      materialId: 'player-body',
+      outerTick: 17
+    },
+    simulationTime: 18 / 60
+  });
+  const reopened = Composer.compose(otherPlayerTouchedInput, capability());
+  assert.equal(reopened.contactType, 'first-touch');
+});
+
 test('first-touch exact-once IDs remain caller-staged until the outer transaction commits', () => {
   const input = request();
   const first = Composer.compose(input, capability());

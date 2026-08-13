@@ -1,34 +1,37 @@
 {
   "schema": "football-legacy-protected-workflow-matrix-v1",
-  "schemaVersion": "2.0.0",
-  "build": 173,
+  "schemaVersion": "3.0.0",
+  "build": 174,
   "candidateBuild": 174,
+  "candidate": 4,
   "policy": {
-    "defaultAuthority": "legacy",
-    "replacementAllowedByThisMatrix": false,
-    "explicitOfflineOptInAllowed": true,
-    "explicitOfflineOptInAuthority": "fl-v2",
-    "explicitOfflineOptInWorkflows": ["single-player-quick-play", "cpu-versus-cpu", "set-piece-suite"],
+    "defaultAuthority": "fl-v2",
+    "currentAuthorityRung": "authoritative-v2-only-playable",
+    "replacementAllowedByThisMatrix": true,
+    "explicitOfflineOptInAllowed": false,
+    "explicitOfflineOptInAuthority": null,
+    "explicitOfflineOptInWorkflows": [],
+    "v2PlayableWorkflows": ["single-player-quick-play", "cpu-versus-cpu", "set-piece-suite"],
+    "unavailableUntilV2Authority": ["local-two-player", "home-co-op", "online-versus"],
     "removalAllowed": false,
+    "legacyPlayableRemovalAllowed": true,
     "silentRerouteAllowed": false,
-    "onlineFoundationPolicy": "frozen",
+    "previousBuildSelectionAllowed": false,
+    "previousBuildDefaultAllowed": false,
+    "previousBuildFallbackAllowed": false,
+    "onlineFoundationPolicy": "unavailable-until-v2-authority",
+    "directLaunchPolicy": "exact-v2-contract-or-fail-closed-before-simulation",
     "runtimeFailurePolicy": "same-tick-rollback-then-strict-v2-stop",
-    "promotionOrder": [
-      "legacy",
-      "shadow",
-      "suite-opt-in",
-      "offline-opt-in",
-      "migration-candidate",
-      "authoritative"
-    ]
+    "legacyNamedInternalsPolicy": "nonplayable-provenance-and-host-compatibility-only",
+    "dormantModuleHeaderPolicy": "superseded-by-v2-only-playable-authority",
+    "flV15ArchivePolicy": "separate-archive-untouched"
   },
   "workflows": [
     {
       "id": "single-player-quick-play",
-      "status": "protected",
-      "authority": "conditional-offline-opt-in",
-      "defaultAuthority": "legacy",
-      "optInAuthority": "fl-v2",
+      "status": "playable",
+      "authority": "fl-v2",
+      "defaultAuthority": "fl-v2",
       "activation": {
         "online": false,
         "quickPlayMatchType": "single-player",
@@ -37,28 +40,29 @@
         "requiresExactQueryAndPayloadAgreement": true
       },
       "entryPoints": ["index.html", "quick-play/index.html", "quick-play/app.js", "match-engine/match.html"],
-      "requiredGates": ["mode-link", "engine-selector", "payload-query-agreement", "deterministic-seed", "keyboard", "controller", "restart", "replay", "strict-v2-stop-no-legacy-continuation", "self-test"]
+      "requiredGates": ["mode-link", "fixed-v2-authority", "payload-query-agreement", "deterministic-seed", "keyboard", "controller", "restart", "replay", "strict-v2-stop-no-previous-engine-continuation", "self-test"]
     },
     {
       "id": "local-two-player",
-      "status": "protected",
-      "authority": "legacy",
-      "entryPoints": ["quick-play/app.js", "match-engine/match.html"],
-      "requiredGates": ["two-controller-assignment", "player-switching", "pause", "restart", "replay"]
+      "status": "unavailable",
+      "authority": "none",
+      "restorationGate": "complete-v2-authority-and-explicit-release",
+      "entryPoints": ["index.html", "quick-play/index.html", "quick-play/app.js"],
+      "requiredGates": ["visible-unavailable-state", "no-launch", "no-previous-engine-fallback"]
     },
     {
       "id": "home-co-op",
-      "status": "protected",
-      "authority": "legacy",
-      "entryPoints": ["quick-play/app.js", "match-engine/match.html"],
-      "requiredGates": ["same-team-controller-assignment", "player-switching", "pause", "restart", "replay"]
+      "status": "unavailable",
+      "authority": "none",
+      "restorationGate": "complete-v2-authority-and-explicit-release",
+      "entryPoints": ["quick-play/index.html", "quick-play/app.js"],
+      "requiredGates": ["visible-unavailable-state", "no-launch", "no-previous-engine-fallback"]
     },
     {
       "id": "cpu-versus-cpu",
-      "status": "protected",
-      "authority": "conditional-offline-opt-in",
-      "defaultAuthority": "legacy",
-      "optInAuthority": "fl-v2",
+      "status": "playable",
+      "authority": "fl-v2",
+      "defaultAuthority": "fl-v2",
       "activation": {
         "online": false,
         "quickPlayMatchType": "spectator",
@@ -72,20 +76,21 @@
           "cpuTeamIds": ["you", "opp"]
         }
       },
-      "entryPoints": ["quick-play/app.js", "match-engine/match.html"],
-      "requiredGates": ["mode-link", "engine-selector", "payload-query-agreement", "deterministic-seed", "exact-all-cpu-ownership", "autoplay", "ai-assignment", "gameplay-authority", "match-control", "clock", "restart", "replay", "strict-v2-stop-no-legacy-continuation", "determinism-diagnostics"]
+      "entryPoints": ["index.html", "quick-play/index.html", "quick-play/app.js", "match-engine/match.html"],
+      "requiredGates": ["mode-link", "fixed-v2-authority", "payload-query-agreement", "deterministic-seed", "exact-all-cpu-ownership", "autoplay", "ai-assignment", "gameplay-authority", "match-control", "clock", "restart", "replay", "strict-v2-stop-no-previous-engine-continuation", "determinism-diagnostics"]
     },
     {
       "id": "online-versus",
-      "status": "frozen",
-      "authority": "legacy",
-      "entryPoints": ["online/index.html", "online/app.js", "match-engine/match.html"],
-      "requiredGates": ["lobby-sync", "connection", "controller", "ready", "video", "quality-stability", "restart"]
+      "status": "unavailable",
+      "authority": "none",
+      "restorationGate": "complete-v2-authority-and-explicit-release",
+      "entryPoints": ["index.html", "online/index.html", "online/app.js", "quick-play/app.js"],
+      "requiredGates": ["visible-unavailable-state", "no-host", "no-join", "no-launch", "no-previous-engine-fallback"]
     },
     {
       "id": "input-devices",
       "status": "protected",
-      "authority": "legacy",
+      "authority": "fl-v2",
       "entryPoints": ["controller-ui.js", "settings.js", "quick-play/app.js", "match-engine/match.html"],
       "variants": ["keyboard", "DualSense", "generic-gamepad", "controller-switching"],
       "requiredGates": ["navigation", "assignment", "disconnect-reconnect", "input-acknowledgement"]
@@ -93,25 +98,24 @@
     {
       "id": "match-lifecycle",
       "status": "protected",
-      "authority": "legacy",
+      "authority": "fl-v2",
       "entryPoints": ["match-engine/match.html"],
       "variants": ["pause", "resume", "restart", "replay", "diagnostics", "full-time"],
-      "requiredGates": ["clock", "simulation-authority", "replay-order", "restart-state", "input-routing"]
+      "requiredGates": ["clock", "simulation-authority", "replay-order", "restart-state", "input-routing", "strict-stop"]
     },
     {
       "id": "normal-match-set-pieces",
       "status": "protected",
-      "authority": "legacy",
+      "authority": "fl-v2",
       "entryPoints": ["match-engine/match.html", "match-engine/set-piece-system.js"],
       "variants": ["free-kick", "left-corner", "right-corner", "penalty", "throw-in", "goal-kick", "kick-off"],
       "requiredGates": ["award", "setup", "controls", "delivery", "contact", "outcome", "replay", "restart"]
     },
     {
       "id": "set-piece-suite",
-      "status": "protected",
-      "authority": "conditional-offline-opt-in",
-      "defaultAuthority": "legacy",
-      "optInAuthority": "fl-v2",
+      "status": "playable",
+      "authority": "fl-v2",
+      "defaultAuthority": "fl-v2",
       "activation": {
         "online": false,
         "quickPlayMatchType": "free-kick-suite",
@@ -119,34 +123,34 @@
         "requestedEngine": "fl-v2",
         "requiresExactQueryAndPayloadAgreement": true
       },
-      "entryPoints": ["match-engine/match.html", "match-engine/set-piece-system.js"],
-      "requiredGates": ["scenario-select", "engine-selector", "payload-query-agreement", "deterministic-seed", "explicit-engine-selection", "export", "replay", "strict-v2-stop-no-legacy-continuation", "normal-match-isolation"]
+      "entryPoints": ["index.html", "quick-play/index.html", "quick-play/app.js", "match-engine/match.html", "match-engine/set-piece-system.js"],
+      "requiredGates": ["scenario-select", "fixed-v2-authority", "payload-query-agreement", "deterministic-seed", "export", "replay", "strict-v2-stop-no-previous-engine-continuation", "normal-match-isolation"]
     },
     {
       "id": "career-mode",
       "status": "protected",
-      "authority": "legacy",
+      "authority": "independent-career-runtime",
       "entryPoints": ["career-mode/index.html", "career-mode/game.html", "career-mode/js/game.js"],
-      "requiredGates": ["entry-link", "world-integrity", "save-load", "quick-play-payload"]
+      "requiredGates": ["entry-link", "world-integrity", "save-load", "v2-quick-play-handoff"]
     },
     {
       "id": "create-a-club",
       "status": "protected",
-      "authority": "legacy",
+      "authority": "independent-creation-runtime",
       "entryPoints": ["create-club/index.html", "career-mode/start-created-club.html"],
       "requiredGates": ["entry-link", "creation", "career-handoff", "save-load"]
     },
     {
       "id": "player-career",
       "status": "protected",
-      "authority": "legacy",
+      "authority": "independent-career-runtime",
       "entryPoints": ["player-career/game.html", "player-career/player-career.js"],
       "requiredGates": ["entry-link", "state", "career-link", "save-load"]
     },
     {
       "id": "content-inputs",
       "status": "protected",
-      "authority": "legacy",
+      "authority": "shared-data-contract",
       "entryPoints": ["quick-play/teams.js", "quick-play/historic-playtest-squads.js", "quick-play/app.js"],
       "variants": ["teams", "formations", "tactics", "stadiums", "kits", "historic-teams", "save-data"],
       "requiredGates": ["decode", "encode", "payload", "selection", "round-trip"]
@@ -154,10 +158,10 @@
     {
       "id": "diagnostics-and-playtest-exports",
       "status": "protected",
-      "authority": "legacy",
+      "authority": "nonplayable-diagnostics",
       "entryPoints": ["match-engine/match.html", "tests"],
-      "variants": ["self-tests", "playtest-export", "direct-offline-links", "fast-mode"],
-      "requiredGates": ["self-test", "export-schema", "direct-link", "no-gameplay-authority"]
+      "variants": ["self-tests", "playtest-export", "direct-diagnostic-links", "fast-mode"],
+      "requiredGates": ["self-test", "export-schema", "exact-v2-contract-or-no-simulation", "no-independent-gameplay-authority"]
     }
   ]
 }

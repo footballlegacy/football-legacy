@@ -1,7 +1,8 @@
 #!/bin/zsh
 set -e
 cd "$(dirname "$0")"
-TEST_URL="file://$PWD/match-engine/match.html?year=2026&difficulty=medium&weather=clear&camera=broadcast"
+echo "Local two-player is unavailable while its match authority is migrated to FL V2."
+TEST_URL="file://$PWD/quick-play/index.html?mode=co-op&engine=fl-v2&candidate=4"
 if [[ -d "/Applications/Google Chrome.app" ]]; then
   open -a "/Applications/Google Chrome.app" "$TEST_URL"
 else

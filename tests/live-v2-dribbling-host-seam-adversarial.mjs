@@ -91,6 +91,7 @@ function payload(matchType = 'single-player', overrides = {}) {
     mode: 'quickPlay',
     matchType,
     online: null,
+    practiceMode: null,
     controllers,
     engine: {
       requested: 'fl-v2',
@@ -99,14 +100,14 @@ function payload(matchType = 'single-player', overrides = {}) {
       fallbackReason: null
     },
     simulationSeed: 733173,
-    homeTeam: { id: 'host-seam-home' },
-    awayTeam: { id: 'host-seam-away' },
+    homeTeam: { id: 'host-seam-home', name: 'Host Seam Home' },
+    awayTeam: { id: 'host-seam-away', name: 'Host Seam Away' },
     ...overrides
   };
 }
 
 function exactQuery(extra = '') {
-  return `?engine=fl-v2&simulationSeed=733173${extra}`;
+  return `?quickPlay=1&engine=fl-v2&candidate=4&simulationSeed=733173${extra}`;
 }
 
 function createActionHarness() {
@@ -160,7 +161,10 @@ test('conditional loader places Dribbling V2 after Ball V2 and before the live a
   assert.equal(cpu.scripts.filter(name => name === 'dribbling-state-v2.js').length, 1);
   assert.ok(cpu.scripts.indexOf('dribbling-state-v2.js') < cpu.scripts.indexOf('live-v2-authority-adapter.js'));
 
-  const suite = preflight(exactQuery(), payload('free-kick-suite'));
+  const suite = preflight(
+    exactQuery('&practice=free-kick'),
+    payload('free-kick-suite', { practiceMode: 'free-kick' })
+  );
   assert.equal(suite.value.workflow, 'set-piece-suite');
   assert.equal(suite.scripts.includes('dribbling-state-v2.js'), false,
     'Set-Piece Suite must not load normal-match dribbling authority');

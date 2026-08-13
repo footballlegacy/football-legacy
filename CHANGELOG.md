@@ -1,6 +1,6 @@
 # Football Legacy — Changelog
 
-Last reviewed: 12 August 2026 — current local Build 174 FL V2 integration
+Last reviewed: 13 August 2026 — Build 174 Candidate 4 V2-only release closure
 
 This file records the two source lines and the combined build produced from them:
 
@@ -8,11 +8,31 @@ This file records the two source lines and the combined build produced from them
 - **Career and data build v0.30.1** — the current Player Career/original-names copy with the Create-a-Club career fixes below.
 - **Match Engine v0.96** — Josh's GitHub pull request #1, included unchanged except for the intentional Quick Play integration described below.
 
-## Build 174 — explicit offline FL V2 playtest
+## Build 174 Candidate 4 — FL V2-only playable authority
+
+- Makes FL V2 the fixed and sole playable match authority. Quick Play no longer offers a previous-build selector, default or fallback.
+- Keeps Single Player, all-CPU CPU vs CPU and Set-Piece Suite as the released playable modes.
+- Makes Local 2P, same-team Home Co-op and Online Versus visibly unavailable until each has complete V2 authority. They cannot launch a previous engine or silently reroute to another mode.
+- Requires exact agreement between the supported workflow, V2 query, V2 payload, ownership data and deterministic seed. Raw, direct, stale, malformed, contradictory, online, shadow-only and unsupported launch routes fail closed before simulation.
+- Retains same-tick transaction rollback followed by the strict V2 diagnostic stop. No previous-engine tick executes as a recovery path.
+- Uses the cache-only `candidate=4` marker and `174-fl-v2-final-candidate-4` module token. These markers isolate bytes without changing authority or deterministic seed.
+- Preserves Build 173-named hashes, adapters, fixtures and tests only where they provide non-playable provenance, host compatibility, diagnostics or regression coverage. Stale shadow/opt-in module headers are superseded by the V2-only authority contract.
+- Leaves Career Mode, Create-a-Club, Player Career and creation/data workflows intact; any handoff into a match must satisfy the V2-only contract.
+- Leaves the separate FL V1.5 forensic archive untouched. It is not bundled as a fallback.
+- Defines the binding release boundary in `research/overhaul/fl-v2-only-playable-authority-2026-08-13.md` and the machine-readable scope in `research/overhaul/protected-workflows.json`.
+
+## Build 174 Candidates 2-3 — superseded migration history
+
+The bullets in this section record the earlier opt-in release state. Their Build 173-default, engine-selector and unsupported-mode fallback rules are historical and do not apply to Candidate 4.
+
+- Candidate 2 was published through pull requests #10 and #11. Candidate 3 was the following local closure batch.
+- Candidate 3 preserved player-authored normal-pass and ground-through channels while solving the Ball V2 rendezvous, added reaction-rated genuine recontrol attempts after loose aerial cushions, closed keeper/shot and directional-knock-on double resolution, bound explicit aerial finishes to one cross flight, repaired free-kick staging and ground-pass input, graded slide cards from challenge physics, and held repeated rejected CPU pass decisions for six committed ticks.
+- Candidate 3 used a cache-only `candidate=3` match marker and `174-fl-v2-final-candidate-3` V2 module token. Those markers did not alter authority or deterministic seed.
+- At that migration stage, unsupported Co-op, same-team Co-op and Online selections launched a clean Build 173 engine envelope. Candidate 4 removes that playable path entirely.
 
 - Adds **FL V2 · Strict Offline Playtest** to the existing Quick Play setup while retaining **Build 173 · Stable** as the deliberate pre-match default.
 - Limits FL V2 to explicit offline **Single Player**, all-CPU **CPU vs CPU**, and **Set-Piece Suite** selections. Local 2P, same-team co-op and Online remain on Build 173; all career/creation workflows remain intact.
-- Promotes deterministic Ball, Movement, CPU, Formation, First Touch and Aerial systems for Single Player and all-CPU CPU vs CPU, with one visible fail-closed switch back to Build 173 if candidate preparation or commit fails.
+- Promotes deterministic Ball, Movement, CPU, Formation, First Touch and Aerial systems for Single Player and all-CPU CPU vs CPU. If candidate preparation or commit fails, the tick rolls back and the V2 match freezes behind the diagnostic screen; it never switches back to Build 173.
 - Promotes the reviewed Match Clock, Restart, Set-Piece and coordinate systems for the Set-Piece Suite while preserving the normal Quick Play entry flow.
 - Replaces silent mid-match fallback with strict playtest enforcement: any FL V2 authority fault rolls back the candidate tick, freezes the match, and presents export/restart/exit actions without executing a Build 173 gameplay tick.
 - Adds Ancelotti's representative 2013/14 Real Madrid BBC squad, preferred 4-3-3 selection and team-behaviour overlay alongside the existing Invincibles and Conte Chelsea historic teams. Ratings are Football Legacy playtest values, not official EA ratings.
@@ -27,7 +47,7 @@ This file records the two source lines and the combined build produced from them
 - Gives free kicks a slower preferred-foot and technique-sensitive 3.5–4.3 metre approach, and moves the set-piece camera farther behind the player while keeping the ball, full taker, wall and goal framed together.
 - Adds one consistent directional service vocabulary to free kicks, corners and goal kicks: Square for normal loft and bend, R1 + Square for a lower/faster service, and L1 + R1 + Square for a driven flatter ball. The left stick at release supplies the line and spin bias; direct free-kick Circle shots remain separate.
 - Preserves Build 172's Online signalling, lobby, controller and quality/recovery protocols; FL V2 cannot arm in Online.
-- Build 173 is already published as the stable baseline. This section records the current local Build 174 release candidate; publication still requires the deliberate branch/PR/merge and public cache-bust verification.
+- At that superseded migration stage, Build 173 was the deliberate default and Candidate 3 had not been published. Candidate 4 replaces that state with the V2-only authority contract above.
 
 ## Mandatory GitHub setup for Connor's AI agent
 

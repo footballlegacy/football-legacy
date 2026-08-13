@@ -64,6 +64,9 @@
   const LOOSE_BALL_MAX_ETA_SECONDS = 3.2;
   const HUMAN_LOOSE_BALL_GUIDANCE_MAX_DISTANCE_METRES = 5.2;
   const HUMAN_LOOSE_BALL_GUIDANCE_MAX_ETA_SECONDS = 1.45;
+  const HUMAN_RECEPTION_GUIDANCE_MAX_DISTANCE_METRES = 18;
+  const HUMAN_RECEPTION_GUIDANCE_STRONG_INPUT = 0.62;
+  const HUMAN_RECEPTION_GUIDANCE_OPPOSING_DOT = 0.10;
   const HUMAN_INPUT_RESPONSIVENESS_MULTIPLIER = 1.42;
   const CPU_PASS_RACE_MIN_MARGIN_TICKS = 6;
   const CPU_PASS_RECEIVER_READY_BUFFER_TICKS = 8;
@@ -75,6 +78,7 @@
   const CPU_PASS_RACE_MAX_CONTACT_HEIGHT_METRES = 1.45;
   const CPU_PASS_MIN_DISTANCE_METRES = 5.5;
   const CPU_PASS_TARGET_BOUNDARY_MARGIN_METRES = 4.5;
+  const CPU_REJECTED_PASS_COMMITMENT_TICKS = 6;
   const TURNOVER_TACKLE_PROTECTION_TICKS = 30;
   const issuedCapabilities = new WeakSet();
 
@@ -497,6 +501,7 @@
     function freshDomain() {
       return {
         world: null, rosterSignature: '', cpuMemories: { you: null, opp: null },
+        cpuRejectedPassCommitments: { you: null, opp: null },
         ballState: null, ballContext: dependencies.ball.createSimulationContext({ seed: (deterministicSeed ^ Math.imul(resetEpoch + 1, 0x9e3779b9)) >>> 0 || deterministicSeed }),
         lastBallProjection: null, lastLaunchSequence: '', lastTackleState: new Set(),
         lastCarrierEmission: { you: '', opp: '' }, possession: { teamId: null, ownerId: null, inFlight: false, intendedReceiverId: null, intendedTarget: null, intendedTargetWindowMetres: null, arrivalWindowEntered: false, releaseTick: null, reactionStimulus: null, offsideCandidate: null },
@@ -528,6 +533,7 @@
         authorities: clone(capability.authority), dependencyContracts: clone(DEPENDENCY_CONTRACTS),
         lastFormation: clone(lastFormation), lastCpuDecision: clone(lastCpuDecision), latestTelemetry: clone(latestTelemetry),
         possession: clone(domain.possession),
+        cpuRejectedPassCommitments: clone(domain.cpuRejectedPassCommitments),
         dribbling: dependencies.dribbling.serializeState(domain.dribblingState)
       };
     }
@@ -549,6 +555,7 @@
           world: clone(domain.world),
           rosterSignature: domain.rosterSignature,
           cpuMemories: clone(domain.cpuMemories),
+          cpuRejectedPassCommitments: clone(domain.cpuRejectedPassCommitments),
           ballState: clone(domain.ballState),
           ballContext: clone(domain.ballContext),
           lastBallProjection: clone(domain.lastBallProjection),
@@ -596,6 +603,7 @@
           world: restoredWorld,
           rosterSignature: String(payload.domain.rosterSignature || ''),
           cpuMemories: clone(payload.domain.cpuMemories || { you: null, opp: null }),
+          cpuRejectedPassCommitments: clone(payload.domain.cpuRejectedPassCommitments || { you: null, opp: null }),
           ballState: restoredBall,
           ballContext: dependencies.ball.cloneContext(payload.domain.ballContext),
           lastBallProjection: clone(payload.domain.lastBallProjection),
@@ -706,12 +714,21 @@
           const intendedReceiverId = launch.targetPlayerId == null ? snapshot.ball.targetId : String(launch.targetPlayerId);
           const releaseDescriptor = String(launch.source || snapshot.ball.flightType || '').toLowerCase();
           const deliberatePass = Boolean(intendedReceiverId) && !/(shot|penalty|direct-free-kick)/.test(releaseDescriptor);
+          const predictedArrivalTicks = Number.isSafeInteger(launch.predictedArrivalTicks)
+            ? clamp(launch.predictedArrivalTicks, 1, 600) : null;
+          const meetingContract = launch.meetingContract == null ? null : String(launch.meetingContract);
           return {
           teamId: sourceTeamId, ownerId: null, inFlight: true,
           intendedReceiverId,
           intendedTarget, intendedTargetWindowMetres: intendedTarget ? clamp(1.35 + distanceMetres * .025, 1.5, 3.25) : null,
           arrivalWindowEntered: false,
           releaseTick: snapshot.tick,
+          predictedArrivalTicks,
+          predictedArrivalTick: predictedArrivalTicks == null ? null : snapshot.tick + predictedArrivalTicks,
+          predictedTerminalPaceMetresPerSecond: Number.isFinite(launch.predictedTerminalPaceMetresPerSecond)
+            ? Math.max(0, launch.predictedTerminalPaceMetresPerSecond) : null,
+          authoredPower: Number.isFinite(launch.authoredPower) ? clamp(launch.authoredPower, 0, 1) : null,
+          meetingContract,
           sourcePlayerId,
           deliberatePass,
           reactionStimulus: deliberatePass ? {
@@ -948,7 +965,7 @@
         y: clamp(leaseBall.position.y + leaseBall.velocity.y * FIXED_TICK_SECONDS,
           METRIC_PITCH.yMin, METRIC_PITCH.yMax)
       } : null;
-      const leaseRecoveryRows = [];
+      const leaseRecoveryRows = [], receptionGuidanceRows = [];
       const currentTackles = new Set(snapshot.players.filter(player => player.tackleActive).map(player => player.id));
       for (const statePlayer of world.players) {
         const livePlayer = snapshot.players.find(player => player.id === statePlayer.id); if (!livePlayer) continue;
@@ -996,6 +1013,7 @@
         // that real MR position instead of continuing toward an unrelated
         // tactical carrier target and letting the ball drift away.
         const recoveryIntent = leaseRecovery || recovery.byId[livePlayer.id] || null;
+        const receptionTarget = maps.reception[livePlayer.id] || null;
         if (isHuman) {
           const control = livePlayer.control || { x: 0, y: 0, strength: 0, sprint: false };
           const rawDirection = control.strength > 0.02 ? unit(control, statePlayer.facing) : null;
@@ -1014,12 +1032,67 @@
               desired = rawDirection; intensity = control.strength;
               mode = control.shield ? 'shield' : control.sprint ? 'sprint' : intensity > 0.38 ? 'run' : 'walk';
             }
+          } else if (receptionTarget && possession && possession.inFlight &&
+              String(possession.intendedReceiverId || '') === String(livePlayer.id)) {
+            const toward = { x: receptionTarget.x - statePlayer.position.x, y: receptionTarget.y - statePlayer.position.y };
+            const receptionDirection = unit(toward, statePlayer.facing), distance = vectorLength(toward);
+            const remainingTicks = Number.isSafeInteger(possession.predictedArrivalTick)
+              ? Math.max(0, possession.predictedArrivalTick - snapshot.tick) : null;
+            const remainingSeconds = remainingTicks == null ? null : remainingTicks * FIXED_TICK_SECONDS;
+            const paceRating = clamp(finite(livePlayer.attrs && livePlayer.attrs.pace, 70), 1, 99);
+            const runCapacity = 4.6 + (6.25 - 4.6) * (paceRating - 1) / 98;
+            const sprintCapacity = 6.35 + (9.15 - 6.35) * (paceRating - 1) / 98;
+            const requiredPace = remainingSeconds == null ? null : distance / Math.max(.08, remainingSeconds);
+            const inputDot = rawDirection ? rawDirection.x * receptionDirection.x + rawDirection.y * receptionDirection.y : 1;
+            const strongOpposingInput = Boolean(rawDirection && control.strength >= HUMAN_RECEPTION_GUIDANCE_STRONG_INPUT &&
+              inputDot < HUMAN_RECEPTION_GUIDANCE_OPPOSING_DOT);
+            const insideGuidanceRange = distance <= HUMAN_RECEPTION_GUIDANCE_MAX_DISTANCE_METRES;
+            const guidanceWeight = !insideGuidanceRange || strongOpposingInput ? 0 : rawDirection
+              ? clamp(.52 - control.strength * .40, .10, .42) : .72;
+            if (distance <= .28) {
+              desired = rawDirection || statePlayer.facing;
+              intensity = rawDirection ? control.strength : 0;
+              mode = intensity <= .02 ? 'idle' : control.shield ? 'shield' : control.sprint ? 'sprint' : intensity > .38 ? 'run' : 'walk';
+            } else if (guidanceWeight > 0) {
+              desired = rawDirection ? unit({
+                x: rawDirection.x * (1 - guidanceWeight) + receptionDirection.x * guidanceWeight,
+                y: rawDirection.y * (1 - guidanceWeight) + receptionDirection.y * guidanceWeight
+              }, receptionDirection) : receptionDirection;
+              const assistedSprint = control.sprint || (!rawDirection && requiredPace != null && requiredPace > runCapacity * .74);
+              const movementCapacity = assistedSprint ? sprintCapacity : runCapacity;
+              const timedIntensity = requiredPace == null
+                ? clamp(distance / 6.5, .34, .84)
+                : clamp(requiredPace / Math.max(.1, movementCapacity) * 1.18 + .08, .38, .98);
+              intensity = Math.max(control.strength, timedIntensity);
+              mode = control.shield ? 'shield' : assistedSprint ? 'sprint' : intensity > .38 ? 'run' : 'walk';
+            } else {
+              desired = rawDirection || desired;
+              intensity = control.strength;
+              mode = intensity <= .02 ? 'idle' : control.shield ? 'shield' : control.sprint ? 'sprint' : intensity > .38 ? 'run' : 'walk';
+            }
+            if (insideGuidanceRange) receptionGuidanceRows.push({
+              playerId: livePlayer.id,
+              teamId: livePlayer.teamId,
+              target: { x: receptionTarget.x, y: receptionTarget.y },
+              distanceMetres: +distance.toFixed(3),
+              etaSeconds: remainingSeconds == null ? null : +remainingSeconds.toFixed(3),
+              requiredPaceMetresPerSecond: requiredPace == null ? null : +requiredPace.toFixed(3),
+              intended: true,
+              human: true,
+              authority: 'v2-human-reception-guidance',
+              guidanceWeight: +guidanceWeight.toFixed(3),
+              inputOverride: strongOpposingInput,
+              predictedArrivalTick: Number.isSafeInteger(possession.predictedArrivalTick) ? possession.predictedArrivalTick : null,
+              predictedTerminalPaceMetresPerSecond: Number.isFinite(possession.predictedTerminalPaceMetresPerSecond)
+                ? +possession.predictedTerminalPaceMetresPerSecond.toFixed(3) : null,
+              meetingContract: possession.meetingContract || null
+            });
           } else {
             desired = rawDirection || desired;
             intensity = control.strength; mode = intensity <= 0.02 ? 'idle' : control.shield ? 'shield' : control.sprint ? 'sprint' : intensity > 0.38 ? 'run' : 'walk';
           }
         } else {
-          const metric = metricPoint(livePlayer, snapshot), runTarget = maps.run[livePlayer.id], receptionTarget = maps.reception[livePlayer.id];
+          const metric = metricPoint(livePlayer, snapshot), runTarget = maps.run[livePlayer.id];
           const carrierTarget = snapshot.ball.ownerId === livePlayer.id ? maps.carrier[livePlayer.teamId] : null;
           const defensiveTarget = defensiveIntent && defensiveIntent.target || null;
           const target = recoveryIntent && recoveryIntent.target || defensiveTarget || receptionTarget || runTarget || carrierTarget || maps.shape[livePlayer.id];
@@ -1057,7 +1130,7 @@
           : { id: 'move:' + livePlayer.id + ':' + nextTick, tick: nextTick, playerId: livePlayer.id, type: 'move', move: desired, facing: desired, mode, intensity, durationTicks: 1,
             ...(isHuman ? { responsivenessMultiplier: HUMAN_INPUT_RESPONSIVENESS_MULTIPLIER } : {}) });
       }
-      return { commands, recoveryAssignments: [...recovery.rows, ...leaseRecoveryRows]
+      return { commands, recoveryAssignments: [...recovery.rows, ...leaseRecoveryRows, ...receptionGuidanceRows]
         .sort((left, right) => left.teamId.localeCompare(right.teamId) || left.playerId.localeCompare(right.playerId)),
         stagedTackleState: new Set([...currentTackles, ...snapshot.players.filter(player => player.shoulderActive).map(player => 'shoulder:' + player.id)]) };
     }
@@ -1464,12 +1537,56 @@
         }
       };
     }
+    function sameRejectedCpuPass(commitment, intent) {
+      if (!commitment || !intent || intent.type !== 'pass' || !intent.target || !commitment.authoredPass) return false;
+      const authored = commitment.authoredPass;
+      if (String(intent.targetPlayerId || '') !== String(authored.targetPlayerId || '') ||
+          String(intent.reason || '') !== String(authored.reason || '') ||
+          String(intent.supportKind || '') !== String(authored.supportKind || '')) return false;
+      return Math.hypot(intent.target.x - authored.target.x, intent.target.y - authored.target.y) <= .75;
+    }
     function gatedCpuOutputs(snapshot, outputs) {
+      const commitments = clone(domain.cpuRejectedPassCommitments || { you: null, opp: null });
       const owner = snapshot.ball.ownerId && snapshot.players.find(player => player.id === snapshot.ball.ownerId);
-      if (!owner || snapshot.humanPlayerIds.has(owner.id)) return outputs;
+      if (!owner || snapshot.humanPlayerIds.has(owner.id)) {
+        return { outputs, commitments: { you: null, opp: null } };
+      }
+      for (const teamId of ['you', 'opp']) {
+        const commitment = commitments[teamId];
+        if (commitment && (teamId !== owner.teamId || commitment.teamId !== owner.teamId ||
+            commitment.ownerId !== owner.id || snapshot.tick > commitment.untilTick)) commitments[teamId] = null;
+      }
       const decision = outputs[owner.teamId], intent = decision && decision.carrierIntent;
-      if (!intent || intent.type !== 'pass') return outputs;
+      if (!intent || intent.type !== 'pass') {
+        commitments[owner.teamId] = null;
+        return { outputs, commitments };
+      }
       const candidateIntent = boundarySafeCpuPassIntent(intent);
+      const commitment = commitments[owner.teamId];
+      if (commitment && sameRejectedCpuPass(commitment, candidateIntent)) {
+        const heldRace = {
+          schema: 'football-legacy-cpu-pass-receiver-race-v2',
+          accepted: false,
+          reason: 'rejected-pass-commitment-held',
+          held: true,
+          passerId: owner.id,
+          receiverId: commitment.receiverId,
+          evaluatedTick: commitment.evaluatedTick,
+          untilTick: commitment.untilTick,
+          sourceRejectedRace: clone(commitment.rejectedRace)
+        };
+        const heldIntent = clone(commitment.fallbackIntent);
+        return { commitments, outputs: {
+          ...outputs,
+          [owner.teamId]: {
+            ...decision,
+            carrierIntent: heldIntent,
+            telemetry: { ...clone(decision.telemetry || {}), passReceiverRace: heldRace,
+              passReceiverRaceFallback: clone(heldIntent) }
+          }
+        } };
+      }
+      commitments[owner.teamId] = null;
       let selectedIntent = candidateIntent;
       const originalRace = lightweightShortSupportRace(snapshot, owner, candidateIntent) ||
         evaluateCpuPassRace(snapshot, owner, candidateIntent);
@@ -1488,7 +1605,24 @@
       }
       const carrierIntent = acceptedRace.accepted ? { ...clone(selectedIntent), passRace: acceptedRace }
         : rejectedPassFallback(snapshot, owner, originalRace);
-      return {
+      const acceptedFallbackPass = carrierIntent.type === 'pass' && carrierIntent.passRace &&
+        carrierIntent.passRace.accepted === true;
+      commitments[owner.teamId] = acceptedRace.accepted || acceptedFallbackPass ? null : {
+        teamId: owner.teamId,
+        ownerId: owner.id,
+        receiverId: candidateIntent.targetPlayerId == null ? null : String(candidateIntent.targetPlayerId),
+        evaluatedTick: snapshot.tick,
+        untilTick: snapshot.tick + CPU_REJECTED_PASS_COMMITMENT_TICKS - 1,
+        authoredPass: {
+          targetPlayerId: candidateIntent.targetPlayerId == null ? null : String(candidateIntent.targetPlayerId),
+          target: clone(candidateIntent.target),
+          reason: String(candidateIntent.reason || ''),
+          supportKind: candidateIntent.supportKind == null ? null : String(candidateIntent.supportKind)
+        },
+        fallbackIntent: clone(carrierIntent),
+        rejectedRace: clone(originalRace)
+      };
+      return { commitments, outputs: {
         ...outputs,
         [owner.teamId]: {
           ...decision,
@@ -1496,7 +1630,7 @@
           telemetry: { ...clone(decision.telemetry || {}), passReceiverRace: clone(acceptedRace),
             passReceiverRaceFallback: acceptedRace.accepted ? null : clone(carrierIntent) }
         }
-      };
+      } };
     }
     function goalEnvironment() {
       return { colliders: [
@@ -1925,7 +2059,12 @@
           : snapshot;
         const possession = derivePossession(controlSnapshot), phaseState = phaseAuthority(controlSnapshot, possession);
         const formations = formationOutputs(controlSnapshot, phaseState), cpu = cpuOutputs(controlSnapshot, formations, possession);
-        if (authorityProfile.cpuPassRaceFilter) cpu.outputs = gatedCpuOutputs(controlSnapshot, cpu.outputs);
+        let cpuRejectedPassCommitments = { you: null, opp: null };
+        if (authorityProfile.cpuPassRaceFilter) {
+          const gated = gatedCpuOutputs(controlSnapshot, cpu.outputs);
+          cpu.outputs = gated.outputs;
+          cpuRejectedPassCommitments = gated.commitments;
+        }
         const currentMovement = movementWorld(controlSnapshot), commands = movementCommands(controlSnapshot, currentMovement.world, formations, cpu.outputs, possession);
         const movement = dependencies.movement.advance(currentMovement.world, commands.commands, 1, { fixedTickSeconds: FIXED_TICK_SECONDS });
         const movementProjection = movement.state.players.map(player => {
@@ -2124,6 +2263,7 @@
             dribbling: dribblingProjection,
             authorityCounters: { legacyOutfieldLocomotion: 0, legacyCpu: 0, legacyLooseBallIntegration: 0, candidateTicks: 1 } },
           staged: { world: stagedWorld, rosterSignature: currentMovement.signature, cpuMemories: cpu.memories,
+            cpuRejectedPassCommitments: clone(cpuRejectedPassCommitments),
             ballState: stagedBallState, ballContext: plannedBall.stagedContext, lastBallProjection: stagedBallProjection,
             lastLaunchSequence: plannedBall.stagedLaunchSequence, lastTackleState: commands.stagedTackleState,
             lastCarrierEmission: intelligence.stagedCarrierEmission, possession: postMovementPossession, transition: stagedTransition,
@@ -2272,6 +2412,8 @@
   return Object.freeze({
     VERSION, ACKNOWLEDGEMENT, SUPPORTED_WORKFLOWS, REQUIRED_DEPENDENCIES, DEPENDENCY_CONTRACTS,
     FIXED_TICK_SECONDS, METRIC_PITCH, TURNOVER_TACKLE_PROTECTION_TICKS,
+    HUMAN_RECEPTION_GUIDANCE_MAX_DISTANCE_METRES, HUMAN_RECEPTION_GUIDANCE_STRONG_INPUT,
+    HUMAN_RECEPTION_GUIDANCE_OPPOSING_DOT,
     cpuPhysicalActionAllowed, stableHash, createCapability, createAttachment
   });
 });

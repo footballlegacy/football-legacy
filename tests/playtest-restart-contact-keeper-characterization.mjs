@@ -169,13 +169,19 @@ test('CPU throw solver lands across the legal range in legacy and V2 authority',
 
 test('controlled touches atomically clear stale throw and cross flight metadata', () => {
   const clearSource = section('function clearControlledTouchFlightMetadata', 'function clearAerialAssignments');
-  const clear = new Function(`${clearSource};return clearControlledTouchFlightMetadata;`)();
+  const runtime = new Function(`
+    const aerialClearReasons=[];
+    const clearHumanAerialFinishIntent=reason=>{aerialClearReasons.push(reason);return true;};
+    ${clearSource}
+    return { clear:clearControlledTouchFlightMetadata, aerialClearReasons };
+  `)();
   const state = {
     flightType: 'throw-in', flightAge: 35, aerialSource: { id: 'thrower' }, aerialCooldown: 9, minAerialFlightAge: 22,
     crossContestLogged: true, crossNoContactLogged: true, crossContactFrame: 31, crossContactHeight: 13, crossAuditId: 'old',
     trajectoryProfile: { old: true }, aimTarget: { x: 1 }, dip: .3, spin: .4, curveAccel: .2
   };
-  assert.equal(clear(state), true);
+  assert.equal(runtime.clear(state), true);
+  assert.deepEqual(runtime.aerialClearReasons, ['controlled-touch']);
   assert.deepEqual(state, {
     flightType: null, flightAge: 0, aerialSource: null, aerialCooldown: 0, minAerialFlightAge: 0,
     crossContestLogged: false, crossNoContactLogged: false, crossContactFrame: null, crossContactHeight: null, crossAuditId: null,

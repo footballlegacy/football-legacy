@@ -52,13 +52,14 @@
           <span class="heading-arrow" aria-hidden="true">⌄</span>
         </button>
         <div class="menu-panel" id="panel-quick-play" hidden>
-          <p>Choose one player against the AI, or play local two-player with one controller on each team.</p>
-          <div class="button-grid two-up">
-            <a class="action-button" href="quick-play/index.html?mode=single-player">Single Player</a>
-            <a class="action-button" href="quick-play/index.html?mode=co-op">Co-op</a>
-            <a class="action-button" href="match-engine/match.html?year=2026&amp;difficulty=medium&amp;weather=clear&amp;camera=broadcast&amp;controllerTest=1">PS5 Controller Test</a>
+          <p>Play the current FL V2 build in Single Player, CPU vs CPU or the Set-Piece Suite.</p>
+          <div class="button-grid three-up">
+            <a class="action-button primary" href="quick-play/index.html?mode=single-player&amp;engine=fl-v2&amp;candidate=4">Single Player · FL V2</a>
+            <a class="action-button" href="quick-play/index.html?mode=spectator&amp;engine=fl-v2&amp;candidate=4">CPU vs CPU · FL V2</a>
+            <a class="action-button" href="quick-play/index.html?mode=free-kick-suite&amp;engine=fl-v2&amp;candidate=4">Set-Piece Suite · FL V2</a>
+            <button class="action-button" type="button" disabled aria-disabled="true">Co-op · V2 migration pending</button>
           </div>
-          <p class="fine-print">PS5 Controller Test skips setup: the first detected controller is Home and the second is Away. Pair both in macOS, press a button on each, then open the test.</p>
+          <p class="fine-print">FL V2 is now the only playable match engine. Local two-player and same-team co-op will return after their V2 authority work is complete; they cannot fall back to the previous build.</p>
         </div>
       </article>
 
@@ -68,11 +69,11 @@
           <span class="heading-arrow" aria-hidden="true">⌄</span>
         </button>
         <div class="menu-panel" id="panel-online" hidden>
-          <p>Create a private Home-versus-Away room and play a friend over the internet. The host takes Home; the joining player takes Away.</p>
+          <p>Online Versus is unavailable while its match authority is migrated to FL V2.</p>
           <div class="button-grid two-up">
-            <a class="action-button primary" href="online/index.html">Online Versus</a>
+            <button class="action-button" type="button" disabled aria-disabled="true">Online Versus · V2 migration pending</button>
           </div>
-          <p class="fine-print">Online is an early friends-only prototype. Both players need the same build and an internet connection.</p>
+          <p class="fine-print">There is no previous-engine fallback. Online play returns only when it runs under the current FL V2 authority.</p>
         </div>
       </article>
 

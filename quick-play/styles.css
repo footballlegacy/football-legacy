@@ -12,7 +12,11 @@
 @media(max-width:760px){.tactic-controls{grid-template-columns:1fr}}
 .online-quick-play .online-locked{position:relative;opacity:.68}.online-quick-play .online-locked::after{content:'Opponent controls this side';position:absolute;top:10px;right:10px;z-index:3;padding:5px 8px;background:rgba(3,16,31,.90);border:1px solid rgba(255,255,255,.16);color:#aab7c5;font-size:.52rem;font-weight:900;letter-spacing:.10em;text-transform:uppercase;pointer-events:none}.online-quick-play select:disabled{cursor:not-allowed;filter:saturate(.45)}
 
-/* FL V2 stays an explicit, offline Single Player playtest; this status always names the effective engine. */
+/* FL V2 is the fixed playable engine; this status always names the effective engine. */
+.engine-lock{min-height:72px;padding:10px 12px;display:grid;align-content:center;gap:5px;border:1px solid rgba(77,157,107,.62);border-left:4px solid var(--green);background:rgba(77,157,107,.09)}
+.engine-lock>span{color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.engine-lock>strong{color:var(--cream);font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.engine-lock>small{color:var(--muted);font-size:10px}
 .engine-status{margin-top:14px;padding:13px 14px;border:1px solid rgba(255,255,255,.09);border-left:4px solid var(--orange);background:rgba(255,255,255,.035);color:var(--muted);font-size:12px;line-height:1.5}.engine-status strong{color:var(--cream)}.engine-status[data-effective-engine="fl-v2"]{border-color:rgba(77,157,107,.62);border-left-color:var(--green);background:rgba(77,157,107,.09)}
 
 /* The confirmation-page stadium strip previously had markup but no layout,

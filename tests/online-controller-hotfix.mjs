@@ -14,8 +14,8 @@ const check = (condition, message) => {
   passed += 1;
 };
 
-check(onlineHtml.includes('../controller-ui.js?v=174-controller-input-ready-1'), 'Online shell must load the reconnect-safe, input-verified shared controller UI');
-check(onlineHtml.includes('id="hostButton" type="button" data-controller-default'), 'Host must be the default controller target');
+check(!onlineHtml.includes('<script') && !onlineHtml.includes('id="hostButton"'), 'The public Online page must not load the dormant transport or expose a playable host control');
+check(onlineHtml.includes('V2 migration pending') && onlineHtml.includes('no legacy fallback'), 'Online must explain that it is unavailable until V2 authority is complete');
 check(onlineApp.includes("const BUILD='172'"), 'Online peers must reject pre-hotfix builds');
 check(onlineApp.includes("childSend({type:'menu-input',pad,connected:!!gamepad"), 'Top-level pad state must reach the setup iframe');
 check(!onlineApp.includes('acceptancePad'), 'No synthetic acceptance pad may ship');

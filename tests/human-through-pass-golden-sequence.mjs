@@ -295,7 +295,8 @@ function throughHarness({ source, teammates, direction, power }) {
   );
   const launchCalls = [];
   const ball = { owner: source, x: source.x, y: source.y, z: 0, stats: {} };
-  const context = vm.createContext({
+  let context;
+  context = vm.createContext({
     started: true,
     paused: false,
     inReset: () => false,
@@ -313,6 +314,12 @@ function throughHarness({ source, teammates, direction, power }) {
     predictiveLaneRisk: () => 0,
     other: team => team === 'you' ? 'opp' : 'you',
     D: (left, right) => Math.hypot(left.x - right.x, left.y - right.y),
+    worldDistanceMetres: (dx, dy) => Math.hypot(dx / X_PER_METRE, dy / Y_PER_METRE),
+    worldBallSpeedForMetresPerSecond: (pace, dx, dy) => {
+      const magnitude = Math.hypot(dx, dy) || 1;
+      const metresPerWorldUnit = Math.hypot((dx / magnitude) / X_PER_METRE, (dy / magnitude) / Y_PER_METRE);
+      return clamp(pace, 0, 40) / (60 * Math.max(0.0001, metresPerWorldUnit));
+    },
     M,
     W,
     H,
@@ -330,10 +337,18 @@ function throughHarness({ source, teammates, direction, power }) {
     flairFailureAnimation: () => null,
     launchMatchBall: (actor, point, details) => {
       launchCalls.push({ actor, point: { ...point }, details: { ...details } });
+      context.liveV2PendingLaunch = {
+        sequence: `test-launch-${launchCalls.length}`,
+        sourcePlayerId: actor.id,
+        targetPlayerId: details.targetPlayer?.id || null,
+        target: { ...point }
+      };
       ball.owner = null;
       ball.target = details.targetPlayer || null;
       return true;
     },
+    liveV2PendingLaunch: null,
+    clockFrames: 1000,
     restartMsg: '',
     SAME_TEAM_COOP: false,
     AUTO: false,
@@ -360,9 +375,45 @@ function throughHarness({ source, teammates, direction, power }) {
   return {
     result,
     launch: launchCalls[0],
+    pendingLaunch: JSON.parse(JSON.stringify(context.liveV2PendingLaunch)),
     controlled: context.controlled,
     minDot: context.throughMinDot
   };
+}
+
+function currentGroundThroughTrajectory(power, distanceMetres) {
+  const trajectorySource = sourceBetween(
+    matchSource,
+    'function humanGroundThroughTrajectory',
+    'function humanGroundPassMeetingWithinRange'
+  );
+  const context = vm.createContext({ clamp });
+  vm.runInContext(`${trajectorySource}\nthis.humanGroundThroughTrajectory=humanGroundThroughTrajectory;`, context, {
+    filename: 'current-human-ground-through-trajectory.vm.js'
+  });
+  return JSON.parse(JSON.stringify(context.humanGroundThroughTrajectory(power, distanceMetres)));
+}
+
+function runMetricGroundRendezvous(distanceMetres, trajectory) {
+  const launch = Ball.resolveLaunch({
+    id: 'ground-through-matrix',
+    origin: { x: 0, y: 0, z: 0.11 + 1 / PITCH_UNITS_PER_METRE },
+    target: { x: distanceMetres, y: 0, z: 0.11 },
+    speed: trajectory.launchPaceMps,
+    liftAngleDeg: 0,
+    sideSpinRpm: 0,
+    topSpinRpm: 0,
+    axialSpinRpm: 0,
+    source: 'ground-through-ball'
+  });
+  let state = launch.state;
+  let context = Ball.createSimulationContext({ seed: 173 });
+  for (let tick = 0; tick < trajectory.predictedArrivalTicks; tick += 1) {
+    const output = Ball.step(state, context, 1 / 60);
+    state = output.state;
+    context = output.context;
+  }
+  return state;
 }
 
 function runMagnusReynoldsFlight(originHost, targetHost, speedWorld, loftWorld, ticks, config = undefined) {
@@ -514,7 +565,7 @@ function resolveShotHandoff(ownerId) {
   });
 }
 
-test('golden Bergkamp to Henry slide-through preserves human charge, buffered direction, MR flight, cushion and shot handoff', () => {
+test('golden-derived Bergkamp to Henry conditions preserve authored channel, runner handoff, MR rendezvous, cushion and shot emergence', () => {
   const charged = currentControllerThroughCharge(GOLDEN.pressToReleaseMs);
   assert.equal(GOLDEN.releaseFrame - GOLDEN.pressFrame, 8);
   assert.equal(GOLDEN.pressToReleaseMs / GOLDEN.chargeDivisorMs, 0.125);
@@ -582,8 +633,13 @@ test('golden Bergkamp to Henry slide-through preserves human charge, buffered di
   assert.equal(through.result.leadDistance, GOLDEN.leadHostUnits);
   assert.equal(through.result.landing.x, GOLDEN.landing.x);
   assert.equal(through.result.landing.y, GOLDEN.landing.y);
-  assert.equal(through.result.speed, GOLDEN.launchPaceHostPerTick);
   assert.equal(through.result.loft, 0.1);
+  assert.equal(through.result.calibration, 'mr-v2-ground-triangle-rendezvous-2026-08-13');
+  assert.ok(through.result.paceMps > through.result.predictedTerminalPaceMps);
+  assert.ok(through.result.predictedArrivalTicks > 0);
+  assert.deepEqual(through.pendingLaunch.authoredMeeting, through.launch.point);
+  assert.equal(through.pendingLaunch.predictedArrivalTicks, through.result.predictedArrivalTicks);
+  assert.equal(through.pendingLaunch.meetingContract, through.result.meetingContract);
 
   const inferredOrigin = {
     x: bergkamp.x + face.x * (12.75 + 12),
@@ -594,13 +650,14 @@ test('golden Bergkamp to Henry slide-through preserves human charge, buffered di
   const mr = runMagnusReynoldsFlight(
     inferredOrigin,
     through.launch.point,
-    through.result.speed,
-    through.result.loft,
-    GOLDEN.arrivalFrames
+    through.launch.details.v2SpeedWorld,
+    through.launch.details.v2LoftWorld,
+    through.result.predictedArrivalTicks
   );
-  assert.ok(Math.abs(mr.host.x - GOLDEN.receptionBall.x) <= 25, `MR x ${mr.host.x}`);
-  assert.ok(Math.abs(mr.host.y - GOLDEN.receptionBall.y) <= 10, `MR y ${mr.host.y}`);
-  assert.ok(Math.abs(mr.host.pace - GOLDEN.arrivalPaceHostPerTick) <= 0.25, `MR pace ${mr.host.pace}`);
+  assert.ok(Math.abs(mr.host.x - through.launch.point.x) <= X_PER_METRE * 0.35, `MR x ${mr.host.x}`);
+  assert.ok(Math.abs(mr.host.y - through.launch.point.y) <= Y_PER_METRE * 0.35, `MR y ${mr.host.y}`);
+  assert.ok(Math.abs(Math.hypot(mr.state.velocity.x, mr.state.velocity.y) - through.result.predictedTerminalPaceMps) <= 0.35,
+    `MR terminal pace ${Math.hypot(mr.state.velocity.x, mr.state.velocity.y)}`);
 
   const reception = resolveGoldenReception(mr.state);
   assert.equal(reception.outcome, 'controlled');
@@ -613,6 +670,43 @@ test('golden Bergkamp to Henry slide-through preserves human charge, buffered di
   assert.equal(shot.releasedAction.type, 'shot');
   assert.equal(shot.releasedAction.actorId, henry.id);
   assert.equal(shot.releasedAction.power, GOLDEN.shotPower);
+});
+
+test('RK9FS8 ground-Triangle matrix reaches each authored meeting under production Ball V2 with monotonic charge pace', () => {
+  // These are the six ground-Triangle releases recorded by the confirmed V2
+  // PC playtest. Distances are measured from its logged release-ball position
+  // to its authored landing in regulation pitch metres; no replay outcome is
+  // baked into production code.
+  const rk9fs8 = [
+    { frame: 657, power: 0.163, distanceMetres: 8.4102 },
+    { frame: 1503, power: 0.222, distanceMetres: 23.6324 },
+    { frame: 1825, power: 0.312, distanceMetres: 14.6506 },
+    { frame: 2148, power: 0.428, distanceMetres: 16.4824 },
+    { frame: 3211, power: 0.138, distanceMetres: 13.6029 },
+    { frame: 5484, power: 0.209, distanceMetres: 18.1659 }
+  ];
+  for (const sample of rk9fs8) {
+    const trajectory = currentGroundThroughTrajectory(sample.power, sample.distanceMetres);
+    const state = runMetricGroundRendezvous(sample.distanceMetres, trajectory);
+    assert.equal(trajectory.model, 'mr-v2-ground-triangle-rendezvous-2026-08-13');
+    assert.ok(Math.abs(state.position.x - sample.distanceMetres) <= 0.22,
+      `frame ${sample.frame}: expected ${sample.distanceMetres}m, got ${state.position.x}m`);
+    assert.ok(Math.abs(state.position.y) <= 0.02, `frame ${sample.frame}: lateral drift ${state.position.y}m`);
+    assert.ok(Math.abs(Math.hypot(state.velocity.x, state.velocity.y) - trajectory.terminalPaceMps) <= 0.35,
+      `frame ${sample.frame}: terminal pace ${Math.hypot(state.velocity.x, state.velocity.y)}m/s`);
+  }
+
+  for (const distanceMetres of [8.4102, 13.6029, 18.1659, 23.6324]) {
+    const low = currentGroundThroughTrajectory(0.138, distanceMetres);
+    const medium = currentGroundThroughTrajectory(0.428, distanceMetres);
+    const high = currentGroundThroughTrajectory(0.82, distanceMetres);
+    assert.ok(low.launchPaceMps < medium.launchPaceMps && medium.launchPaceMps < high.launchPaceMps,
+      `launch pace must increase with held power at ${distanceMetres}m`);
+  }
+  const distanceSeries = [8.4102, 13.6029, 18.1659, 23.6324]
+    .map(distanceMetres => currentGroundThroughTrajectory(0.222, distanceMetres).launchPaceMps);
+  assert.ok(distanceSeries.every((pace, index) => index === 0 || pace > distanceSeries[index - 1]),
+    `authored distance must increase required launch pace: ${distanceSeries.join(',')}`);
 });
 
 test('RED: through assistance cannot select a runner outside the full-stick authored channel', () => {
@@ -728,6 +822,52 @@ test('CUO5O ground Triangle nominates the first route intersection without chang
     x: toure.x, y: toure.y, vx: toure.vx, vy: toure.vy,
     aiTarget: toure.aiTarget, intent: toure.intent
   }, routeBefore, 'receiver registration must not mutate the independent runner route');
+});
+
+test('stationary Ljungberg reads the exact MR meeting without redirecting the authored Triangle', () => {
+  const source = {
+    id: 'stationary-read-passer', name: 'Stationary Read Passer', team: 'you', role: 'mid', attackRole: 'carrier',
+    x: 2000, y: 1500, vx: 0, vy: 0, fx: 0, fy: -1,
+    attrs: { pass: 92 }, stats: { touches: 0 }, sentOff: false, isGK: false
+  };
+  const direction = { x: 0, y: -1 };
+  const ljungberg = {
+    id: 'ars-ljungberg', name: 'Freddie Ljungberg', team: 'you', role: 'mid', attackRole: 'diagonal-run',
+    x: 1880, y: 1050, vx: 0, vy: 0,
+    attrs: { pass: 88, pace: 91 }, stats: { touches: 0 }, sentOff: false, isGK: false
+  };
+  const runnerBefore = structuredClone(ljungberg);
+  const baseline = throughHarness({
+    source: structuredClone(source), teammates: [], direction, power: 0.3
+  });
+  const registered = throughHarness({ source, teammates: [ljungberg], direction, power: 0.3 });
+
+  assert.equal(baseline.result.targetId, null, 'authored space pass must remain valid without a receiver');
+  assert.equal(registered.result.targetId, ljungberg.id);
+  assert.equal(registered.result.receiverRegistration, 'stationary-receiver-reaches-authored-ground-meeting');
+  assert.equal(registered.controlled, ljungberg, 'the stationary reader must receive control at launch');
+  assert.equal(registered.launch.details.targetPlayer, ljungberg);
+  assert.equal(registered.pendingLaunch.targetPlayerId, ljungberg.id);
+  assert.deepEqual(registered.launch.point, baseline.launch.point, 'receiver nomination must not redirect Triangle');
+  assert.deepEqual(registered.pendingLaunch.target, baseline.launch.point);
+  assert.deepEqual(registered.pendingLaunch.authoredMeeting, baseline.launch.point);
+  assert.equal(registered.result.speed, baseline.result.speed, 'receiver nomination must not reweight host presentation');
+  assert.equal(registered.result.paceMps, baseline.result.paceMps, 'receiver nomination must not reweight Ball V2');
+  assert.equal(registered.result.predictedArrivalTicks, baseline.result.predictedArrivalTicks);
+  assert.equal(registered.result.leadDistance, baseline.result.leadDistance, 'held power must remain authoritative');
+  assert.equal(registered.result.meetingContract, 'mr-v2-ground-triangle-rendezvous-2026-08-13');
+  assert.deepEqual(ljungberg, runnerBefore, 'registration must not invent or mutate an off-ball route');
+
+  const activeReader = {
+    ...structuredClone(runnerBefore), id: 'ars-henry', name: 'Thierry Henry', x: 1872, y: 1040,
+    aiTarget: { ...baseline.launch.point }
+  };
+  const ranked = throughHarness({
+    source: structuredClone(source), teammates: [structuredClone(runnerBefore), activeReader], direction, power: 0.3
+  });
+  assert.equal(ranked.result.targetId, activeReader.id,
+    'an aligned active runner remains a ranking bonus among receivers who can reach the same immutable meeting');
+  assert.deepEqual(ranked.launch.point, baseline.launch.point);
 });
 
 test('human hold power and independent runner motion influence the rendezvous without forcing a pattern', () => {

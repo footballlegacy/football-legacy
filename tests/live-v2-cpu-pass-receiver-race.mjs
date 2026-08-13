@@ -87,6 +87,25 @@ function forcedShortSupportCpu(target) {
   };
 }
 
+function sequencedCpu(firstTarget, nextIntent) {
+  let controlledDecision = 0;
+  return {
+    ...CPU,
+    decide(snapshot, previousMemory, options) {
+      const decision = CPU.decide(snapshot, previousMemory, options);
+      if (snapshot.teamId !== snapshot.possessionTeamId || snapshot.carrierId == null) return decision;
+      controlledDecision += 1;
+      return {
+        ...decision,
+        carrierIntent: controlledDecision === 1 ? {
+          type: 'pass', targetPlayerId: RECEIVER_ID, target: { ...firstTarget },
+          confidence: .91, reason: 'forced-pass-race-fixture'
+        } : structuredClone(nextIntent)
+      };
+    }
+  };
+}
+
 function snapshotFixture({ tick = 1, workflow = 'cpu-v-cpu', receiver = { x: 55, y: 0 },
   receiverVelocity = { x: 0, y: 0 }, target = { x: 55, y: 0 }, interceptor = null,
   interceptorVelocity = { x: 0, y: 0 } } = {}) {
@@ -191,11 +210,13 @@ function capability(workflow) {
   });
 }
 
-function attachment(workflow, target) {
+function attachment(workflow, target, options = {}) {
   return Adapter.createAttachment({
     enabled: true,
     capability: capability(workflow),
     seed: 201020,
+    cpuPassRaceFilter: options.cpuPassRaceFilter,
+    trueFeelPhysicalTouchAuthority: options.trueFeelPhysicalTouchAuthority,
     dependencies: { ball: Ball, movement: Movement, cpu: forcedPassCpu(target), formation: Formation,
       contact: Contact, dribbling: Dribbling },
     host: { prepareTick() { return { commit() {}, rollback() {} }; } }
@@ -224,11 +245,38 @@ function shortSupportAttachment(target) {
   });
 }
 
+function sequencedAttachment(target, nextIntent) {
+  return Adapter.createAttachment({
+    enabled: true,
+    capability: capability('cpu-v-cpu'),
+    seed: 201023,
+    dependencies: { ball: Ball, movement: Movement, cpu: sequencedCpu(target, nextIntent),
+      formation: Formation, contact: Contact, dribbling: Dribbling },
+    host: { prepareTick() { return { commit() {}, rollback() {} }; } }
+  });
+}
+
 function runTick(live, snapshot) {
   const frame = live.planTick(snapshot);
   assert.ok(frame, JSON.stringify(live.status()));
   assert.equal(live.commitTick(frame), true, JSON.stringify(live.status()));
   return frame;
+}
+
+function canonical(value) {
+  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
+  if (!value || typeof value !== 'object') return JSON.stringify(value);
+  return '{' + Object.keys(value).sort()
+    .map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
+}
+
+function withValidChecksum(serialized) {
+  const payload = structuredClone(serialized);
+  delete payload.checksum;
+  return {
+    ...payload,
+    checksum: Adapter.stableHash(canonical(payload)).toString(16).padStart(8, '0')
+  };
 }
 
 function launchSnapshotFromAcceptedPass(fixture, frame) {
@@ -342,6 +390,178 @@ test('CPU-v-CPU rejects both a receiver that cannot arrive and an interception r
   assert.equal(contestedIntent.passRace.accepted, false);
   assert.equal(contestedIntent.passRace.reason, 'interception-margin-below-six-ticks');
   assert.ok(contestedIntent.passRace.opponentContactTick < contestedIntent.passRace.receiverContactTick + 6);
+});
+
+test('a rejected CPU pass holds its existing fallback for exactly six committed ticks', () => {
+  const fixture = snapshotFixture({ receiver: { x: 10, y: 28 }, target: { x: 78, y: 0 } });
+  const live = attachment('cpu-v-cpu', fixture.target);
+  const frames = [];
+  for (let tick = 1; tick <= 7; tick += 1) {
+    const snapshot = structuredClone(fixture.snapshot);
+    snapshot.tick = tick;
+    frames.push(runTick(live, snapshot));
+  }
+  const first = frames[0].cpu.you.carrierIntent;
+  assert.equal(first.fallbackFrom, 'pass');
+  assert.equal(frames[0].cpu.you.telemetry.passReceiverRace.held, undefined);
+  for (let index = 1; index < 6; index += 1) {
+    assert.deepEqual(frames[index].cpu.you.carrierIntent, first);
+    assert.equal(frames[index].cpu.you.telemetry.passReceiverRace.reason,
+      'rejected-pass-commitment-held');
+    assert.equal(frames[index].cpu.you.telemetry.passReceiverRace.evaluatedTick, 1);
+    assert.equal(frames[index].cpu.you.telemetry.passReceiverRace.untilTick, 6);
+  }
+  assert.notEqual(frames[6].cpu.you.telemetry.passReceiverRace.reason,
+    'rejected-pass-commitment-held');
+  assert.equal(live.status().cpuRejectedPassCommitments.you.evaluatedTick, 7);
+  assert.equal(live.status().cpuRejectedPassCommitments.you.untilTick, 12);
+});
+
+test('a rejected-pass commitment cancels on CPU owner or possession-team change', () => {
+  const fixture = snapshotFixture({ receiver: { x: 10, y: 28 }, target: { x: 78, y: 0 } });
+  const live = attachment('cpu-v-cpu', fixture.target);
+  runTick(live, fixture.snapshot);
+  assert.equal(live.status().cpuRejectedPassCommitments.you.ownerId, OWNER_ID);
+
+  const changedOwner = structuredClone(fixture.snapshot);
+  changedOwner.tick = 2;
+  changedOwner.ball.ownerId = 'you-LCM';
+  const ownerFrame = runTick(live, changedOwner);
+  assert.notEqual(ownerFrame.cpu.you.telemetry.passReceiverRace.reason,
+    'rejected-pass-commitment-held');
+  assert.notEqual(live.status().cpuRejectedPassCommitments.you?.ownerId, OWNER_ID);
+
+  const changedTeam = structuredClone(fixture.snapshot);
+  changedTeam.tick = 3;
+  changedTeam.ball.ownerId = 'opp-LCM';
+  const teamFrame = runTick(live, changedTeam);
+  assert.notEqual(teamFrame.cpu.opp.telemetry.passReceiverRace.reason,
+    'rejected-pass-commitment-held');
+  assert.equal(live.status().cpuRejectedPassCommitments.you, null);
+  assert.notEqual(live.status().cpuRejectedPassCommitments.opp?.ownerId, OWNER_ID);
+});
+
+test('accepted passes and human ownership never create or consume rejected-pass commitments', () => {
+  const accepted = snapshotFixture();
+  const acceptedLive = attachment('cpu-v-cpu', accepted.target);
+  const acceptedFrame = runTick(acceptedLive, accepted.snapshot);
+  assert.equal(acceptedFrame.cpu.you.carrierIntent.passRace.accepted, true);
+  assert.deepEqual(acceptedLive.status().cpuRejectedPassCommitments, { you: null, opp: null });
+
+  const human = snapshotFixture({ workflow: 'single-player', receiver: { x: 10, y: 28 }, target: { x: 78, y: 0 } });
+  const humanLive = attachment('single-player', human.target);
+  const humanFrame = runTick(humanLive, human.snapshot);
+  assert.equal(Object.hasOwn(humanFrame.cpu.you.carrierIntent, 'passRace'), false);
+  assert.deepEqual(humanLive.status().cpuRejectedPassCommitments, { you: null, opp: null });
+});
+
+test('a newly available shot immediately cancels a rejected-pass commitment', () => {
+  const fixture = snapshotFixture({ receiver: { x: 10, y: 28 }, target: { x: 78, y: 0 } });
+  const live = sequencedAttachment(fixture.target, {
+    type: 'shot', targetPlayerId: null, target: { x: 105, y: 0 },
+    confidence: .95, reason: 'new-shot-lane-open'
+  });
+  runTick(live, fixture.snapshot);
+  const next = structuredClone(fixture.snapshot);
+  next.tick = 2;
+  const frame = runTick(live, next);
+  assert.equal(frame.cpu.you.carrierIntent.type, 'shot');
+  assert.equal(frame.cpu.you.carrierIntent.reason, 'new-shot-lane-open');
+  assert.equal(live.status().cpuRejectedPassCommitments.you, null);
+});
+
+test('a meaningfully new pass target immediately cancels and reevaluates a rejected pass', () => {
+  const fixture = snapshotFixture({ receiver: { x: 10, y: 28 }, target: { x: 78, y: 0 } });
+  const nextTarget = { x: 55, y: 0 };
+  const live = sequencedAttachment(fixture.target, {
+    type: 'pass', targetPlayerId: RECEIVER_ID, target: nextTarget,
+    confidence: .94, reason: 'release-newly-opened-run'
+  });
+  runTick(live, fixture.snapshot);
+  const next = structuredClone(fixture.snapshot);
+  next.tick = 2;
+  const frame = runTick(live, next);
+  assert.notEqual(frame.cpu.you.telemetry.passReceiverRace.reason,
+    'rejected-pass-commitment-held');
+  assert.equal(frame.cpu.you.telemetry.passReceiverRace.evaluatedTick, 2);
+  assert.equal(frame.cpu.you.telemetry.passReceiverRace.receiverId, RECEIVER_ID);
+  const currentCommitment = live.status().cpuRejectedPassCommitments.you;
+  assert.ok(currentCommitment == null || currentCommitment.evaluatedTick === 2);
+  assert.notEqual(currentCommitment?.authoredPass?.reason, 'forced-pass-race-fixture');
+});
+
+test('an active rejected-pass commitment is transactional and export-restore identical', () => {
+  const fixture = snapshotFixture({ receiver: { x: 10, y: 28 }, target: { x: 78, y: 0 } });
+
+  const rolledBack = attachment('cpu-v-cpu', fixture.target);
+  const uncommitted = rolledBack.planTick(structuredClone(fixture.snapshot));
+  assert.ok(uncommitted);
+  assert.deepEqual(rolledBack.status().cpuRejectedPassCommitments, { you: null, opp: null });
+  const prepared = rolledBack.prepareCommit(uncommitted);
+  assert.ok(prepared);
+  assert.equal(rolledBack.abortPrepared(prepared), true);
+  assert.deepEqual(rolledBack.status().cpuRejectedPassCommitments, { you: null, opp: null });
+
+  const direct = attachment('cpu-v-cpu', fixture.target);
+  const checkpointed = attachment('cpu-v-cpu', fixture.target);
+  runTick(direct, structuredClone(fixture.snapshot));
+  runTick(checkpointed, structuredClone(fixture.snapshot));
+  const checkpoint = structuredClone(checkpointed.exportState());
+  assert.equal(checkpoint.domain.cpuRejectedPassCommitments.you.evaluatedTick, 1);
+  assert.equal(checkpoint.domain.cpuRejectedPassCommitments.you.untilTick, 6);
+
+  const resumed = attachment('cpu-v-cpu', fixture.target);
+  assert.equal(resumed.restoreState(checkpoint), true);
+  for (let tick = 2; tick <= 7; tick += 1) {
+    const snapshot = structuredClone(fixture.snapshot);
+    snapshot.tick = tick;
+    const directFrame = runTick(direct, structuredClone(snapshot));
+    const resumedFrame = runTick(resumed, snapshot);
+    assert.deepEqual(resumedFrame.hostProjection, directFrame.hostProjection);
+    assert.deepEqual(resumedFrame.cpu, directFrame.cpu);
+  }
+  const directState = structuredClone(direct.exportState());
+  const resumedState = structuredClone(resumed.exportState());
+  resumedState.attachmentGeneration = directState.attachmentGeneration;
+  delete directState.checksum;
+  delete resumedState.checksum;
+  assert.deepEqual(resumedState, directState);
+});
+
+test('a legacy checkpoint missing rejected-pass commitments restores with an empty default', () => {
+  const fixture = snapshotFixture();
+  const source = attachment('cpu-v-cpu', fixture.target);
+  runTick(source, structuredClone(fixture.snapshot));
+  const legacyCheckpoint = structuredClone(source.exportState());
+  delete legacyCheckpoint.domain.cpuRejectedPassCommitments;
+
+  const resumed = attachment('cpu-v-cpu', fixture.target);
+  assert.equal(resumed.restoreState(withValidChecksum(legacyCheckpoint)), true);
+  assert.deepEqual(resumed.status().cpuRejectedPassCommitments, { you: null, opp: null });
+});
+
+test('adapter reset clears every rejected-pass commitment', () => {
+  const fixture = snapshotFixture({ receiver: { x: 10, y: 28 }, target: { x: 78, y: 0 } });
+  const live = attachment('cpu-v-cpu', fixture.target);
+  runTick(live, fixture.snapshot);
+  assert.ok(live.status().cpuRejectedPassCommitments.you);
+
+  assert.equal(live.reset('rejected-pass-commitment-test').schema,
+    'football-legacy-live-v2-reset');
+  assert.deepEqual(live.status().cpuRejectedPassCommitments, { you: null, opp: null });
+  assert.deepEqual(live.exportState().domain.cpuRejectedPassCommitments, { you: null, opp: null });
+});
+
+test('the pass-race-disabled profile cannot retain rejected-pass commitments', () => {
+  const fixture = snapshotFixture({ receiver: { x: 10, y: 28 }, target: { x: 78, y: 0 } });
+  const live = attachment('cpu-v-cpu', fixture.target, { cpuPassRaceFilter: false });
+  for (let tick = 1; tick <= 8; tick += 1) {
+    const snapshot = structuredClone(fixture.snapshot);
+    snapshot.tick = tick;
+    const frame = runTick(live, snapshot);
+    assert.equal(Object.hasOwn(frame.cpu.you.carrierIntent, 'passRace'), false);
+    assert.deepEqual(live.status().cpuRejectedPassCommitments, { you: null, opp: null });
+  }
 });
 
 test('receiver and interceptor races use rated movement to the MR path rather than release-tick origins', () => {

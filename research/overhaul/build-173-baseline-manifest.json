@@ -5,17 +5,18 @@
   "candidateBuild": 174,
   "capturedOn": "2026-08-11",
   "authority": {
-    "currentRung": "offline-opt-in",
-    "defaultAuthority": "build-173-legacy",
+    "currentRung": "authoritative-v2-only-playable",
+    "defaultAuthority": "fl-v2",
     "liveGameplayOwner": "match-engine/match.html",
     "candidateMayControlLiveGameplay": true,
     "candidateAuthorityScope": ["single-player-quick-play", "cpu-versus-cpu", "set-piece-suite"],
-    "candidateAuthorityRequiresExplicitSelection": true,
+    "candidateAuthorityRequiresExplicitSelection": false,
     "runtimeFailurePolicy": "rollback-then-freeze-fl-v2-with-blocking-diagnostic",
     "scopedLegacyMaintenanceAllowed": true,
-    "onlineChangesAllowed": false,
+    "onlineChangesAllowed": true,
     "offlineOptInApprovedByJoshua": true,
-    "furtherMigrationRequiresExplicitJoshuaApproval": true
+    "v2OnlyPlayableApprovedByJoshua": true,
+    "furtherMigrationRequiresExplicitJoshuaApproval": false
   },
   "reference": {
     "id": "football-legacy-main-2-read-only-build-173-snapshot",
@@ -25,25 +26,26 @@
   },
   "allowedCandidateDelta": {
     "path": "match-engine/match.html",
-    "kind": "build-173-default-plus-exact-three-workflow-offline-opt-in-authority-plus-exact-flag-read-only-shadow-plus-scoped-legacy-maintenance-plus-additive-historic-team",
+    "kind": "fl-v2-only-playable-authority-plus-nonplayable-build-173-provenance-and-host-compatibility",
     "exactLine": "<script src=\"ball-physics.js?v=174-dormant-kernel\"></script>",
     "occurrences": 1,
-    "effectPolicy": "Build 173 remains the deliberate default and owns every unselected or unsupported path. FL V2 may own only an explicitly selected offline Single Player Quick Play match, an offline CPU versus CPU match with exact all-CPU ownership and autoplay agreement, or the Set-Piece Suite when query, payload, workflow, version and deterministic seed agree exactly. Once FL V2 is requested, any preflight or runtime authority failure rolls back the candidate transaction, freezes the simulation and opens an exportable blocking diagnostic; it never continues as Build 173. The v2Shadow attachment remains exact-flag and read-only. Online and all other workflows remain Build 173-authoritative.",
+    "effectPolicy": "FL V2 is the sole playable match authority. Only exact Single Player, CPU versus CPU and Set-Piece Suite contracts may start. Co-op, same-team co-op and Online are unavailable until their V2 authority is complete. Missing, malformed, stale and prior-engine match routes fail closed before a simulation tick. Build 173 names, hashes, tests, host helpers and rollback sentinels remain only as nonplayable engineering provenance and compatibility inside the V2 host; they are not a selectable default or fallback.",
     "baselineSha256": "8380734db3a142293c5bca2a22f6b6cc9e6a0fa658f9f0c26cce8ad1801cf678",
     "offlineOptInAuthority": {
-      "id": "build-174-exact-offline-fl-v2-authority",
+      "id": "build-174-v2-only-playable-authority",
       "engine": "fl-v2",
       "engineVersion": "1.0.0-offline-live-authority-playtest",
-      "defaultEngine": "build-173",
-      "selector": "quick-play/index.html#gameplayEngine",
-      "selectorDefault": "build-173",
-      "selectorOptIn": "fl-v2",
-      "onlinePolicy": "frozen-to-build-173",
-      "unsupportedWorkflowPolicy": "visible-prelaunch-build-173-selection",
+      "defaultEngine": "fl-v2",
+      "selector": null,
+      "selectorDefault": "fl-v2",
+      "selectorOptIn": null,
+      "onlinePolicy": "unavailable-until-v2-authority",
+      "unsupportedWorkflowPolicy": "disabled-no-previous-engine-fallback",
       "runtimeFailurePolicy": "rollback-candidate-transaction-and-freeze-fl-v2-with-blocking-diagnostic",
       "manualRuntimeControl": "window.FLLiveV2.stop",
       "queryContract": {
         "engine": "fl-v2",
+        "candidate": "4-cache-only",
         "simulationSeed": "one-positive-uint32-decimal",
         "autoplay": "exactly-one-value-1-for-cpu-versus-cpu-only"
       },
@@ -107,8 +109,8 @@
         "live-v2-match-control-composition.js",
         "live-v2-authority-adapter.js"
       ],
-      "scriptCacheVersion": "174-fl-v2-final-candidate-2",
-      "workflowRemovalAllowed": false
+      "scriptCacheVersion": "174-fl-v2-final-candidate-4",
+      "workflowRemovalAllowed": true
     },
     "liveShadowAttachment": {
       "id": "build173-exact-flag-offline-read-only-shadow",
@@ -116,7 +118,7 @@
       "defaultLoadsV2": false,
       "onlinePolicy": "preflight-and-capture-frozen",
       "armingPolicy": "exact-workflow-method-bound-fail-closed",
-      "authority": "build-173-legacy-update-only",
+      "authority": "nonplayable-build-173-reference-only",
       "orderedScripts": [
         "ball-engine-v2.js",
         "ball-shadow-bridge-v2.js",
@@ -140,7 +142,7 @@
       "regressionGate": "tests/build173-live-shadow-hook-v2.mjs",
       "regressionGateSha256": "9f0d1dffad11616da5bde4d010f270385fe00c5384c618564b973dd6690b8bd3",
       "liveProjectionAllowed": false,
-      "workflowRemovalAllowed": false
+      "workflowRemovalAllowed": true
     },
     "historicTeamAddition": {
       "id": "madrid-real-2013-14",
@@ -168,7 +170,7 @@
       ],
       "onlinePolicy": "broadcast-camera-frozen",
       "regressionGate": "tests/live-offside-camera-policy.mjs",
-      "regressionGateSha256": "91cc88ccb314643f05d6aa0cf660277476357066b906a69a2c4af4d7d54d0e7d",
+      "regressionGateSha256": "9c49345c55a7e72d5c4f7c848be65084d3813c1b1aab612826061c0b3d4cfb90",
       "replayCleanupRegressionGate": "tests/free-kick-replay-queue-removal.mjs",
       "replayCleanupRegressionGateSha256": "0a99e9ca4297828aa009593cbe6c8bd60843655869251637784f179df3372f66"
     },
@@ -180,26 +182,33 @@
         "clear per-device edge state on disconnect and reconnect",
         "cache-bust the reviewed shared controller and online input bridge bytes"
       ],
-      "onlineGameplayAuthority": "build-173-frozen",
-      "onlineGameplayAuthorityChanged": false,
+      "onlineGameplayAuthority": "unavailable-until-v2-authority",
+      "onlineGameplayAuthorityChanged": true,
       "files": {
         "controller-ui.js": "77fe9dedac1b2d75a411bddf8e87aabf615d64f8ccd6839e8f1e3dff5edd9223",
         "online/app.js": "97039c202a04593c923f0b7bf497eec6ccc81ba30e8d0aa692bcbe17312c261f",
-        "online/index.html": "28e3c4e93f39fc15d2b3d42b65a30f69de646e137ecece8ca4efd526b47a66a3"
+        "online/index.html": "2a69791287542fecd17b936f744101973a14b35080ac01e442fab757d0f652d9"
       },
       "regressionGates": {
-        "tests/controller-reconnect-and-quick-play-launch.mjs": "f8df7ae527e4f6774a1cd140cd20e4b21563925933f498b15a623b0c0febe925",
-        "tests/online-controller-hotfix.mjs": "029fa4c195e098be3fb54b0602db717e01d300f31f77ee3dca685ac4592437ab"
+        "tests/controller-reconnect-and-quick-play-launch.mjs": "1c3718687d188e9e791af71bdb21b7f172f41f71842716cae9d39c3d62293af1",
+        "tests/online-controller-hotfix.mjs": "542cc3005d0cb85ada5cde81859a4ea7197c55ec2bd52c7f3dd9ecb55280896c"
       }
     }
   },
   "protectedFiles": [
     {
       "path": "index.html",
-      "purpose": "main menu and mode links",
+      "purpose": "main menu with V2-only playable match routes and unavailable multiplayer notices",
       "baselineSha256": "a86ce73e7221560c384ba3f87c6befff0e35b54edc838ce4a869c5c45e70c81b",
-      "candidateSha256": "a86ce73e7221560c384ba3f87c6befff0e35b54edc838ce4a869c5c45e70c81b",
-      "expectedRelation": "byte-identical"
+      "candidateSha256": "879f9e28f5c864a73bf7c0c85337bcbe51ca4319e59cfea6ecdf0e1718348a75",
+      "expectedRelation": "v2-only-entry-routing-and-no-previous-engine-playpath"
+    },
+    {
+      "path": "styles.css",
+      "purpose": "main-menu V2-only playable and unavailable-mode presentation",
+      "baselineSha256": "5d08778aae837d6cc2fe36ef2fdbfea7095e07638df0b27d377bcf07528d853a",
+      "candidateSha256": "a60b5b114ce5d41ddd4d54717dce27ce51ba5bea0fedf14e11d42da2010e40b4",
+      "expectedRelation": "v2-only-unavailable-mode-presentation"
     },
     {
       "path": "app.js",
@@ -224,11 +233,11 @@
     },
     {
       "path": "match-engine/match.html",
-      "purpose": "Build 173 default authority and exact offline FL V2 host bridge",
+      "purpose": "V2-only playable host with exact three-workflow fail-closed preflight",
       "baselineSha256": "8380734db3a142293c5bca2a22f6b6cc9e6a0fa658f9f0c26cce8ad1801cf678",
-      "candidateSha256": "22aa09cca9c2e4124f5b3594b44e44296ce015ad9148d588efbe158b7548a8fa",
+      "candidateSha256": "f37e49a3ada723ece4f09e1641e84625fd5b26cd502d944e6e65609cbee825e8",
       "pinState": "frozen",
-      "expectedRelation": "build-173-default-plus-exact-three-workflow-offline-opt-in-plus-exact-flag-read-only-shadow-plus-scoped-legacy-maintenance-plus-additive-historic-team-delta"
+      "expectedRelation": "authoritative-v2-only-three-workflow-host-plus-nonplayable-compatibility-scaffold"
     },
     {
       "path": "match-engine/set-piece-system.js",
@@ -238,25 +247,60 @@
       "expectedRelation": "byte-identical"
     },
     {
+      "path": "match-engine/index.html",
+      "purpose": "retired direct setup redirecting to V2 Quick Play",
+      "baselineSha256": "342b244903610b1475497252e1595fe2bdd5b52baf728205f9bcf146abe15b43",
+      "candidateSha256": "c4d1cfe418494852e4fe9782d57834776b3bfdb9f6dfa3d4aa51b5f1b3d125f5",
+      "expectedRelation": "retired-direct-setup-v2-only-redirect"
+    },
+    {
+      "path": "START-PS5-SINGLE-PLAYER.command",
+      "purpose": "Mac single-player launcher routed through V2 Quick Play",
+      "baselineSha256": "b0aa9be2fe30696501c52552e9cc377742d9aaee59dd0d3ede5a719096b00515",
+      "candidateSha256": "7a763691c5213d7cb0adbc42b906fe7f4312118b577c6d816a1572a83570978a",
+      "expectedRelation": "v2-only-single-player-launcher"
+    },
+    {
+      "path": "START-PS5-TWO-PLAYER.command",
+      "purpose": "Mac local-two-player unavailable notice with no previous-engine launch",
+      "baselineSha256": "85bf946fbe69bcde6ca3433798f03a5e4ac4e473662a0ea1b0a8c0edc5a50593",
+      "candidateSha256": "e3fa1a33ddb37f3e307fb0632ee5207d88f94d848b82934bacf37d127ce5d908",
+      "expectedRelation": "v2-migration-pending-no-previous-engine-launch"
+    },
+    {
+      "path": "match-engine/START-MATCH.command",
+      "purpose": "Mac match launcher routed through V2 Quick Play",
+      "baselineSha256": "4156f66d2a6faf0c6cf84dfc5ebe2f20c9f0b949c17827b98b4ac194541f3d5f",
+      "candidateSha256": "7114f4df2ef1ae28f192c95193a6205ebe1cfe92e20ba2919e71ad5e0be95a23",
+      "expectedRelation": "v2-only-quick-play-launcher"
+    },
+    {
+      "path": "match-engine/START-MATCH.bat",
+      "purpose": "Windows match launcher routed through V2 Quick Play",
+      "baselineSha256": "c369a077a253e26e89b85071fb50bb426ab159e49027572d5f1f18497386f266",
+      "candidateSha256": "17ac3d04877672f52630facada4ea76a6ffc92760979681376242a49eb5b4121",
+      "expectedRelation": "v2-only-quick-play-launcher"
+    },
+    {
       "path": "quick-play/index.html",
-      "purpose": "Quick Play launcher with explicit Build 173 default and FL V2 selector",
+      "purpose": "Quick Play launcher with fixed FL V2 authority and unsupported multiplayer modes disabled",
       "baselineSha256": "6732f88581b00dfb5651d3bdfae4bc440b7891c3763b9b8e13e482a4fe04fef1",
-      "candidateSha256": "0c8a093bfa95f41375c113989aa28d267d983681b9f96fef4c147a0a867911bf",
-      "expectedRelation": "additive-explicit-three-workflow-offline-engine-selector-plus-controller-cache-bust"
+      "candidateSha256": "22ef3a563ae1015e2ab4a5a430b6d20254122bd9ed6024e3216c594a66666b1c",
+      "expectedRelation": "v2-only-three-workflow-launcher-plus-controller-cache-bust"
     },
     {
       "path": "quick-play/app.js",
-      "purpose": "Quick Play mode, controller, deterministic seed and exact engine payload routing",
+      "purpose": "Quick Play mode, controller, deterministic seed and exact V2-only payload routing",
       "baselineSha256": "ae18e09bb8fef49c3da25b5187cf26b9b2d7bbb91c46f51dd044a8e75fd44ac6",
-      "candidateSha256": "fd6b615f789ab9d8240198ad17d4ba776937f9c37dc1b31bc9759821a0aa560a",
-      "expectedRelation": "additive-historic-team-and-exact-three-workflow-offline-engine-payload-routing"
+      "candidateSha256": "06090e804060265a6df5656e55242d3bc75cbe908664e05e92ce1ba9b1d8c537",
+      "expectedRelation": "v2-only-three-workflow-engine-payload-routing"
     },
     {
       "path": "quick-play/styles.css",
-      "purpose": "Quick Play engine selector and visible strict-authority status presentation",
+      "purpose": "Quick Play fixed V2 authority and visible unavailable-mode status presentation",
       "baselineSha256": "63b746a7ce7bcb39684983ad52bb40002ed6560af86acdf8305cce0e1b1746c0",
-      "candidateSha256": "44475e3adc0518d7d50148bdfdb347e1416e4c4923fcab3bd7383f0b85eb62d9",
-      "expectedRelation": "additive-engine-selector-status-presentation"
+      "candidateSha256": "ed49a7f9f80f876373c38feafa1599b3a1248faa513b39d67788f5221fc53532",
+      "expectedRelation": "fixed-v2-authority-status-presentation"
     },
     {
       "path": "quick-play/historic-playtest-squads.js",
@@ -274,17 +318,17 @@
     },
     {
       "path": "online/index.html",
-      "purpose": "online-versus lobby UI",
+      "purpose": "nonplayable Online V2 migration notice",
       "baselineSha256": "6bb25a5d49a25966e57853801d4d7d878d4c43d923c873eaeae15e8bc247d9d1",
-      "candidateSha256": "28e3c4e93f39fc15d2b3d42b65a30f69de646e137ecece8ca4efd526b47a66a3",
-      "expectedRelation": "build-173-gameplay-authority-frozen-plus-controller-cache-bust"
+      "candidateSha256": "2a69791287542fecd17b936f744101973a14b35080ac01e442fab757d0f652d9",
+      "expectedRelation": "online-unavailable-until-v2-authority-no-playable-transport"
     },
     {
       "path": "online/app.js",
-      "purpose": "online signaling, streaming and controller bridge",
+      "purpose": "dormant unloaded online signaling, streaming and controller bridge retained for V2 migration",
       "baselineSha256": "208e31dcdb3f1fc563d6dc8091ed565429956f6d8f4275a313a9d0ea70418c03",
       "candidateSha256": "97039c202a04593c923f0b7bf497eec6ccc81ba30e8d0aa692bcbe17312c261f",
-      "expectedRelation": "build-173-gameplay-authority-frozen-plus-dualsense-reconnect-input-transport-maintenance"
+      "expectedRelation": "dormant-unloaded-online-transport-provenance"
     },
     {
       "path": "career-mode/index.html",
@@ -411,7 +455,7 @@
       "path": "match-engine/live-v2-contact-authority-composer.js",
       "purpose": "ordered reaction-rated first-touch, passive body-deflection, aerial and protected legacy-contact arbitration",
       "baselineAbsent": true,
-      "candidateSha256": "e54bd7576164aefe5a1a2e8926d4183c0773f9ed25ba5a2f02d6407665b6f838",
+      "candidateSha256": "15f87890f25012412dff34d1d8f0dcdf44694d14d107b859f260cde3c4e6c10b",
       "authorityScope": ["single-player-quick-play", "cpu-versus-cpu"]
     },
     {
@@ -453,7 +497,7 @@
       "path": "match-engine/live-v2-authority-adapter.js",
       "purpose": "outer offline normal-match gameplay transaction with rollback and host-level strict-stop enforcement",
       "baselineAbsent": true,
-      "candidateSha256": "65e510d65fd27079758d4bd93137774810a735a8b4406cb9d6770fc30a2fdce4",
+      "candidateSha256": "185340bd57f0fc257ec29babc7cf02c78e23aa8b098d0f151c7a99691d97b3e6",
       "pinState": "frozen",
       "authorityScope": ["single-player-quick-play", "cpu-versus-cpu"]
     },

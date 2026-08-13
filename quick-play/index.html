@@ -86,15 +86,16 @@
     <section class="step-page" data-page="setup">
       <div class="section-heading">
         <div><span class="eyebrow">Match Options</span><h2>Set up the match</h2></div>
-        <p>These settings form the Quick Play match package handed to the existing match engine.</p>
+        <p>These settings form the Quick Play match package handed to the current FL V2 engine.</p>
       </div>
 
       <div class="setup-layout">
         <article class="match-preview" id="setupMatchPreview"></article>
         <div class="settings-panel">
           <div class="settings-grid">
-            <label><span>Match Mode</span><select id="matchMode"><option value="single-player">Single Player</option><option value="free-kick-suite">Set-Piece Suite</option><option value="co-op">Co-op / Local 2P</option><option value="home-co-op">Same-Team Co-op</option><option value="spectator">CPU vs CPU</option></select></label>
-            <label><span>Gameplay Engine</span><select id="gameplayEngine"><option value="build-173" selected>Build 173 · Stable</option><option value="fl-v2">FL V2 · Strict Offline Playtest</option></select></label>
+            <label><span>Match Mode</span><select id="matchMode"><option value="single-player">Single Player</option><option value="free-kick-suite">Set-Piece Suite</option><option value="co-op" disabled>Co-op / Local 2P · V2 migration pending</option><option value="home-co-op" disabled>Same-Team Co-op · V2 migration pending</option><option value="spectator">CPU vs CPU</option></select></label>
+            <div class="engine-lock" aria-label="Gameplay Engine: FL V2, current and fixed"><span>Gameplay Engine</span><strong>FL V2 · Current</strong><small>Fixed for every playable match</small></div>
+            <input id="gameplayEngine" type="hidden" value="fl-v2">
             <label><span>Stadium</span><select id="stadiumSelect"></select></label>
             <label><span>Match Time</span><select id="matchTime"><option value="afternoon">Afternoon</option><option value="evening">Evening</option><option value="night">Night</option></select></label>
             <label><span>Weather</span><select id="weather"><option value="clear">Clear</option><option value="overcast">Overcast</option><option value="rain">Rain</option></select></label>
@@ -185,7 +186,7 @@
   <script src="teams.js"></script>
   <script src="original-names.js"></script>
   <script src="historic-playtest-squads.js?v=174-fl-v2-final-candidate-2"></script>
-  <script src="app.js?v=174-fl-v2-final-candidate-2"></script>
+  <script src="app.js?v=174-fl-v2-final-candidate-4"></script>
   <script src="../controller-ui.js?v=174-controller-input-ready-1"></script>
 </body>
 </html>

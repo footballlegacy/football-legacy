@@ -7,7 +7,7 @@ approved adapter/capture dependencies.
 
 ## Current reviewed bytes
 
-- `match-engine/match.html`: `22aa09cca9c2e4124f5b3594b44e44296ce015ad9148d588efbe158b7548a8fa`
+- `match-engine/match.html`: `f37e49a3ada723ece4f09e1641e84625fd5b26cd502d944e6e65609cbee825e8`
 - `match-engine/build173-live-shadow-hook-v2.js`: `61c4ab42563f3b4b8585371b37e8e2527073bdab4eb5598cb75b677fd1c12fca`
 - `match-engine/build173-live-shadow-adapter-v2.js`: `b7cbd0f9366c97b966962c2a2c26c16d592cdb46358c0a7eb9e25cd3e60600e5`
 - `match-engine/build173-shadow-host-capture-v2.js`: `c6556fafdb0caf1877e4b6b78f27bc4784d2dff5cfcee21b501849db96ea16c5`
@@ -16,6 +16,11 @@ The adapter, capture and hook remain unchanged from their reviewed read-only
 contract. `match.html` subsequently gained a separate exact offline FL V2 live
 preflight; the shadow preflight still rejects that live-engine marker and the
 two capabilities cannot arm together.
+
+Candidate-4 repinning makes FL V2 the sole playable authority and changes the
+separate live V2 cache token and fail-closed host boundary only. The exact
+`v2Shadow=1` loader, its ten-script order, and all
+three shadow runtime dependencies above remain byte-identical and read-only.
 
 Later playtest reconciliation and the reaction-rated MR passive-deflection
 integration changed only normal/live playtest authority, telemetry, goalkeeper
@@ -83,4 +88,4 @@ live adapter does not expose or consume the shadow projection surface.
 - `research/overhaul/build173-live-shadow-hook-independent-adversarial-review-v2.md`
 
 This review changes no runtime bytes; it records that the diagnostic workflow
-remains preserved alongside the exact offline playtest opt-in.
+remains preserved as a non-playable diagnostic beside the V2-only release.

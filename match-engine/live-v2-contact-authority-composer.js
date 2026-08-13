@@ -42,6 +42,8 @@
   const RETAINED_RECONTACT_MIN_TICKS = 20;
   const RETAINED_RECONTACT_MAX_LOCK_TICKS = 45;
   const RETAINED_RECONTACT_MIN_TRAVEL_METRES = 0.9;
+  const LOOSE_RECONTROL_DELAY_MIN_TICKS = 5;
+  const LOOSE_RECONTROL_DELAY_RATING_DIVISOR = 9;
   // The releasing player has deliberately created the flight and must not be
   // reinterpreted as a passive bystander while the ball is still clearing
   // their body. Keep this longer than the entire rating-led reaction window;
@@ -509,6 +511,27 @@
     return travelled < RETAINED_RECONTACT_MIN_TRAVEL_METRES;
   }
 
+  function looseTouchRetryLocked(request, candidate) {
+    const playerId = candidate && candidate.player && candidate.player.id;
+    const metadata = request.ballState.metadata && request.ballState.metadata.firstTouch;
+    if (!metadata || metadata.playerId !== playerId || metadata.outcome !== 'loose') return false;
+    const lastContact = request.ballState.lastContact;
+    // Another footballer's genuine touch starts a new contest immediately.
+    // Otherwise, the same player may recover their own miscontrol once their
+    // reaction-rated reset has elapsed and the ordinary physical contact
+    // geometry is met again. This permits realistic second cushions without
+    // turning every host animation cycle into an instant control reroll.
+    if (lastContact && lastContact.colliderId !== playerId &&
+        request.roster.some(player => player.id === lastContact.colliderId)) return false;
+    const contactTick = Number.isSafeInteger(metadata.contactTick) ? metadata.contactTick :
+      lastContact && lastContact.colliderId === playerId && Number.isSafeInteger(lastContact.outerTick)
+        ? lastContact.outerTick : request.tick;
+    const rating = rosterAttributes(candidate.roster).reactions;
+    const delayTicks = LOOSE_RECONTROL_DELAY_MIN_TICKS +
+      Math.round((99 - rating) / LOOSE_RECONTROL_DELAY_RATING_DIVISOR);
+    return request.tick - contactTick < delayTicks;
+  }
+
   function noContact(request, status, detail, arbitration) {
     const aerialArbitrated = arbitration === 'aerial-attempt';
     const groundArbitrated = arbitration === 'ground-attempt';
@@ -557,9 +580,10 @@
     // First Touch attempt; if foot-control geometry still fails, the physical
     // body ricochet is committed rather than erased by somebody downstream.
     const candidates = physical ? [physical.candidate].filter(row => row.roster.contactEligible && row.reaction.ready &&
-      !retainedTouchChainLocked(request, row.player.id))
+      !retainedTouchChainLocked(request, row.player.id) && !looseTouchRetryLocked(request, row))
       : allCandidates.filter(row => row.roster.contactEligible && row.reaction.ready &&
-        row.distance <= FIRST_TOUCH_ACQUISITION_RADIUS_METRES && !retainedTouchChainLocked(request, row.player.id))
+        row.distance <= FIRST_TOUCH_ACQUISITION_RADIUS_METRES && !retainedTouchChainLocked(request, row.player.id) &&
+        !looseTouchRetryLocked(request, row))
         .sort((left, right) => Number(right.intended) - Number(left.intended) ||
           left.distance - right.distance || left.player.id.localeCompare(right.player.id));
     if (!candidates.length) {

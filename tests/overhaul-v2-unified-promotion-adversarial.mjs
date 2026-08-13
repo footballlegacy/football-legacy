@@ -687,8 +687,11 @@ test('public shadow API remains observation-only while live authority uses a sep
     assert.ok(matchHtml.split(`'${filename}'`).length - 1 >= 1, filename);
     assert.doesNotMatch(matchHtml, new RegExp(`<script\\s+src=["'][^"']*${filename.replace(/\./g, '\\.')}`, 'i'));
   }
-  assert.match(matchHtml, /const liveWorkflow=matchType==='single-player'\?'single-player':matchType==='spectator'\?'cpu-v-cpu':matchType==='free-kick-suite'\?'set-piece-suite':null/);
+  assert.match(matchHtml, /matchType=String\(decoded&&decoded\.matchType\|\|''\),liveWorkflow=matchType==='single-player'\?'single-player':matchType==='spectator'\?'cpu-v-cpu':matchType==='free-kick-suite'\?'set-piece-suite':null/);
+  assert.match(matchHtml, /candidateValues\[0\]!=='4'/);
+  assert.match(matchHtml, /quickPlayValues\[0\]!=='1'/);
   assert.match(matchHtml, /if\(!eligible\)return;[\s\S]*'aerial-contact-v2\.js'/);
+  assert.match(matchHtml, /174-fl-v2-final-candidate-4/);
   assert.doesNotMatch(matchHtml, /<script[^>]+src=["']aerial-contact-v2\.js/);
   assert.match(matchHtml, /requested=values\.length===1&&values\[0\]==='1'/);
   assert.doesNotMatch(matchHtml, /FootballLegacyOverhaulShadowOrchestratorV2/);

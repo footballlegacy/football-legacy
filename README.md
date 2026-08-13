@@ -1,83 +1,66 @@
-# Football Legacy — local Build 174 FL V2 playtest
+# Football Legacy — Build 174 Candidate 4
 
-Football Legacy is a browser football game prototype with Quick Play, local controller multiplayer, an early friends-only Online Versus mode, creation tools, Career Mode and Grassroots to Glory.
+Football Legacy is a browser football game prototype with FL V2 Quick Play, historic teams, creation tools, Career Mode and Grassroots to Glory.
 
-## Playtest FL V2
+## Play the current game
 
-Launch the current checkout and open **Quick Play**:
+Open **[Football Legacy](https://footballlegacy.github.io/football-legacy/)**, choose Quick Play and launch one of the three released match workflows:
 
-1. Choose **Quick Play**, select the teams and continue to Match Setup.
-2. Choose **Single Player**, all-CPU **CPU vs CPU**, or the **Set-Piece Suite**.
-3. Set **Gameplay Engine** to **FL V2 · Strict Offline Playtest**.
-4. Finish setup and launch the match normally.
+- Single Player.
+- CPU vs CPU.
+- Set-Piece Suite.
 
-FL V2 is an explicit offline playtest route. Single Player and all-CPU CPU vs CPU activate the deterministic Ball, Movement, CPU, Formation, First Touch and Aerial systems. The Set-Piece Suite activates the reviewed Clock, Restart, Set-Piece and coordinate systems. **Build 173 · Stable** remains the deliberate default before kickoff. Once an FL V2 match launches, a V2 authority fault freezes the simulation behind an exportable diagnostic screen; the match never silently continues as Build 173. Local 2P, same-team co-op and Online remain on Build 173; Career, Create-a-Club, Player Career and the creation tools retain their established workflows.
+FL V2 is fixed as the sole playable match engine. There is no previous-build selector, default or fallback. Local two-player, same-team Home Co-op and Online Versus are unavailable until each has complete V2 authority; selecting or opening those routes cannot launch the previous engine.
 
-This local Build 174 state incorporates the three latest playtest logs: calibrated passing, through balls, lobs, crosses and throw-ins; more responsive first touches, shielding, collisions, goalkeeper possession and support runs; corrected CPU restarts and replay anchoring; set-piece camera/replay revisions; and controller reconnect plus single-launch loading feedback. Targeted carrier-relative support corrections were added for the Invincibles and Conte Chelsea, but Arsenal's full-match support/pressing shape still needs visual calibration and is not claimed closed. Ancelotti's representative 2013/14 Real Madrid BBC team is available alongside them.
+Candidate 4 keeps pass aim, power and timing player-authored while solving the receiver's meeting point against Ball V2. It also permits reaction-rated recontrol attempts after a loose aerial cushion, closes double-resolution paths around shots, keepers, knock-ons and aerial finishes, repairs free-kick staging and grounded delivery, grades slide cards from the physical challenge, and stops the CPU from recalculating the same rejected pass every frame.
 
-Build 173 has already been published as the stable baseline. This README describes the current local Build 174 working state and does not claim that FL V2 has been publicly released.
+The Invincibles, Conte Chelsea and Ancelotti's representative 2013/14 Real Madrid BBC squad remain available. Their ratings are Football Legacy playtest values, not official EA ratings.
 
-## Play Online with a friend
+## V2 safety boundary
 
-Online Versus must be launched from the hosted HTTPS version:
+A match launches only when its supported workflow, V2 query, V2 payload, ownership model and deterministic seed agree exactly. Missing, malformed, contradictory, unsupported, direct or stale launch data fails closed before simulation.
 
-**[Open Football Legacy](https://footballlegacy.github.io/football-legacy/)**
+If a live V2 authority transaction fails, the candidate tick is rolled back and the match stops behind an exportable diagnostic screen. It does not execute a previous-engine tick.
 
-1. Josh and Connor each use a supported desktop browser and connect a controller.
-2. Home opens the link above, chooses **Online**, then chooses **Host**.
-3. Home remains on the code-verification screen and sends Away the displayed copyable full join URL. The room code stays visible while Home waits.
-4. Away opens that URL. The entered room code remains visible on Away's verification screen; both players stay at this boundary until the peer connection opens.
-5. After connection, Home occupies the Home slot and Away occupies the Away slot. Each player chooses their own team, lineup, tactics and kit; Home chooses the shared match settings.
-6. Both players select **Ready** for the exact teams, lineups, tactics, kits and shared settings shown on screen.
-7. Once both matching Ready states are confirmed, Home explicitly presses **Start Online Match**. Away becoming ready never starts the match by itself. If either player changes a team, tactic or kit, or Home changes a shared match setting, both players must ready again before Home can start.
+Internal Build 173-named adapters, hashes, fixtures and tests may remain as non-playable provenance or host compatibility. They are not a hidden game option. The separate FL V1.5 forensic archive is untouched and is not bundled as a Candidate 4 fallback.
 
-The Online shell and all five setup stages support D-pad/left-stick navigation, Cross/A selection, Circle/B back, and L1/LB or R1/RB carousel movement.
+Read `research/overhaul/fl-v2-only-playable-authority-2026-08-13.md` for the binding release contract.
 
-Match sound starts on. If Chrome or Firefox requests a first interaction, click **Enable match sound** once. After that, pause the match and use **Match sound** to mute or restore audio.
+## Controller playtest
 
-The host runs the authoritative match and the joining player's controller operates Away. Build 172 retains the persistent room-code handoff and advances the Online cache token and room namespace so it cannot mix with older cached clients or rooms.
+Connect one DualSense or compatible controller, then open Quick Play or double-click `START-PS5-SINGLE-PLAYER.command`. USB-C is the verified DualSense route. Bluetooth can appear connected without delivering input on some Mac/browser combinations and is not claimed fixed.
 
-Build 172 starts the host stream at 60 fps and adapts through bounded 60/50/40/30 fps quality profiles using measured frame rate, round-trip time, packet loss, available bitrate and browser CPU/bandwidth limitation evidence. It also caps queued controller data, automatically recovers Firefox's occasional blank Quick Play frame and attempts bounded data/video reconnection while the authoritative match pauses safely instead of handing Away to the CPU.
+The two-player launcher and the Online shell are intentionally unavailable while those modes lack V2 authority.
 
-Josh and Theo completed a real two-machine hosted match with smooth remote Away control. D-pad Down did not produce dives in that session, while the local control log `FL-MSN757H7` records the same input producing two successful dive actions. Build 172 therefore normalises Firefox's raw DualSense face buttons and hat-axis D-pad on the sending machine before the packet crosses the peer link. The post-fix remote D-pad route still needs one short two-machine confirmation; the local historic Quick Play engine passes 184/184 checks and the dedicated Online quality gate passes 23/23.
+Menu controls:
 
-Do not use a downloaded `file://` ZIP for Online Versus. Local-file browser origin and media restrictions make that route unsupported and unreliable. Downloaded copies remain suitable for offline Quick Play.
+- D-pad or left stick: move focus.
+- Cross/A: select.
+- Circle/B: back.
+- Options: pause during a match.
 
-## Fastest PS5 controller playtest
+## Match controls
 
-1. Connect one or two DualSense controllers. USB-C is the verified route. Bluetooth may show as connected without delivering input on some Mac/browser combinations and is not yet claimed fixed.
-2. Double-click `START-PS5-SINGLE-PLAYER.command` or `START-PS5-TWO-PLAYER.command`.
-3. In the match, press **Options** to open the pause menu and controller preview.
+- Left stick: move.
+- R2: sprint.
+- Cross/A: pass.
+- Circle/B: shoot or standing tackle; on an authored cross it requests a header/volley finish, while the physical contest decides who reaches the ball. Rapid defensive taps pull a shirt.
+- Square/X: lob pass or slide tackle.
+- Triangle/Y: through pass; L1/LB + Triangle/Y sends it over the top.
+- L1/LB: nearest-player manual switch when defending.
+- R1/RB: finesse-shot modifier and curved free-kick modifier.
+- L2/LT: shield/flair modifier.
+- D-pad Down: contextual dive.
+- R3: flick the ball up.
+- L2/LT + right-stick vertical flick: chained stepovers.
+- Right-stick down half-circle: roulette.
 
-Menu controls are available across the game:
+At a free kick, Cross/A gives a grounded pass inside the selected left-stick and power channel. Square/X gives the aerial service, R1/RB + Square/X gives a lower, faster ball, and L1/LB + R1/RB + Square/X gives the driven delivery. Corners and goal kicks use the same directional Square/X service family. Direct free-kick shots remain on Circle/B with their dipping, driven and curved modifiers.
 
-- D-pad or left stick: move focus
-- Cross: select
-- Circle: back
-- Options: pause during a match
-
-## Current playtest controls
-
-- Left stick: move
-- R2: sprint
-- Cross: pass
-- Circle: shoot or standing tackle; rapid defensive taps pull a shirt
-- Square: lob pass or slide tackle
-- Triangle: through pass; L1 + Triangle sends it over the top
-- L1: nearest-player manual switch when defending
-- R1: finesse-shot modifier and curved free-kick modifier
-- L2: shield/flair modifier
-- D-pad Down: contextual dive; performances are selected from the subtle, flop and ridiculous rolling set
-- R3: flick the ball up
-- L2 + right-stick vertical flick: chained stepovers
-- Right stick down half-circle: roulette
-
-At a free kick, corner or goal kick, the left stick chooses the service line. Square gives the normal lofted delivery, R1 + Square gives a lower/faster ball, and L1 + R1 + Square gives the driven delivery. Direct free-kick shots remain on Circle with their existing dipping, driven and curved modifiers.
-
-Read `research/overhaul/set-piece-directional-camera-runup-closure-2026-08-12.md` for the current set-piece controls and visual evidence, and `PLAYTEST-NOTES-v0.28.6.md` for the older visual-pass history.
+Read `research/overhaul/set-piece-directional-camera-runup-closure-2026-08-12.md` for the current set-piece controls and visual evidence, and `PLAYTEST-NOTES-v0.28.6.md` for the historical visual-pass record.
 
 ## Development
 
-The game is intentionally build-free: edit the HTML, CSS and JavaScript files, then open the launcher again. The main match is `match-engine/match.html`; shared controller menu navigation is `controller-ui.js`.
+The game is build-free: edit the HTML, CSS and JavaScript files, then reopen the supported Quick Play route. `match-engine/match.html` is the shared V2 host, but opening it directly without the exact launch contract must stop rather than start a match. Shared controller menu navigation lives in `controller-ui.js`.
 
 Read `JOSH-HANDOFF.md` before changing gameplay systems.

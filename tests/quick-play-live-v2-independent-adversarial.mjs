@@ -108,7 +108,9 @@ function validPayload(seed = 173173) {
     mode: 'quickPlay', matchType: 'single-player', online: null,
     controllers: { player1Team: 'home', player2Team: null, aiTeam: 'away' },
     engine: { requested: 'fl-v2', effective: 'fl-v2', version: Adapter.VERSION, fallbackReason: null },
-    simulationSeed: seed, homeTeam: { id: 'madrid-real-2013-14' }, awayTeam: { id: 'woolwich-arsenal' }
+    simulationSeed: seed, practiceMode: null,
+    homeTeam: { id: 'madrid-real-2013-14', name: 'Madrid 2013/14' },
+    awayTeam: { id: 'woolwich-arsenal', name: 'Arsenal Invincibles' }
   };
 }
 
@@ -120,9 +122,20 @@ function cpuPayload(seed = 173173) {
   };
 }
 
+function protectedBuild173Payload(seed = 173173, matchType = 'co-op') {
+  return {
+    ...validPayload(seed),
+    matchType,
+    controllers: matchType === 'co-op'
+      ? { player1Team: 'home', player2Team: 'away', aiTeam: null }
+      : { player1Team: 'home', player2Team: 'home', aiTeam: 'away', cooperative: true },
+    engine: { requested: 'build-173', effective: 'build-173', version: Adapter.VERSION, fallbackReason: null }
+  };
+}
+
 test('frozen promotion bytes and lower-engine contracts are exact', () => {
-  assert.equal(hash(adapterSource), '65e510d65fd27079758d4bd93137774810a735a8b4406cb9d6770fc30a2fdce4');
-  assert.equal(hash(matchSource), '22aa09cca9c2e4124f5b3594b44e44296ce015ad9148d588efbe158b7548a8fa');
+  assert.equal(hash(adapterSource), '185340bd57f0fc257ec29babc7cf02c78e23aa8b098d0f151c7a99691d97b3e6');
+  assert.equal(hash(matchSource), 'f37e49a3ada723ece4f09e1641e84625fd5b26cd502d944e6e65609cbee825e8');
   assert.equal(Adapter.VERSION, '1.0.0-offline-live-authority-playtest');
   assert.deepEqual([...Adapter.SUPPORTED_WORKFLOWS], ['single-player', 'cpu-v-cpu']);
   assert.equal(Ball.VERSION, Adapter.DEPENDENCY_CONTRACTS.ball.version);
@@ -313,15 +326,22 @@ test('deterministic replay, bounded finite telemetry and reset epoch re-arm at t
   assert.deepEqual(traces[0], traces[1]);
 });
 
-test('preflight loads V2 only for exact offline Single Player or all-CPU spectator query/payload pairs', () => {
-  const good = preflight('?engine=fl-v2&simulationSeed=173173', validPayload());
+test('preflight loads only exact V2-only Single Player or all-CPU spectator contracts', () => {
+  const good = preflight('?quickPlay=1&engine=fl-v2&simulationSeed=173173&candidate=4', validPayload());
   assert.equal(good.value.eligible, true);
   assert.equal(good.value.workflow, 'single-player');
   assert.equal(good.writes.length, 15);
-  const cpuGood = preflight('?engine=fl-v2&simulationSeed=173173&autoplay=1', cpuPayload());
+  const cpuGood = preflight('?quickPlay=1&engine=fl-v2&simulationSeed=173173&candidate=4&autoplay=1', cpuPayload());
   assert.equal(cpuGood.value.eligible, true);
   assert.equal(cpuGood.value.workflow, 'cpu-v-cpu');
   assert.equal(cpuGood.writes.length, 15);
+  for (const mode of ['co-op', 'home-co-op']) {
+    const protectedFallback = preflight('?quickPlay=1&engine=build-173&simulationSeed=173173&candidate=4', protectedBuild173Payload(173173, mode));
+    assert.equal(protectedFallback.value.requested, false, `${mode} must not arm V2`);
+    assert.equal(protectedFallback.value.eligible, false, `${mode} has no playable prior-engine fallback`);
+    assert.equal(protectedFallback.value.reason, 'not-requested', `${mode} preflight reason`);
+    assert.equal(protectedFallback.writes.length, 0, `${mode} must not load V2 scripts`);
+  }
   for (const [query, payload] of [
     ['?engine=fl-v2&simulationSeed=173173', cpuPayload()],
     ['?engine=fl-v2&simulationSeed=173173&autoplay=0', cpuPayload()],
@@ -371,8 +391,10 @@ test('live hook is exact-one while MR suppression leaves protected Build 173 wal
     /resolveSetPieceWallBlock\(\);if\(!liveV2TickApplied\|\|!liveV2SuppressLegacyBallBlock\)resolveBallBlock\(\);if\(!liveV2SuppressLegacyAerialDuel\)resolveAerialDuel\(false\)/,
     'legacy outfield blocking is suppressed only on an MR-authored V2 contact tick');
   assert.match(matchSource,
-    /const boxKeeper=[^;]+;if\(!resolveKeeperBoxShotContest\(boxKeeper\)\)resolveSlowReachableKeeperSaveBeforeGoal\(\)/,
+    /const boxKeeper=[^;]+,keeperShotResolved=resolveKeeperBoxShotContest\(boxKeeper\);if\(!keeperShotResolved\)resolveSlowReachableKeeperSaveBeforeGoal\(\)/,
     'keeper contact remains in the protected Build 173 lane');
+  assert.match(matchSource, /legacyKeeperContactEligible\(ball,keeperShotResolved\)/,
+    'legacy keeper contact must remain closed after the box-shot authority resolves the frame');
   assert.match(adapterSource, /firstTouchReception: 'football-legacy-live-v2-contact-authority-composer'/);
   assert.match(adapterSource, /aerialVolleyAttempt: 'football-legacy-live-v2-contact-authority-composer'/);
   assert.match(adapterSource, /looseBallRecoverySelection: 'football-legacy-live-v2-authority-adapter'/);
@@ -433,7 +455,7 @@ test('controller, keyboard, restart, replay, camera and red-card containment rem
   assert.match(matchSource, /liveV2Authority\.reset\('build-173-dead-ball-presentation-or-special-action-handoff'\)/);
 });
 
-test('Madrid BBC identity, historic reaction defaults and every workflow remain intact', () => {
+test('Madrid BBC identity and historic reaction defaults remain intact while unsupported modes stay visible but disabled', () => {
   assert.equal(hash(historicSource), '4aacd4a33083eee996beace57ba038caf6e5b5a580f1896a9b1d765240b879d5');
   assert.equal((historicSource.match(/reactions:overall/g) || []).length, 4,
     'every historic positional default must now expose reactions');
@@ -442,7 +464,7 @@ test('Madrid BBC identity, historic reaction defaults and every workflow remain 
   for (const identity of ['madrid-real-2013-14', 'Ancelotti Real Madrid BBC', 'rm-bale', 'rm-benzema', 'rm-ronaldo']) {
     assert.ok(historicSource.includes(identity), identity);
   }
-  for (const mode of ['single-player', 'free-kick-suite', 'co-op', 'home-co-op', 'spectator']) {
-    assert.ok(readFileSync(path.join(root, 'quick-play', 'index.html'), 'utf8').includes(`value="${mode}"`), mode);
-  }
+  const quickPlayHtml = readFileSync(path.join(root, 'quick-play', 'index.html'), 'utf8');
+  for (const mode of ['single-player', 'free-kick-suite', 'spectator']) assert.ok(quickPlayHtml.includes(`value="${mode}"`), mode);
+  for (const mode of ['co-op', 'home-co-op']) assert.match(quickPlayHtml, new RegExp(`value="${mode}" disabled`), mode);
 });

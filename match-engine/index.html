@@ -1,129 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Football Legacy — Match Setup</title>
-<style>
-  :root{--navy:#06182c;--navy2:#0b223b;--cream:#f5f0e7;--muted:#aeb9c5;--orange:#e87824;--green:#2f9a67}
-  *{box-sizing:border-box} html,body{margin:0;min-height:100%;background:linear-gradient(135deg,#041324,#0b2a43);color:var(--cream);font-family:Arial,Helvetica,sans-serif}
-  body{display:grid;place-items:center;padding:34px}
-  main{width:min(980px,100%);background:#071a2e;border:1px solid rgba(255,255,255,.12);box-shadow:0 28px 80px rgba(0,0,0,.42)}
-  header{padding:30px 36px 24px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:end;justify-content:space-between;gap:20px}
-  h1{font-size:clamp(1.8rem,4vw,3.25rem);margin:0;letter-spacing:-.04em}.eyebrow{font-size:.68rem;text-transform:uppercase;letter-spacing:.24em;color:var(--orange);font-weight:800;margin-bottom:8px}
-  .fixture{text-align:right}.fixture strong{font-size:1.1rem}.fixture span{display:block;color:var(--muted);font-size:.75rem;margin-top:5px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.section{padding:28px 34px;border-bottom:1px solid rgba(255,255,255,.09)}.section:nth-child(odd){border-right:1px solid rgba(255,255,255,.09)}
-  h2{margin:0 0 15px;font-size:.74rem;text-transform:uppercase;letter-spacing:.18em;color:var(--muted)}
-  .options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.option{position:relative}.option input{position:absolute;opacity:0;pointer-events:none}.option label{display:flex;align-items:center;gap:12px;min-height:62px;padding:12px;border:1px solid rgba(255,255,255,.14);background:#0b223a;cursor:pointer;transition:.15s}.option label:hover{border-color:rgba(232,120,36,.65);transform:translateY(-1px)}.option input:checked+label{border-color:var(--orange);box-shadow:inset 0 0 0 1px var(--orange);background:#102b47}.option b{font-size:.85rem}.option small{display:block;color:var(--muted);font-size:.68rem;margin-top:3px}
-  .kit{width:34px;height:42px;clip-path:polygon(22% 0,39% 9%,61% 9%,78% 0,100% 22%,84% 38%,77% 29%,77% 100%,23% 100%,23% 29%,16% 38%,0 22%);border:1px solid rgba(255,255,255,.25);flex:0 0 auto}.home-stripes{background:repeating-linear-gradient(90deg,#f4eee3 0 8px,#a92f2d 8px 16px)}.home-claret{background:linear-gradient(90deg,#7d1c2b 0 72%,#8ec6e8 72%)}.away-sash{background:linear-gradient(32deg,#142d58 0 41%,#e5b64d 42% 57%,#142d58 58%)}.away-white{background:linear-gradient(90deg,#f2f0e9 0 72%,#142d58 72%)}
-  .weather{width:34px;text-align:center;font-size:1.55rem;line-height:1}.difficulty{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#142e49;font-size:.72rem;font-weight:900}.option input:checked+label .difficulty{background:var(--orange);color:#071a2e}
-  .cameraIcon{width:36px;height:28px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.22);background:#142e49;font-size:.66rem;font-weight:900;letter-spacing:.04em}.option input:checked+label .cameraIcon{background:var(--orange);color:#071a2e;border-color:var(--orange)}
-  .tacticGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field label{display:block;font-size:.64rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 7px}.field select,.field input{width:100%;border:1px solid rgba(255,255,255,.14);background:#0b223a;color:var(--cream);padding:13px 12px;font:inherit;font-size:.78rem;outline:none}.field select:focus,.field input:focus{border-color:var(--orange)}.field input:disabled{opacity:.55}.option input:disabled+label{opacity:.42;cursor:not-allowed;transform:none}.historyNote{grid-column:1/-1;margin-top:2px;color:var(--muted);font-size:.67rem;line-height:1.4}.historyNote strong{color:var(--cream)}
-  footer{padding:26px 34px;display:flex;justify-content:space-between;align-items:center;gap:18px}.note{font-size:.72rem;color:var(--muted);line-height:1.45}.actions{display:flex;gap:10px}.play,.instant{font-size:.82rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;padding:16px 26px;cursor:pointer}.play{border:0;background:var(--orange);color:#06182c}.instant{border:1px solid rgba(255,255,255,.22);background:#102b47;color:var(--cream)}.play:hover{filter:brightness(1.08)}.instant:hover{border-color:var(--orange)}
-  @media(max-width:720px){body{padding:0}main{min-height:100vh}.grid{grid-template-columns:1fr}.section:nth-child(odd){border-right:0}.fixture{display:none}.options,.tacticGrid{grid-template-columns:1fr 1fr}footer{align-items:stretch;flex-direction:column}.actions{display:grid}.play,.instant{width:100%}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Football Legacy FL V2 Quick Play redirect">
+  <meta http-equiv="refresh" content="0; url=../quick-play/index.html?mode=single-player&amp;engine=fl-v2&amp;candidate=4">
+  <title>Open FL V2 | Football Legacy</title>
+  <style>
+    :root{color-scheme:dark;--navy:#06182c;--deep:#03101f;--panel:#0a2138;--orange:#e87824;--cream:#f7f1e7;--muted:#aab7c5}
+    *{box-sizing:border-box}
+    body{min-height:100vh;margin:0;padding:24px;display:grid;place-items:center;background:radial-gradient(circle at 50% 0%,#16466c,transparent 42%),linear-gradient(145deg,var(--navy),var(--deep));color:var(--cream);font-family:Arial,Helvetica,sans-serif}
+    main{width:min(680px,100%);padding:clamp(28px,7vw,58px);border:1px solid rgba(255,255,255,.14);border-top:4px solid var(--orange);background:rgba(10,33,56,.96);box-shadow:0 28px 80px rgba(0,0,0,.4)}
+    span{color:var(--orange);font-size:.68rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase}
+    h1{margin:10px 0 14px;font:700 clamp(2rem,7vw,4rem)/1 Georgia,"Times New Roman",serif;text-transform:uppercase}
+    p{margin:0 0 24px;color:var(--muted);line-height:1.65}
+    a{display:inline-block;padding:15px 20px;background:var(--orange);color:var(--deep);font-size:.75rem;font-weight:900;letter-spacing:.12em;text-decoration:none;text-transform:uppercase}
+  </style>
 </head>
 <body>
-<main>
-  <header>
-    <div><div class="eyebrow">Playable match</div><h1>Match setup</h1></div>
-    <div class="fixture"><strong>Ribble End v Sherwood</strong><span>League fixture · Ribble Park</span></div>
-  </header>
-  <form id="setup">
-    <div class="grid">
-      <section class="section">
-        <h2>Difficulty</h2>
-        <div class="options">
-          <div class="option"><input id="easy" name="difficulty" value="easy" type="radio"><label for="easy"><span class="difficulty">E</span><span><b>Easy</b><small>More time on the ball</small></span></label></div>
-          <div class="option"><input id="medium" name="difficulty" value="medium" type="radio" checked><label for="medium"><span class="difficulty">M</span><span><b>Medium</b><small>Balanced match</small></span></label></div>
-          <div class="option"><input id="hard" name="difficulty" value="hard" type="radio"><label for="hard"><span class="difficulty">H</span><span><b>Hard</b><small>Quicker pressure</small></span></label></div>
-          <div class="option"><input id="legend" name="difficulty" value="legend" type="radio"><label for="legend"><span class="difficulty">L</span><span><b>Legend</b><small>Sharper opposition</small></span></label></div>
-        </div>
-      </section>
-      <section class="section">
-        <h2>Weather</h2>
-        <div class="options">
-          <div class="option"><input id="clear" name="weather" value="clear" type="radio" checked><label for="clear"><span class="weather">☀</span><span><b>Clear</b><small>Firm, quick pitch</small></span></label></div>
-          <div class="option"><input id="overcast" name="weather" value="overcast" type="radio"><label for="overcast"><span class="weather">☁</span><span><b>Overcast</b><small>Neutral conditions</small></span></label></div>
-          <div class="option"><input id="rain" name="weather" value="rain" type="radio"><label for="rain"><span class="weather">☂</span><span><b>Rain</b><small>Slick ball, heavier touch</small></span></label></div>
-          <div class="option"><input id="night" name="weather" value="night" type="radio"><label for="night"><span class="weather">☾</span><span><b>Night</b><small>Floodlit match</small></span></label></div>
-        </div>
-      </section>
-      <section class="section">
-        <h2>Ground and era</h2>
-        <div class="tacticGrid">
-          <div class="field"><label for="year">Match year</label><input id="year" name="year" type="number" min="1888" max="2026" step="1" value="2008"></div>
-          <div class="field"><label for="stadiumSize">Stadium size</label><select id="stadiumSize" name="stadiumSize"><option value="auto">Auto from club and year</option><option value="small">Small ground</option><option value="medium">Medium ground</option><option value="large">Large stadium</option><option value="major">Major stadium</option></select></div>
-          <div class="historyNote" id="historyNote">Auto uses the club capacity when Football Legacy supplies it, then scales the ground sensibly for the selected year. Floodlights appear from the mid-1950s.</div>
-        </div>
-      </section>
-      <section class="section">
-        <h2>Player switching</h2>
-        <div class="options">
-          <div class="option"><input id="autoSwitchOn" name="autoSwitch" value="on" type="radio" checked><label for="autoSwitchOn"><span class="difficulty">A</span><span><b>Automatic</b><small>Moves to the best defender near the ball</small></span></label></div>
-          <div class="option"><input id="autoSwitchOff" name="autoSwitch" value="off" type="radio"><label for="autoSwitchOff"><span class="difficulty">M</span><span><b>Manual</b><small>Use W to switch every time</small></span></label></div>
-        </div>
-      </section>
-      <section class="section">
-        <h2>Camera</h2>
-        <div class="options">
-          <div class="option"><input id="camBroadcast" name="camera" value="broadcast" type="radio" checked><label for="camBroadcast"><span class="cameraIcon">TV</span><span><b>Broadcast</b><small>Closer sideline view</small></span></label></div>
-          <div class="option"><input id="camClassic" name="camera" value="classic" type="radio"><label for="camClassic"><span class="cameraIcon">08</span><span><b>Classic 2008</b><small>Low, close FIFA-era view</small></span></label></div>
-          <div class="option"><input id="camDynamic" name="camera" value="dynamic" type="radio"><label for="camDynamic"><span class="cameraIcon">追</span><span><b>Dynamic</b><small>Follows the ball closely</small></span></label></div>
-          <div class="option"><input id="camEnd" name="camera" value="endToEnd" type="radio"><label for="camEnd"><span class="cameraIcon">↔</span><span><b>End to end</b><small>Lengthways behind play</small></span></label></div>
-          <div class="option"><input id="camWide" name="camera" value="tactical" type="radio"><label for="camWide"><span class="cameraIcon">W</span><span><b>Tactical wide</b><small>Original full-pitch option</small></span></label></div>
-        </div>
-      </section>
-      <section class="section">
-        <h2>Ribble End tactics</h2>
-        <div class="tacticGrid">
-          <div class="field"><label for="formation">Formation</label><select id="formation" name="formation"><option value="442">4-4-2</option><option value="433">4-3-3</option><option value="4231">4-2-3-1</option><option value="352">3-5-2</option></select></div>
-          <div class="field"><label for="mentality">Mentality</label><select id="mentality" name="mentality"><option value="balanced">Balanced</option><option value="attacking">Attacking</option><option value="defensive">Defensive</option></select></div>
-          <div class="field"><label for="width">Width</label><select id="width" name="width"><option value="balanced">Balanced</option><option value="wide">Wide</option><option value="narrow">Narrow</option></select></div>
-          <div class="field"><label for="support">Support runs</label><select id="support" name="support"><option value="balanced">Balanced</option><option value="forward">Get forward</option><option value="hold">Hold shape</option></select></div>
-          <div class="field"><label for="pressing">Pressing</label><select id="pressing" name="pressing"><option value="balanced">Balanced</option><option value="high">High press</option><option value="low">Low block</option></select></div>
-        </div>
-      </section>
-      <section class="section">
-        <h2>Ribble End kit</h2>
-        <div class="options">
-          <div class="option"><input id="homeStripes" name="homeKit" value="stripes" type="radio" checked><label for="homeStripes"><span class="kit home-stripes"></span><span><b>Red stripes</b><small>Navy shorts</small></span></label></div>
-          <div class="option"><input id="homeClaret" name="homeKit" value="claret" type="radio"><label for="homeClaret"><span class="kit home-claret"></span><span><b>Claret</b><small>Blue sleeves</small></span></label></div>
-        </div>
-      </section>
-      <section class="section">
-        <h2>Sherwood kit</h2>
-        <div class="options">
-          <div class="option"><input id="awaySash" name="awayKit" value="sash" type="radio" checked><label for="awaySash"><span class="kit away-sash"></span><span><b>Navy sash</b><small>Gold trim</small></span></label></div>
-          <div class="option"><input id="awayWhite" name="awayKit" value="white" type="radio"><label for="awayWhite"><span class="kit away-white"></span><span><b>White</b><small>Navy panel</small></span></label></div>
-        </div>
-      </section>
-    </div>
-    <footer><div class="note">Controls are shown during the match. Press Esc or the pause button for camera, switching assistance and substitutions.</div><div class="actions"><button class="instant" id="instantResultBtn" type="button">Instant result</button><button class="play" type="submit">Play match</button></div></footer>
-  </form>
-</main>
-<script>
-  const setup=document.getElementById('setup');
-  function collectSetup(){
-    const data=new FormData(setup),params=new URLSearchParams();
-    for(const [key,value] of data)params.set(key,value);
-    const tactics={camera:data.get('camera'),formation:data.get('formation'),mentality:data.get('mentality'),width:data.get('width'),support:data.get('support'),pressing:data.get('pressing'),autoSwitch:data.get('autoSwitch'),year:Number(data.get('year')),stadiumSize:data.get('stadiumSize')};
-    try{localStorage.setItem('footballLegacyTactics',JSON.stringify(tactics));}catch(err){}
-    return params;
-  }
-  const yearInput=document.getElementById('year'),nightInput=document.getElementById('night'),historyNote=document.getElementById('historyNote');
-  function refreshEraOptions(){
-    const year=Math.max(1888,Math.min(2026,Number(yearInput.value)||2008)),hasFloodlights=year>=1955;
-    nightInput.disabled=!hasFloodlights;
-    if(!hasFloodlights&&nightInput.checked)document.getElementById('overcast').checked=true;
-    historyNote.innerHTML=hasFloodlights
-      ? '<strong>Floodlights available.</strong> Auto stadium sizing uses the club capacity when supplied, then the year.'
-      : '<strong>No floodlights yet.</strong> Night matches are unavailable before 1955; terraces and crowd scale remain era-appropriate.';
-  }
-  yearInput.addEventListener('input',refreshEraOptions);refreshEraOptions();
-  setup.addEventListener('submit',function(e){e.preventDefault();location.href='match.html?'+collectSetup().toString();});
-  document.getElementById('instantResultBtn').addEventListener('click',function(){location.href='instant-result.html?'+collectSetup().toString();});
-</script>
-<script src="../controller-ui.js"></script>
+  <main>
+    <span>V2-only playable release</span>
+    <h1>Opening FL V2</h1>
+    <p>The old direct match setup has been retired. Every playable match now starts through Quick Play under the current FL V2 engine.</p>
+    <a href="../quick-play/index.html?mode=single-player&amp;engine=fl-v2&amp;candidate=4">Open FL V2 Quick Play</a>
+  </main>
 </body>
 </html>
