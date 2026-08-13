@@ -30,7 +30,8 @@ function world(tick, options = {}) {
       {
         id: 'carrier', teamId: 'you', role: 'RW',
         position: { x: carrierX, y: carrierY }, velocity, facing: options.facing || { x: 1, y: 0 },
-        radius: 0.34, attributes: { control: 86, technique: 84, agility: 88, pace: 82, acceleration: 84 }
+        radius: 0.34, locomotionState: options.locomotionState || 'run',
+        attributes: { control: 86, technique: 84, agility: 88, pace: 82, acceleration: 84 }
       },
       {
         id: 'defender', teamId: 'opp', role: 'LB',
@@ -106,7 +107,11 @@ function resolve(tick, state, ballState, options = {}) {
 
 function reachSeparated(options = {}) {
   const cap = capability(options.workflow);
-  let state = Dribbling.createState({ epoch: 0 });
+  // Most branch tests begin from an already-established carry so they can
+  // isolate the contact itself. New-carrier cadence has its own regression.
+  let state = Dribbling.createState({ epoch: 0, phase: Dribbling.PHASES.SECURED_CONTROL,
+    carrierId: 'carrier', carrierTeamId: 'you', logicalOwnerId: 'carrier',
+    nextTouchTick: 3, outcome: 'established-carry-fixture' });
   let ballState = ball();
   const outputs = [];
   for (let tick = 1; tick <= 4; tick += 1) {
@@ -118,7 +123,117 @@ function reachSeparated(options = {}) {
   return { cap, state, ballState, outputs };
 }
 
+function releaseEstablished(options = {}, touchSequence = 0) {
+  const cap = capability(options.workflow);
+  let state = Dribbling.createState({ epoch: 0, phase: Dribbling.PHASES.SECURED_CONTROL,
+    carrierId: 'carrier', carrierTeamId: 'you', logicalOwnerId: 'carrier',
+    touchSequence, nextTouchTick: 1, outcome: 'established-carry-fixture' });
+  let ballState = ball();
+  let output = resolve(1, state, ballState, { ...options, capability: cap });
+  assert.equal(output.state.phase, Dribbling.PHASES.TOUCH_PREPARATION);
+  state = output.state; ballState = output.ballState;
+  output = resolve(2, state, ballState, { ...options, capability: cap });
+  assert.equal(output.state.phase, Dribbling.PHASES.SEPARATED_TOUCH);
+  return output;
+}
+
+test('a newly acquired carrier settles into the carry before the first physical dribble touch', () => {
+  const cap = capability();
+  let state = Dribbling.createState({ epoch: 0 }), ballState = ball();
+  const phases = [];
+  for (let tick = 1; tick <= Dribbling.CONFIG.maximumTouchCadenceTicks + 2; tick += 1) {
+    const output = resolve(tick, state, ballState, { capability: cap });
+    state = output.state; ballState = output.ballState; phases.push(output.state.phase);
+    if (output.state.phase === Dribbling.PHASES.SEPARATED_TOUCH) break;
+  }
+  const preparationIndex = phases.indexOf(Dribbling.PHASES.TOUCH_PREPARATION);
+  assert.ok(preparationIndex >= Dribbling.CONFIG.minimumTouchCadenceTicks - 1, phases.join(','));
+  assert.equal(phases.at(-1), Dribbling.PHASES.SEPARATED_TOUCH);
+  assert.equal(phases.slice(0, preparationIndex).every(phase => phase === Dribbling.PHASES.SECURED_CONTROL), true);
+});
+
+test('walk, jog, run and sprint use distinct readable cadence and separation envelopes', () => {
+  const rows = [
+    { mode: 'walk', speed: 2.2, intensity: 0.3, sprint: false },
+    { mode: 'jog', speed: 3.6, intensity: 0.55, sprint: false },
+    { mode: 'run', speed: 5.6, intensity: 0.8, sprint: false },
+    { mode: 'sprint', speed: 8.2, intensity: 1, sprint: true }
+  ].map(row => {
+    const output = releaseEstablished({
+      intensity: row.intensity,
+      sprint: row.sprint,
+      worldOptions: { velocity: { x: row.speed, y: 0 }, locomotionState: row.mode === 'jog' ? 'run' : row.mode }
+    });
+    return {
+      mode: row.mode,
+      cadence: output.state.nextTouchTick - output.state.touchTick,
+      separation: output.state.targetSeparationMetres
+    };
+  });
+  assert.deepEqual(rows.map(row => row.cadence), [33, 31, 28, 24]);
+  assert.equal(rows.every((row, index) => index === 0 || row.separation > rows[index - 1].separation), true,
+    JSON.stringify(rows));
+  assert.equal(rows.every(row => row.cadence >= Dribbling.CONFIG.minimumTouchCadenceTicks &&
+    row.cadence <= Dribbling.CONFIG.maximumTouchCadenceTicks), true);
+});
+
+test('steady running varies cadence deterministically instead of returning one metronome interval', () => {
+  const intervals = Array.from({ length: 5 }, (_, touchSequence) => {
+    const output = releaseEstablished({
+      intensity: 0.8,
+      worldOptions: { velocity: { x: 5.6, y: 0 }, locomotionState: 'run' }
+    }, touchSequence);
+    return output.state.nextTouchTick - output.state.touchTick;
+  });
+  assert.deepEqual(intervals, [28, 30, 26, 27, 29]);
+  const mostCommon = Math.max(...[...new Set(intervals)].map(value => intervals.filter(row => row === value).length));
+  assert.ok(mostCommon / intervals.length < 0.5, intervals.join(','));
+});
+
+test('sharp and reverse inputs replan promptly and launch the next touch along the authored exit', () => {
+  const straight = releaseEstablished({
+    intensity: 0.8,
+    direction: { x: 1, y: 0 },
+    worldOptions: { velocity: { x: 5.6, y: 0 }, locomotionState: 'run' }
+  });
+  const cut = releaseEstablished({
+    intensity: 0.8,
+    direction: { x: 0, y: 1 },
+    worldOptions: { velocity: { x: 5.6, y: 0 }, locomotionState: 'run' }
+  });
+  const cutSpeed = Math.hypot(cut.ballState.velocity.x, cut.ballState.velocity.y);
+  assert.ok(cut.ballState.velocity.y / cutSpeed > 0.9, JSON.stringify(cut.ballState.velocity));
+  assert.ok(cut.state.targetSeparationMetres < straight.state.targetSeparationMetres);
+
+  const reverse = releaseEstablished({
+    intensity: 0.8,
+    direction: { x: -1, y: 0 },
+    worldOptions: { velocity: { x: 5.6, y: 0 }, locomotionState: 'run' }
+  });
+  assert.ok(reverse.ballState.velocity.x < 0, JSON.stringify(reverse.ballState.velocity));
+
+  const cap = capability();
+  let state = Dribbling.createState(), ballState = ball();
+  const settled = resolve(1, state, ballState, {
+    capability: cap,
+    intensity: 0.8,
+    direction: { x: 1, y: 0 },
+    worldOptions: { velocity: { x: 5.6, y: 0 }, locomotionState: 'run' }
+  });
+  assert.ok(settled.state.nextTouchTick > 8);
+  const replanned = resolve(2, settled.state, settled.ballState, {
+    capability: cap,
+    intensity: 0.8,
+    direction: { x: 0, y: 1 },
+    worldOptions: { velocity: { x: 5.6, y: 0 }, locomotionState: 'run' }
+  });
+  assert.equal(replanned.state.outcome, 'turn-replanned');
+  assert.ok(replanned.state.nextTouchTick >= 7 && replanned.state.nextTouchTick <= 10,
+    String(replanned.state.nextTouchTick));
+});
+
 test('capability is explicit, offline-only, and limited to the two live V2 workflows', () => {
+  assert.equal(Dribbling.ENGINE_NAME, 'True Feel');
   assert.equal(capability().physicsProfile, 'shared-human-cpu-ratings-neutral');
   assert.equal(capability('cpu-v-cpu').workflow, 'cpu-v-cpu');
   assert.throws(() => Dribbling.createCapability({ acknowledgement: Dribbling.ACKNOWLEDGEMENT, workflow: 'set-piece-suite', online: false }), /unsupported/);
@@ -150,6 +265,7 @@ test('secured control progresses through preparation into a physically separated
 test('released touch becomes chase/recovery and then physically resecures', () => {
   const chain = reachSeparated();
   const touchTick = chain.state.touchTick;
+  const scheduledNextTouchTick = chain.state.nextTouchTick;
   let output = resolve(5, chain.state, chain.ballState, {
     capability: chain.cap,
     world: world(5, { carrierX: 40.27 }),
@@ -158,9 +274,9 @@ test('released touch becomes chase/recovery and then physically resecures', () =
   assert.equal(output.state.phase, Dribbling.PHASES.CHASE_RECOVERY);
   assert.equal(output.logicalOwnerId, 'carrier');
   const nearBall = Ball.createBallState({ ...output.ballState, position: { x: 40.58, y: 0, z: 0.11 } });
-  output = resolve(Math.max(7, touchTick + 3), output.state, nearBall, {
+  output = resolve(Math.max(9, touchTick + Dribbling.CONFIG.minimumSeparatedTicks), output.state, nearBall, {
     capability: chain.cap,
-    world: world(Math.max(7, touchTick + 3), { carrierX: 40.32 }),
+    world: world(Math.max(9, touchTick + Dribbling.CONFIG.minimumSeparatedTicks), { carrierX: 40.32 }),
     logicalOwnerId: null
   });
   assert.equal(output.state.phase, Dribbling.PHASES.RESECURE);
@@ -168,6 +284,8 @@ test('released touch becomes chase/recovery and then physically resecures', () =
   assert.equal(output.logicalOwnerId, 'carrier');
   assert.equal(output.ballState.regime, Ball.REGIMES.CONTROLLED);
   assert.equal(output.telemetry.outcome, 'resecure');
+  assert.equal(output.state.nextTouchTick, scheduledNextTouchTick,
+    'resecure must preserve the planned cadence instead of immediately detaching the ball again');
 });
 
 test('lease failure becomes a bounded heavy touch with no retained authority', () => {
@@ -266,9 +384,9 @@ test('pass and shot inputs buffer only during the lease and release on resecure'
   assert.equal(chase.state.bufferedAction.id, actionIntent.id);
   assert.equal(chase.releasedAction, null);
   const nearBall = Ball.createBallState({ ...chase.ballState, position: { x: 40.55, y: 0, z: 0.11 } });
-  const gathered = resolve(7, chase.state, nearBall, {
+  const gathered = resolve(9, chase.state, nearBall, {
     capability: chain.cap,
-    world: world(7, { carrierX: 40.25 }),
+    world: world(9, { carrierX: 40.25 }),
     logicalOwnerId: null,
     actionIntent
   });

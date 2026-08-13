@@ -84,6 +84,8 @@ test('pause-adjusted deadlines never turn a human or paused restart into an AI r
     let kickoffHeld=true,restartStartedAt=1000,restartEarliestAt=2000,restartForceAt=3000,restartReadySince=4000,resetUntil=5000;
     let celebrationChoiceDeadline=0,celebrationStartedAt=0,celebrationCompletedAt=0,goalBroadcastHoldUntil=0,setPieceCameraHold=null;
     const goalReplay={active:false},disciplineReplay={active:false},diveReplay={active:false},specialPSequence={active:false};
+    const you=[],opp=[],ykeep={},okeep={};
+    const shiftContactPresentationTimers=()=>0;
     ${shiftSource}
     return { shift:shiftPausedPresentationTimers, snapshot:()=>({restartStartedAt,restartEarliestAt,restartForceAt,restartReadySince,resetUntil}) };
   `)();
@@ -120,6 +122,7 @@ test('the loose-ball slide branch resolves swept contact before incidental picku
     let ball={owner:null,isShot:false,x:95,y:100,z:0,vx:1,vy:0,zv:0},lastTouch=null,lastTouchPlayer=null,poss=0;
     const slideTackleProfile=()=>({cleanReach:60}),facing=p=>({x:p.fx,y:p.fy}),report={teams:{you:{tackles:0}}};
     const logEvent=(type,team,player,details)=>events.push({type,team,playerId:player.id,...details});
+    const holdContactPresentation=()=>true;
     ${slideSource}
     return { run(player){advanceSlideTackle(player,()=>{});return {player,ball,events,report,lastTouch};} };
   `)();
@@ -157,6 +160,11 @@ test('CPU throw solver lands across the legal range in legacy and V2 authority',
   assert.match(cpuThrow, /v2SpeedWorld:trajectory\.v2SpeedWorld,v2LoftWorld:trajectory\.v2LoftWorld/);
   assert.match(cpuThrow, /authority:'distance-solved-throw'/);
   assert.doesNotMatch(cpuThrow, /playRestartBall\(taker,target,6\.0,3\.2/);
+  const humanRestart = section('function takeUserRestart', 'function keeperKick');
+  assert.match(humanRestart, /maximumDistance=220\+300\*p/);
+  assert.match(humanRestart, /legalDistance=clamp\(rawDistance,70,maximumDistance\)/);
+  assert.match(humanRestart, /standardThrowTrajectory\(legalDistance,50,18\)/);
+  assert.match(humanRestart, /nearestPlayerToPoint\(taker\.team,point,q=>q!==taker\)/);
 });
 
 test('controlled touches atomically clear stale throw and cross flight metadata', () => {
@@ -171,6 +179,8 @@ test('controlled touches atomically clear stale throw and cross flight metadata'
   assert.deepEqual(state, {
     flightType: null, flightAge: 0, aerialSource: null, aerialCooldown: 0, minAerialFlightAge: 0,
     crossContestLogged: false, crossNoContactLogged: false, crossContactFrame: null, crossContactHeight: null, crossAuditId: null,
+    crossNoContactFrame: null, crossSourceFlight: null, crossRouteExpired: false,
+    directionalKnockOnContract: null, pendingKickoffReceipt: null,
     trajectoryProfile: null, aimTarget: null, dip: 0, spin: 0, curveAccel: null
   });
   assert.match(section('function liveV2ApplyMovement', 'function liveV2ApplyIntelligence'), /ball\.owner=owner[\s\S]*clearControlledTouchFlightMetadata\(ball\)/);
@@ -257,6 +267,7 @@ test('R1+Square keeps five-run assignment while the low cross arrives flat at re
       assert.equal(plan.mode, 'low-cross');
       assert.equal(plan.calibration, 'fl-v2-flat-skid');
       assert.equal(plan.contactHeight, 0);
+      assert.ok(Number.isInteger(plan.v2ContactFrame));
       assert.ok(plan.paceMps >= 17.8 && plan.paceMps <= 19.8);
       assert.ok(plan.speed < 12, 'legacy speed must stay well below the exported 24.784 runaway value');
 
@@ -277,17 +288,22 @@ test('R1+Square keeps five-run assignment while the low cross arrives flat at re
       assert.ok(Math.abs(arrivalFrame - plan.contactFrame) <= 8, `legacy contact frame stays solved at ${distance}`);
       assert.ok(maximumHeight <= 2, `legacy low cross stays flat at ${distance}`);
 
-      const simulated = simulateV2(plan, distance, { startHeight: 1, axis: 'y', frames: plan.contactFrame + 30 });
+      const simulated = simulateV2(plan, distance, { startHeight: 1, axis: 'y', frames: plan.v2ContactFrame + 30 });
       assert.ok(simulated.arrival, `V2 low cross reaches ${distance}`);
-      assert.ok(Math.abs(simulated.arrival.frame - plan.contactFrame) <= 16, `V2 contact is within one receiver stride at ${distance}`);
+      assert.ok(Math.abs(simulated.arrival.frame - plan.v2ContactFrame) <= 8,
+        `V2 contact stays inside the MR receiver window at ${distance}: actual ${simulated.arrival.frame}, planned ${plan.v2ContactFrame}`);
+      assert.ok(simulated.arrival.frame <= plan.v2ContactFrame + 8,
+        `V2 route must not expire before MR contact at ${distance}`);
       assert.ok(simulated.maximumHeight <= 2, `V2 low cross stays below ${2 / PITCH_UNITS_PER_METRE}m at ${distance}`);
       assert.equal(simulated.arrival.height, 0);
     }
   }
   const launch = section('function launchMatchBall', 'function playRestartBallToPoint');
+  assert.match(launch, /stagedV2Launch&&Number\.isFinite\(opts\.v2ContactFrame\)\?opts\.v2ContactFrame:opts\.contactFrame/);
   const lob = section('function doLobPassFor', 'function doLobPass');
   assert.match(launch, /'driven-cross','low-cross','free-kick-cross'/);
   assert.match(lob, /v2SpeedWorld:trajectory\.v2SpeedWorld,v2LoftWorld:trajectory\.v2LoftWorld/);
+  assert.match(lob, /v2ContactFrame:isCross\?trajectory\.v2ContactFrame:null/);
   assert.match(lob, /contactHeight:trajectory\.contactHeight\?\?null/);
   assert.match(lob, /calibration:trajectory\.calibration\|\|null/);
   assert.match(html, /const lowCrossSkid=ball\.flightType==='low-cross'/);

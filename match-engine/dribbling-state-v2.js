@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * Football Legacy Dribbling State V2
+ * Football Legacy True Feel — Dribbling State V2
  *
  * A deterministic, SI-unit dribbling state machine for the offline live V2
  * authority.  It owns neither controls nor presentation.  It turns an
@@ -19,6 +19,7 @@
   'use strict';
 
   const VERSION = '2.0.0-offline-live-dribbling-state';
+  const ENGINE_NAME = 'True Feel';
   const STATE_SCHEMA = 'football-legacy-dribbling-state-v2';
   const REQUEST_SCHEMA = 'football-legacy-dribbling-request-v2';
   const RESULT_SCHEMA = 'football-legacy-dribbling-result-v2';
@@ -51,9 +52,9 @@
   });
   const CONFIG = deepFreeze({
     preparationTicks: 1,
-    minimumSeparatedTicks: 3,
-    minimumTouchCadenceTicks: 7,
-    maximumTouchCadenceTicks: 14,
+    minimumSeparatedTicks: 5,
+    minimumTouchCadenceTicks: 20,
+    maximumTouchCadenceTicks: 34,
     minimumLeaseTicks: 9,
     maximumLeaseTicks: 17,
     minimumControlIntensity: 0.16,
@@ -63,6 +64,19 @@
     heavySeparationMin: 1.35,
     heavySeparationMax: 2.15,
     turnoverMargin: 0.06
+  });
+  const TOUCH_CADENCE_BASE_TICKS = deepFreeze({
+    walk: 33,
+    jog: 31,
+    run: 28,
+    sprint: 24
+  });
+  const TOUCH_CADENCE_PHASE_TICKS = Object.freeze([-1, 1, 0, 2, -2]);
+  const TOUCH_DISTANCE_MULTIPLIER = deepFreeze({
+    walk: 0.72,
+    jog: 0.86,
+    run: 1,
+    sprint: 1.08
   });
 
   if (!Ball || Ball.VERSION !== '2.0.0-shadow' ||
@@ -112,6 +126,11 @@
 
   function length(value) {
     return Math.hypot(finite(value && value.x, 0), finite(value && value.y, 0));
+  }
+
+  function dot(left, right) {
+    return finite(left && left.x, 0) * finite(right && right.x, 0) +
+      finite(left && left.y, 0) * finite(right && right.y, 0);
   }
 
   function unit(value, fallback) {
@@ -412,6 +431,24 @@
     }, desired);
   }
 
+  function carryMode(request, carrier) {
+    const speed = carrier ? length(carrier.velocity) : 0;
+    const locomotion = String(carrier && carrier.locomotionState || '');
+    const intensity = request.carrierInput.intensity || clamp(speed / 7.2, 0, 1);
+    if (request.carrierInput.sprint || locomotion === 'sprint') return 'sprint';
+    if (locomotion === 'walk' || speed <= 2.55 || intensity <= 0.34) return 'walk';
+    if (speed <= 4.25 || intensity <= 0.6) return 'jog';
+    return 'run';
+  }
+
+  function turnSeverity(request, carrier, desired) {
+    if (!carrier) return 0;
+    const facing = unit(carrier.facing, { x: 1, y: 0 });
+    const travel = length(carrier.velocity) > 0.1 ? unit(carrier.velocity, facing) : facing;
+    const exit = desired || carrierDirection(request, carrier, qualityFor(request, carrier.id));
+    return clamp((1 - clamp(dot(travel, exit), -1, 1)) * 0.5, 0, 1);
+  }
+
   function selectFoot(sequence, facing, desired) {
     const cross = facing.x * desired.y - facing.y * desired.x;
     if (Math.abs(cross) > 0.18) return cross > 0 ? 'left' : 'right';
@@ -447,6 +484,12 @@
 
   function secureState(request, previous, ownerId, outcome) {
     const owner = rosterFor(request, ownerId);
+    const player = playerFor(request, ownerId);
+    const quality = player ? qualityFor(request, ownerId) : { score: 0.7 };
+    const retainedCadenceTick = previous.carrierId === ownerId &&
+      Number.isInteger(previous.nextTouchTick) && previous.nextTouchTick > request.tick
+      ? previous.nextTouchTick : request.tick + touchCadenceTicks(request, player, quality,
+        previous.touchSequence + 1);
     return createState({
       ...previous,
       epoch: request.epoch,
@@ -467,9 +510,27 @@
       maxSeparationMetres: 0,
       pressure: 0,
       outcome: outcome || 'secured',
-      nextTouchTick: request.tick + 2,
+      // A physical touch already selected its next cadence boundary. Preserve
+      // that boundary when the ball is resecured instead of restarting a
+      // two-tick timer and creating an eight-to-nine-touches-per-second loop.
+      nextTouchTick: retainedCadenceTick,
       previousCarrierId: previous.carrierId && previous.carrierId !== ownerId ? previous.carrierId : previous.previousCarrierId
     });
+  }
+
+  function touchCadenceTicks(request, carrier, quality, sequence) {
+    const mode = carryMode(request, carrier);
+    const desired = carrier ? carrierDirection(request, carrier, quality) : { x: 1, y: 0 };
+    const turn = turnSeverity(request, carrier, desired);
+    const pressure = carrier ? pressureAt(request, carrier).score : 0;
+    const cadencePhase = TOUCH_CADENCE_PHASE_TICKS[Math.max(0, Math.trunc(finite(sequence, 0))) %
+      TOUCH_CADENCE_PHASE_TICKS.length];
+    // Gait supplies the broad interval; the alternating deterministic phase
+    // stops a steady carry becoming another metronome. Pressure and a changed
+    // exit shorten the next meeting without making elite control synonymous
+    // with frantic extra contacts.
+    return Math.round(clamp(TOUCH_CADENCE_BASE_TICKS[mode] + cadencePhase - turn * 3 - pressure * 2 +
+      (quality.score - 0.7) * 2, CONFIG.minimumTouchCadenceTicks, CONFIG.maximumTouchCadenceTicks));
   }
 
   function releaseTouch(request, state, carrier) {
@@ -483,23 +544,36 @@
     const perpendicular = { x: -intended.y, y: intended.x };
     const direction = unit({ x: intended.x + perpendicular.x * errorMagnitude, y: intended.y + perpendicular.y * errorMagnitude }, intended);
     const carrierSpeed = length(carrier.velocity), intensity = request.carrierInput.intensity || clamp(carrierSpeed / 7.2, 0, 1);
+    const mode = carryMode(request, carrier), turn = turnSeverity(request, carrier, intended);
     const targetSeparation = clamp((0.56 + carrierSpeed * 0.055 + intensity * 0.25 +
-      (1 - quality.score) * 0.34 + pressure.score * 0.18) * profile.distanceMultiplier, 0.48, 1.48);
+      (1 - quality.score) * 0.34 + pressure.score * 0.18) * profile.distanceMultiplier *
+      TOUCH_DISTANCE_MULTIPLIER[mode] * (1 - turn * 0.3), 0.44, 1.48);
     const leaseTicks = Math.round(clamp(10 + targetSeparation * 3 + (1 - quality.score) * 2 +
       pressure.score * 2 + profile.leaseTicks, CONFIG.minimumLeaseTicks, CONFIG.maximumLeaseTicks));
-    const cadenceTicks = Math.round(clamp(7 + carrierSpeed * 0.65 + quality.score * 3,
-      CONFIG.minimumTouchCadenceTicks, CONFIG.maximumTouchCadenceTicks));
+    // Match footage and the strict-V2 playtest both require readable carries,
+    // not a complete release/chase/gather cycle every seven simulation ticks.
+    // Faster movement shortens the interval, while control quality keeps the
+    // touch economical; even a sprint remains a physical 1/3-second cadence.
+    const cadenceTicks = touchCadenceTicks(request, carrier, quality, sequence + 1);
     const lateralOffset = foot === 'left' ? 0.105 : -0.105;
-    const forwardOffset = clamp(finite(carrier.radius, 0.34), 0.2, 0.65) + request.ballState.radius + 0.055;
+    const forwardOffset = (clamp(finite(carrier.radius, 0.34), 0.2, 0.65) + request.ballState.radius + 0.055) *
+      (1 - turn * 0.28);
     const contactPoint = {
       x: carrier.position.x + facing.x * forwardOffset - facing.y * lateralOffset,
       y: carrier.position.y + facing.y * forwardOffset + facing.x * lateralOffset
     };
     const additionalSpeed = (1.15 + targetSeparation * 0.92 + pressure.score * 0.45 +
       (1 - quality.score) * 0.35) * profile.speedMultiplier;
+    const carrierAlongExit = dot(carrier.velocity, direction);
+    const retainedAlong = Math.max(0, carrierAlongExit) * (0.86 - turn * 0.18);
+    const lateralVelocity = {
+      x: carrier.velocity.x - direction.x * carrierAlongExit,
+      y: carrier.velocity.y - direction.y * carrierAlongExit
+    };
+    const lateralRetention = 0.18 * Math.pow(1 - turn, 2);
     const touchVelocity = {
-      x: carrier.velocity.x * 0.9 + direction.x * additionalSpeed,
-      y: carrier.velocity.y * 0.9 + direction.y * additionalSpeed
+      x: direction.x * (retainedAlong + additionalSpeed) + lateralVelocity.x * lateralRetention,
+      y: direction.y * (retainedAlong + additionalSpeed) + lateralVelocity.y * lateralRetention
     };
     const metadata = clone(request.ballState.metadata || {});
     metadata.dribbling = {
@@ -757,6 +831,15 @@
 
     if (state.phase === PHASES.SECURED_CONTROL) {
       quality = qualityFor(request, carrier.id); pressure = pressureAt(request, carrier);
+      const requestedTurn = turnSeverity(request, carrier, carrierDirection(request, carrier, quality));
+      if (!releasedAction && requestedTurn >= 0.35) {
+        const turnPreparationTicks = Math.round(clamp(5 + (1 - quality.score) * 3, 5, 8));
+        const replannedTouchTick = request.tick + turnPreparationTicks;
+        if (state.nextTouchTick > replannedTouchTick) {
+          state.nextTouchTick = replannedTouchTick;
+          state.outcome = 'turn-replanned';
+        }
+      }
       if (request.carrierInput.shield) {
         state = createState({ ...state, phase: PHASES.SHIELD, phaseStartedTick: request.tick,
           outcome: 'shield', pressure: pressure.score, physicalSeparated: false });
@@ -764,7 +847,8 @@
           (request.carrierInput.intensity >= CONFIG.minimumControlIntensity || length(carrier.velocity) >= CONFIG.minimumCarrierSpeed)) {
         state = createState({ ...state, phase: PHASES.TOUCH_PREPARATION, phaseStartedTick: request.tick,
           surface: request.surface, pressure: pressure.score, outcome: 'preparing' });
-      } else state.outcome = releasedAction ? 'action-released' : 'secured';
+      } else if (releasedAction) state.outcome = 'action-released';
+      else if (state.outcome !== 'turn-replanned') state.outcome = 'secured';
       return makeResult(request, state, ballState, releasedAction, quality, pressure);
     }
 
@@ -823,6 +907,7 @@
   }
 
   return Object.freeze({
+    ENGINE_NAME,
     VERSION,
     STATE_SCHEMA,
     REQUEST_SCHEMA,

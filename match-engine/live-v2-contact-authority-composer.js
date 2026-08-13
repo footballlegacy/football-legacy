@@ -38,6 +38,19 @@
   // never bridge the old two-metre-plus Build 173 reception radius.
   const FIRST_TOUCH_ACQUISITION_RADIUS_METRES = 0.74;
   const MAX_LEDGER_IDS = 256;
+  const MAX_RECENT_FIRST_TOUCH_IDS = 64;
+  const RETAINED_RECONTACT_MIN_TICKS = 20;
+  const RETAINED_RECONTACT_MAX_LOCK_TICKS = 45;
+  const RETAINED_RECONTACT_MIN_TRAVEL_METRES = 0.9;
+  // The releasing player has deliberately created the flight and must not be
+  // reinterpreted as a passive bystander while the ball is still clearing
+  // their body. Keep this longer than the entire rating-led reaction window;
+  // opponents and non-target teammates remain physically active throughout.
+  const SOURCE_RELEASE_BODY_PROTECTION_TICKS = 18;
+  const REACTION_DELAY_MIN_TICKS = 3;
+  const REACTION_DELAY_RATING_DIVISOR = 11;
+  const INTENDED_RECEIVER_ANTICIPATION_TICKS = 3;
+  const MAX_REACTION_DELAY_TICKS = REACTION_DELAY_MIN_TICKS + Math.round(98 / REACTION_DELAY_RATING_DIVISOR);
   const MAX_TICK = 1000000000;
   const MAX_SEED = 0xffffffff;
   const issuedCapabilities = new WeakSet();
@@ -74,6 +87,7 @@
     }
     if (typeof Movement.createWorldState !== 'function' || typeof Ball.createBallState !== 'function' ||
         typeof Ball.resolveLaunch !== 'function' || typeof FirstTouchAuthority.createCapability !== 'function' ||
+        typeof Ball.resolvePassiveBodyDeflection !== 'function' ||
         typeof FirstTouchAuthority.resolve !== 'function' || typeof Aerial.createShadowCapability !== 'function' ||
         typeof Aerial.resolveContact !== 'function') throw new Error('live contact dependency API is incomplete');
   }
@@ -182,16 +196,20 @@
         capability.transactionalPlanOnly !== true) throw new Error('issued live contact capability is required');
   }
 
-  function normalizeLedger(value, prefix, label) {
-    if (!Array.isArray(value) || value.length > MAX_LEDGER_IDS) throw new TypeError(label + ' must be a bounded array');
+  function normalizeLedger(value, prefix, label, maximum = MAX_LEDGER_IDS) {
+    if (!Array.isArray(value) || value.length > maximum) throw new TypeError(label + ' must be a bounded array');
     const seen = new Set();
     const result = value.map((entry, index) => {
       stableId(entry, label + '[' + index + ']');
       if (!String(entry).startsWith(prefix)) throw new TypeError(label + '[' + index + '] has the wrong authority prefix');
       if (seen.has(entry)) throw new TypeError(label + ' must not contain duplicate IDs');
       seen.add(entry); return entry;
-    }).sort();
+    });
     return result;
+  }
+
+  function appendRecentFirstTouchId(ids, id) {
+    return [...ids, id].slice(-MAX_RECENT_FIRST_TOUCH_IDS);
   }
 
   function normalizeRoster(value, world) {
@@ -211,12 +229,40 @@
         sentOff: source.sentOff === true,
         available: source.available !== false,
         contactEligible: source.contactEligible !== false,
+        bodyContactEligible: source.bodyContactEligible !== false,
         heightM: Math.max(1.3, Math.min(2.2, finite(source.heightM == null ? 1.8 : source.heightM, 'roster height'))),
         attributes: clone(source.attributes || {})
       };
     });
     for (const player of world.players) if (!ids.has(player.id)) throw new Error('every Movement V2 player needs one roster record');
     return roster.sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  function normalizeReactionContext(value, tick, roster) {
+    if (value == null) return null;
+    const source = plainObject(value, 'reactionContext');
+    if (source.active !== true || source.stimulus !== 'deliberate-pass-release') {
+      throw new Error('reactionContext must describe one active deliberate pass release');
+    }
+    const releaseTick = integer(source.releaseTick, 1, tick, 'reactionContext.releaseTick');
+    const sourcePlayerId = stableId(source.sourcePlayerId, 'reactionContext.sourcePlayerId');
+    const sourceTeamId = stableId(source.sourceTeamId, 'reactionContext.sourceTeamId');
+    if (!roster.some(player => player.teamId === sourceTeamId)) {
+      throw new Error('reactionContext source team is not represented in contact roster');
+    }
+    const previous = plainObject(source.previousBallPosition, 'reactionContext.previousBallPosition');
+    return {
+      active: true,
+      stimulus: 'deliberate-pass-release',
+      releaseTick,
+      sourcePlayerId,
+      sourceTeamId,
+      previousBallPosition: {
+        x: finite(previous.x, 'reactionContext.previousBallPosition.x'),
+        y: finite(previous.y, 'reactionContext.previousBallPosition.y'),
+        z: finite(previous.z, 'reactionContext.previousBallPosition.z')
+      }
+    };
   }
 
   function normalizeAerialIntent(value, tick, epoch, roster) {
@@ -263,14 +309,20 @@
     const intendedReceiverId = source.intendedReceiverId == null ? null : stableId(source.intendedReceiverId, 'intendedReceiverId');
     if (intendedReceiverId && !roster.some(player => player.id === intendedReceiverId)) throw new Error('intended receiver is not in roster');
     const gate = plainObject(source.gate || {}, 'gate');
-    const firstTouchLedger = normalizeLedger(source.consumedFirstTouchIds || [], 'first-touch-v2:', 'consumedFirstTouchIds');
+    const firstTouchLedger = normalizeLedger(source.consumedFirstTouchIds || [], 'first-touch-v2:',
+      'consumedFirstTouchIds', MAX_RECENT_FIRST_TOUCH_IDS);
     const aerialLedger = normalizeLedger(source.consumedAerialIds || [], 'aerial-v2:', 'consumedAerialIds');
+    const consumedFirstTouchThroughTick = source.consumedFirstTouchThroughTick == null ? 0
+      : integer(source.consumedFirstTouchThroughTick, 0, tick, 'consumedFirstTouchThroughTick');
+    const reactionContext = normalizeReactionContext(source.reactionContext, tick, roster);
     return {
       schema: REQUEST_SCHEMA, workflow, online: false, tick, epoch, seed,
       fixedTickSeconds: FIXED_TICK_SECONDS, world, ballState, roster, intendedReceiverId,
       firstTouchIntent: source.firstTouchIntent && typeof source.firstTouchIntent === 'object' ? clone(source.firstTouchIntent) : null,
+      reactionContext,
       aerialIntent: normalizeAerialIntent(source.aerialIntent, tick, epoch, roster),
-      consumedFirstTouchIds: firstTouchLedger, consumedAerialIds: aerialLedger,
+      consumedFirstTouchIds: firstTouchLedger, consumedFirstTouchThroughTick,
+      consumedAerialIds: aerialLedger,
       gate: {
         livePlay: gate.livePlay === true,
         restartActive: gate.restartActive === true,
@@ -319,8 +371,114 @@
       heading: rating('heading', 70), jumping: rating('jumping', 70), strength: rating('strength', 70),
       technique: rating('technique', rating('control', 70)), shooting: rating('shooting', rating('shoot', 70)),
       volleys: rating('volleys', rating('shoot', 70)), balance: rating('balance', 70), agility: rating('agility', 70),
-      awareness: rating('awareness', 70), defend: rating('defending', rating('defend', 55))
+      awareness: rating('awareness', 70), reactions: rating('reactions', rating('awareness', 70)),
+      defend: rating('defending', rating('defend', 55))
     };
+  }
+
+  function reactionProfile(request, candidate) {
+    if (!request.reactionContext) return {
+      active: false, rating: null, ratingSource: null, delayTicks: 0,
+      ageTicks: null, ready: true, intendedAnticipationTicks: 0
+    };
+    const attributes = candidate.roster.attributes || {};
+    const explicit = Number.isFinite(attributes.reactions);
+    const rating = Math.max(1, Math.min(99, finite(explicit ? attributes.reactions :
+      (attributes.awareness == null ? 70 : attributes.awareness), 'reaction rating')));
+    const baseDelay = REACTION_DELAY_MIN_TICKS + Math.round((99 - rating) / REACTION_DELAY_RATING_DIVISOR);
+    const anticipation = candidate.intended ? INTENDED_RECEIVER_ANTICIPATION_TICKS : 0;
+    const delayTicks = Math.max(0, baseDelay - anticipation);
+    const ageTicks = request.tick - request.reactionContext.releaseTick;
+    return {
+      active: true,
+      rating,
+      ratingSource: explicit ? 'reactions' : 'awareness-fallback',
+      delayTicks,
+      ageTicks,
+      ready: ageTicks >= delayTicks,
+      intendedAnticipationTicks: anticipation
+    };
+  }
+
+  function passiveBodyProbe(request, candidate) {
+    if (!request.reactionContext || !candidate.roster.bodyContactEligible) return null;
+    const ageTicks = request.tick - request.reactionContext.releaseTick;
+    if (candidate.player.id === request.reactionContext.sourcePlayerId &&
+        ageTicks < SOURCE_RELEASE_BODY_PROTECTION_TICKS) return null;
+    const result = Ball.resolvePassiveBodyDeflection(request.ballState, {
+      previousBallPosition: request.reactionContext.previousBallPosition,
+      body: {
+        id: candidate.player.id,
+        position: { x: candidate.player.position.x, y: candidate.player.position.y, z: 0 },
+        velocity: { x: candidate.player.velocity.x, y: candidate.player.velocity.y, z: 0 },
+        radius: candidate.player.radius,
+        heightM: candidate.roster.heightM
+      },
+      tick: request.tick,
+      fixedTickSeconds: FIXED_TICK_SECONDS
+    });
+    return result.hit ? result : null;
+  }
+
+  function passiveDeflectionResult(request, candidate, probe, reaction) {
+    const handoffId = 'first-touch-v2:body:' + request.tick + ':' + digest({
+      playerId: candidate.player.id,
+      contactCount: request.ballState.contactCount,
+      timeFraction: probe.timeFraction,
+      releaseTick: request.reactionContext.releaseTick
+    });
+    const metadata = clone(probe.state.metadata || {});
+    metadata.bodyDeflection = {
+      playerId: candidate.player.id,
+      teamId: candidate.player.teamId,
+      contactTick: request.tick,
+      releaseTick: request.reactionContext.releaseTick,
+      involuntary: true,
+      reactionReady: reaction.ready,
+      reactionRating: reaction.rating,
+      reactionRatingSource: reaction.ratingSource,
+      reactionDelayTicks: reaction.delayTicks,
+      releaseAgeTicks: reaction.ageTicks
+    };
+    const ballState = Ball.createBallState({ ...probe.state, metadata }, {
+      radius: probe.state.radius,
+      mass: probe.state.mass
+    });
+    return deepFreeze({
+      schema: RESULT_SCHEMA, version: VERSION, authority: AUTHORITY, workflow: request.workflow, online: false,
+      tick: request.tick, epoch: request.epoch, status: 'contact', ownedContact: true,
+      contactType: 'involuntary-deflection', ownerCandidateId: null, ballState,
+      consumedFirstTouchIds: appendRecentFirstTouchId(request.consumedFirstTouchIds, handoffId),
+      consumedFirstTouchThroughTick: request.tick,
+      consumedAerialIds: request.consumedAerialIds,
+      suppressLegacy: {
+        reception: true,
+        aerialDuel: false,
+        outfieldBallBlock: true,
+        keeperContact: false,
+        wallContact: false
+      },
+      presentation: {
+        playerId: candidate.player.id,
+        teamId: candidate.player.teamId,
+        outcome: 'deflected',
+        reason: reaction.ready ? 'deliberate-control-missed-body-contact' : 'pre-reaction-body-contact',
+        technique: 'passive-player-body',
+        handoffId,
+        possessionDisposition: 'remain-loose',
+        phase: 'reaction-deflection'
+      },
+      detail: {
+        handoffId,
+        involuntary: true,
+        intended: candidate.intended,
+        reaction,
+        timeFraction: probe.timeFraction,
+        event: clone(probe.event),
+        incomingVelocity: clone(request.ballState.velocity),
+        outgoingVelocity: clone(ballState.velocity)
+      }
+    });
   }
 
   function isRetainedTouchContinuation(request, playerId) {
@@ -332,6 +490,25 @@
       metadata.playerId === playerId && metadata.outcome === 'retained');
   }
 
+  function retainedTouchChainLocked(request, playerId) {
+    const metadata = request.ballState.metadata && request.ballState.metadata.firstTouch;
+    if (!metadata || metadata.playerId !== playerId || metadata.outcome !== 'retained') return false;
+    const contactTick = Number(metadata.contactTick);
+    const origin = metadata.contactPosition;
+    if (!Number.isSafeInteger(contactTick) || !origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.y)) {
+      return true;
+    }
+    const elapsedTicks = request.tick - contactTick;
+    const travelled = Math.hypot(request.ballState.position.x - origin.x, request.ballState.position.y - origin.y);
+    // Prevent the old 18-frame self-contact loop, but never make a cushioned,
+    // stationary ball permanently untouchable. During the bounded settle
+    // window the ball must both age and travel; after it expires, ordinary
+    // contact geometry is authoritative again.
+    if (elapsedTicks < RETAINED_RECONTACT_MIN_TICKS) return true;
+    if (elapsedTicks > RETAINED_RECONTACT_MAX_LOCK_TICKS) return false;
+    return travelled < RETAINED_RECONTACT_MIN_TRAVEL_METRES;
+  }
+
   function noContact(request, status, detail, arbitration) {
     const aerialArbitrated = arbitration === 'aerial-attempt';
     const groundArbitrated = arbitration === 'ground-attempt';
@@ -339,6 +516,7 @@
       schema: RESULT_SCHEMA, version: VERSION, authority: AUTHORITY, workflow: request.workflow, online: false,
       tick: request.tick, epoch: request.epoch, status, ownedContact: false, contactType: null,
       ownerCandidateId: null, ballState: request.ballState, consumedFirstTouchIds: request.consumedFirstTouchIds,
+      consumedFirstTouchThroughTick: request.consumedFirstTouchThroughTick,
       consumedAerialIds: request.consumedAerialIds,
       suppressLegacy: {
         reception: aerialArbitrated || groundArbitrated,
@@ -352,16 +530,45 @@
   }
 
   function resolveFirstTouch(request) {
+    if (request.tick <= request.consumedFirstTouchThroughTick) {
+      return noContact(request, 'already-consumed', 'first-touch-high-water', 'ground-attempt');
+    }
     const snapshot = centreSnapshot(request);
     const rosterById = Object.fromEntries(request.roster.map(player => [player.id, player]));
-    const candidates = request.world.players.map(player => ({
+    const allCandidates = request.world.players.map(player => ({
       player,
       roster: rosterById[player.id],
       intended: player.id === request.intendedReceiverId,
       distance: Math.hypot(player.position.x - request.ballState.position.x, player.position.y - request.ballState.position.y)
-    })).filter(row => row.roster && !row.roster.isGK && !row.roster.sentOff && row.roster.available && row.roster.contactEligible && row.distance <= FIRST_TOUCH_ACQUISITION_RADIUS_METRES)
-      .sort((left, right) => Number(right.intended) - Number(left.intended) || left.distance - right.distance || left.player.id.localeCompare(right.player.id));
-    if (!candidates.length) return noContact(request, 'no-contact', 'no-eligible-first-touch-receiver', 'ground-attempt');
+    })).filter(row => row.roster && !row.roster.isGK && !row.roster.sentOff && row.roster.available);
+    for (const candidate of allCandidates) candidate.reaction = reactionProfile(request, candidate);
+    const physicalHits = allCandidates.map(candidate => ({
+      candidate,
+      probe: passiveBodyProbe(request, candidate)
+    })).filter(row => row.probe)
+      .sort((left, right) => left.probe.timeFraction - right.probe.timeFraction ||
+        left.candidate.player.id.localeCompare(right.candidate.player.id));
+    const physical = physicalHits[0] || null;
+    if (physical && (!physical.candidate.reaction.ready || !physical.candidate.roster.contactEligible)) {
+      return passiveDeflectionResult(request, physical.candidate, physical.probe, physical.candidate.reaction);
+    }
+    // A real swept body meeting is authoritative over any later endpoint
+    // receiver. If its actor has reacted we give that actor the only deliberate
+    // First Touch attempt; if foot-control geometry still fails, the physical
+    // body ricochet is committed rather than erased by somebody downstream.
+    const candidates = physical ? [physical.candidate].filter(row => row.roster.contactEligible && row.reaction.ready &&
+      !retainedTouchChainLocked(request, row.player.id))
+      : allCandidates.filter(row => row.roster.contactEligible && row.reaction.ready &&
+        row.distance <= FIRST_TOUCH_ACQUISITION_RADIUS_METRES && !retainedTouchChainLocked(request, row.player.id))
+        .sort((left, right) => Number(right.intended) - Number(left.intended) ||
+          left.distance - right.distance || left.player.id.localeCompare(right.player.id));
+    if (!candidates.length) {
+      if (physical) return passiveDeflectionResult(request, physical.candidate, physical.probe, physical.candidate.reaction);
+      return noContact(request, 'no-contact', request.reactionContext ? {
+        reason: 'reaction-window-or-contact-geometry-pending',
+        releaseAgeTicks: request.tick - request.reactionContext.releaseTick
+      } : 'no-eligible-first-touch-receiver', 'ground-attempt');
+    }
     const capability = FirstTouchAuthority.createCapability({
       enabled: true,
       online: false,
@@ -408,7 +615,11 @@
         },
         ball: snapshot.ballState,
         pressurePlayerIds: pressureIds,
-        intent: request.firstTouchIntent || {
+        // A receiver's directional cushion belongs only to that authored
+        // receiver. If an opponent or another teammate reaches the physical
+        // ball first, resolve their own neutral contact rather than letting a
+        // human stick vector steer somebody else's interception.
+        intent: candidate.intended && request.firstTouchIntent || {
           type: candidate.intended ? 'cushion' : 'trap',
           direction: candidate.player.facing,
           touchDistanceM: candidate.intended ? 0.4 : 0.2,
@@ -416,9 +627,18 @@
         },
         timingOffsetSeconds: 0,
         technique: null,
-        consumedHandoffIds: request.consumedFirstTouchIds
+        // The outer contact ledger also contains passive MR body identities.
+        // First Touch Authority owns only its canonical handoff namespace, so
+        // keep both exact-once ledgers intact without crossing their IDs.
+        consumedHandoffIds: request.consumedFirstTouchIds.filter(id =>
+          /^first-touch-v2:[1-9][0-9]*:[a-f0-9]{16}$/.test(id))
       }, capability);
-      if (result.status === 'no-contact') continue;
+      if (result.status === 'no-contact') {
+        if (physical && candidate.player.id === physical.candidate.player.id) {
+          return passiveDeflectionResult(request, candidate, physical.probe, candidate.reaction);
+        }
+        continue;
+      }
       if (result.status === 'already-consumed') return noContact(request, 'already-consumed', result.candidateHandoffId, 'ground-attempt');
       const handoff = result.handoff;
       if (!handoff || result.status !== 'pending' || result.schema !== FirstTouchAuthority.RESULT_SCHEMA ||
@@ -433,15 +653,28 @@
           handoff.contact.ballState.lastContact.outerTick !== request.tick) {
         throw new Error('First Touch V2 live promotion handoff contract failed');
       }
-      if (request.consumedFirstTouchIds.length >= MAX_LEDGER_IDS) throw new Error('first-touch exact-once ledger is full');
-      const ballState = ballToPitch(handoff.contact.ballState, snapshot.centre);
+      const pitchedBallState = ballToPitch(handoff.contact.ballState, snapshot.centre);
+      const firstTouchMetadata = clone(pitchedBallState.metadata || {});
+      firstTouchMetadata.firstTouch = {
+        ...(firstTouchMetadata.firstTouch || {}),
+        contactTick: request.tick,
+        contactPosition: {
+          x: pitchedBallState.position.x,
+          y: pitchedBallState.position.y
+        }
+      };
+      const ballState = Ball.createBallState({ ...pitchedBallState, metadata: firstTouchMetadata }, {
+        radius: pitchedBallState.radius,
+        mass: pitchedBallState.mass
+      });
       const ownerCandidateId = handoff.possession.disposition === 'candidate-acquire' ? candidate.player.id : null;
       const contactType = continuation ? 'dribble-touch' : 'first-touch';
       return deepFreeze({
         schema: RESULT_SCHEMA, version: VERSION, authority: AUTHORITY, workflow: request.workflow, online: false,
         tick: request.tick, epoch: request.epoch, status: 'contact', ownedContact: true, contactType,
         ownerCandidateId, ballState,
-        consumedFirstTouchIds: [...request.consumedFirstTouchIds, handoff.handoffId],
+        consumedFirstTouchIds: appendRecentFirstTouchId(request.consumedFirstTouchIds, handoff.handoffId),
+        consumedFirstTouchThroughTick: request.tick,
         consumedAerialIds: request.consumedAerialIds,
         suppressLegacy: {
           reception: true,
@@ -457,9 +690,10 @@
           phase: continuation ? DRIBBLE_CONTINUATION_PHASE : 'reception'
         },
         detail: { sourceResultDigest: digest(result), handoffId: handoff.handoffId,
-          retainedTouchContinuation: continuation }
+          retainedTouchContinuation: continuation, reaction: clone(candidate.reaction) }
       });
     }
+    if (physical) return passiveDeflectionResult(request, physical.candidate, physical.probe, physical.candidate.reaction);
     return noContact(request, 'no-contact', 'first-touch-geometry-miss', 'ground-attempt');
   }
 
@@ -602,7 +836,8 @@
     return deepFreeze({
       schema: RESULT_SCHEMA, version: VERSION, authority: AUTHORITY, workflow: request.workflow, online: false,
       tick: request.tick, epoch: request.epoch, status: 'contact', ownedContact: true, contactType: 'aerial-volley',
-      ownerCandidateId: null, ballState, consumedFirstTouchIds: request.consumedFirstTouchIds, consumedAerialIds,
+      ownerCandidateId: null, ballState, consumedFirstTouchIds: request.consumedFirstTouchIds,
+      consumedFirstTouchThroughTick: request.consumedFirstTouchThroughTick, consumedAerialIds,
       suppressLegacy: {
         reception: true,
         aerialDuel: true,
@@ -644,6 +879,15 @@
     COORDINATE_SYSTEM,
     DRIBBLE_CONTINUATION_PHASE,
     FIRST_TOUCH_ACQUISITION_RADIUS_METRES,
+    MAX_RECENT_FIRST_TOUCH_IDS,
+    RETAINED_RECONTACT_MIN_TICKS,
+    RETAINED_RECONTACT_MAX_LOCK_TICKS,
+    RETAINED_RECONTACT_MIN_TRAVEL_METRES,
+    SOURCE_RELEASE_BODY_PROTECTION_TICKS,
+    REACTION_DELAY_MIN_TICKS,
+    REACTION_DELAY_RATING_DIVISOR,
+    INTENDED_RECEIVER_ANTICIPATION_TICKS,
+    MAX_REACTION_DELAY_TICKS,
     DEPENDENCY_CONTRACTS,
     createCapability,
     compose,

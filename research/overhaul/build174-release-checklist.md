@@ -1,6 +1,6 @@
 # Football Legacy Build 174 release checklist
 
-Audited: 12 August 2026. This is a release allow-list, not permission to delete anything outside it.
+Audited: 13 August 2026. This is a release allow-list, not permission to delete anything outside it.
 
 ## Release route confirmed
 
@@ -44,6 +44,7 @@ Stage every new file loaded by those entry points. Omitting any one would create
 - `match-engine/live-v2-match-control-composition.js`
 - `match-engine/dribbling-state-v2.js`
 - `match-engine/instant-replay-review-v2.js`
+- `match-engine/playtest-full-state-replay-v1.js`
 - `match-engine/live-v2-authority-adapter.js`
 
 The public match page still exposes the exact-flag, read-only `v2Shadow=1` diagnostic workflow. To preserve that existing workflow without 404s, also stage its directly referenced dependencies:
@@ -76,6 +77,15 @@ Stage the final, corrected release gates and their direct fixtures:
   `tests/overhaul-v2-unified-promotion-adversarial.mjs`.
 - Gameplay preservation: `tests/free-kick-replay-queue-removal.mjs`,
   `tests/live-offside-camera-policy.mjs`, `tests/historic-real-madrid-bbc.mjs`,
+  `tests/historic-conte-chelsea-fifa18.mjs`,
+  `tests/historic-invincibles-fifa05.mjs`,
+  `tests/human-control-v2-recovery.mjs`,
+  `tests/human-normal-x-pass-acceptance.mjs`,
+  `tests/human-normal-x-rendezvous-v2.mjs`,
+  `tests/human-through-pass-golden-sequence.mjs`,
+  `tests/v2-aerial-service-trajectory.mjs`,
+  `tests/contact-gesture-presentation-v2.mjs`,
+  `tests/playtest-full-state-replay-v1.mjs`,
   `tests/set-piece-camera-replay-integration.mjs` and the current
   playtest-contact/restart/replay/performance regression files.
 - Preserved public workflows: the existing Online connection, controller, lobby
@@ -143,17 +153,26 @@ Exclusion from this release is not removal of a workflow. These artifacts remain
 7. Merge only after the release gates pass. A branch push or draft PR is not the published game.
 8. Verify GitHub Pages with cache-busting URLs. Confirm HTTP 200 for all newly referenced JavaScript files, compare the public `quick-play/app.js`, `quick-play/index.html` and `match-engine/match.html` hashes with the merged `origin/main`, then perform one final public Quick Play launch.
 
-## Current blockers at this audit
+## Current release status at this audit
 
-- Runtime bytes and manifests are frozen and hash-sealed. The exact production
-  match SHA-256 is
-  `c97f4f7897ba458c36cb28414cb4fc99ceb755bb96e3009fa5372bddea4e626c`.
-- Final exact-byte browser evidence is complete for all three FL V2 routes:
-  Single Player advanced to 02:34 after kickoff, movement and a pass; CPU versus
-  CPU advanced autonomously to 01:37; and Set-Piece Suite staged and executed a
-  free kick with the refined behind-player camera and approach. All three kept
-  their correct V2 badges, showed no strict-stop page and produced zero browser
-  warning/error logs. The Set-Piece Suite status title now names the suite
-  explicitly rather than inheriting the Single Player title.
+- Runtime bytes and manifests are frozen and hash-sealed with the one-time
+  `174-fl-v2-final-candidate-2` cache token. The exact production match
+  SHA-256 is
+  `22aa09cca9c2e4124f5b3594b44e44296ce015ad9148d588efbe158b7548a8fa`.
+- The protected launch, authority, ratings, replay and pin batch passes 98/98.
+  The bounded gameplay/physics/input batch passes after updating two stale
+  extraction harnesses for the new presentation helpers. The final local
+  exact-byte browser smoke passed on 2026-08-13 through the real Quick Play UI:
+  Single Player advanced under `FL V2 live · Single Player`, CPU versus CPU
+  advanced autonomously under `FL V2 live · CPU vs CPU`, and the Set-Piece
+  Suite armed under `FL V2 live · Set-Piece Suite`. All three used the
+  recalibrated historic squads and produced no browser console errors. The
+  public smoke is still required after merge.
+- CPU versus CPU passes all 15 football-quality gates across four varied
+  60-second simulations: five multi-pass chances from nine shots, twelve
+  three-pass chains, 104 passes at 87.1% completion, 43 progressive passes,
+  34 moving-runner rendezvous, 13 interceptions, and no strict stop or
+  continuity failure. No scripted chance or fixture-only gameplay change was
+  added.
 - The GitHub CLI token is invalid. This does not block the verified Git push route, but PR creation must use the connected GitHub app or a repaired `gh` login.
 - README, CHANGELOG, Quick Play and Match Engine release summaries now describe the current three-route FL V2 candidate and directional set-piece closure. Historical Build 172/173 evidence is retained rather than rewritten.

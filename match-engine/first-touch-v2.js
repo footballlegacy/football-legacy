@@ -42,6 +42,7 @@
   const DEFAULT_CONFIG = Object.freeze({
     fixedTickSeconds: 1 / 60,
     maximumRelativeSpeed: 38,
+    maximumPlayerSpeed: 20,
     maximumOutputSpeed: 14,
     maximumPassiveSpeedGain: 0.35,
     maximumActiveSpeedGain: 4.8,
@@ -239,6 +240,7 @@
     return deepFreeze({
       fixedTickSeconds: bounded(source.fixedTickSeconds, DEFAULT_CONFIG.fixedTickSeconds, 1 / 1000, 1 / 20, 'config.fixedTickSeconds'),
       maximumRelativeSpeed: bounded(source.maximumRelativeSpeed, DEFAULT_CONFIG.maximumRelativeSpeed, 1, 60, 'config.maximumRelativeSpeed'),
+      maximumPlayerSpeed: bounded(source.maximumPlayerSpeed, DEFAULT_CONFIG.maximumPlayerSpeed, 1, 30, 'config.maximumPlayerSpeed'),
       maximumOutputSpeed: bounded(source.maximumOutputSpeed, DEFAULT_CONFIG.maximumOutputSpeed, 1, 30, 'config.maximumOutputSpeed'),
       maximumPassiveSpeedGain: bounded(source.maximumPassiveSpeedGain, DEFAULT_CONFIG.maximumPassiveSpeedGain, 0, 2, 'config.maximumPassiveSpeedGain'),
       maximumActiveSpeedGain: bounded(source.maximumActiveSpeedGain, DEFAULT_CONFIG.maximumActiveSpeedGain, 0, 10, 'config.maximumActiveSpeedGain'),
@@ -307,7 +309,7 @@
     });
     const position = assertComponentEnvelope(vector2(source.position, null, 'player.position'), 100000, 'player.position');
     const velocity = assertMagnitudeEnvelope(vector2(source.velocity, null, 'player.velocity'),
-      config.maximumOutputSpeed, 'player.velocity');
+      config.maximumPlayerSpeed, 'player.velocity');
     const facing = normalise2(assertComponentEnvelope(vector2(source.facing, null, 'player.facing'),
       100000, 'player.facing'), { x: 1, y: 0 });
     return {
@@ -628,11 +630,13 @@
     const quality = qualityScore(request, technique, timing, config);
     const routineControl = routineControlSecurity(request, technique, timing, geometry, quality);
     const impossibleSpeed = quality.relativeSpeed > config.maximumRelativeSpeed;
+    const controlledAttachmentSafe = Math.hypot(request.player.velocity.x, request.player.velocity.y) <=
+      config.maximumOutputSpeed;
     const missed = timing === 'missed' || !geometry.reachable || impossibleSpeed;
     let outcome = 'missed';
     if (!missed) {
       if ((quality.score >= config.controlledThreshold || routineControl.secured) &&
-          ['trap', 'cushion'].includes(request.intent.type)) outcome = 'controlled';
+          ['trap', 'cushion'].includes(request.intent.type) && controlledAttachmentSafe) outcome = 'controlled';
       else if (quality.score >= config.retainedThreshold) outcome = 'retained';
       else outcome = 'loose';
     }
@@ -692,6 +696,7 @@
         nearestPressure: quality.pressure.nearest
       },
       routineControl,
+      controlledAttachmentSafe,
       controlBasis: outcome === 'controlled'
         ? (routineControl.secured ? 'routine-technical-security' : 'quality-threshold')
         : null,

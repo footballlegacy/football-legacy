@@ -43,11 +43,18 @@ test('actual teammate possession deterministically hands over human control', ()
   assert.match(match, /controlledOpp=ball\.owner;oppAutoSwitchCooldown=2/);
 });
 
-test('V2 first touch credits a completed same-team pass exactly on initial reception', () => {
-  const branch = match.match(/if\(result\.contactType==='first-touch'\)\{([\s\S]*?)\n\s*\}else if\(result\.contactType==='aerial-volley'/)?.[1] || '';
-  assert.match(branch, /lastPasser\.team===actor\.team&&lastPasser!==actor/);
-  assert.match(branch, /report\.teams\[actor\.team\]\.completed\+\+/);
-  assert.match(branch, /assistCandidate=lastPasser;lastPasser=null/);
+test('V2 pass completion waits for real possession rather than a retained loose contact', () => {
+  const branch = match.match(/function liveV2ResolvePassContact\(result,actor,presentation\)\{([\s\S]*?)\n\s*\}/)?.[1] || '';
+  assert.match(branch, /disposition!=='candidate-acquire'/);
+  assert.match(branch, /logEvent\('pass-contact'/);
+  assert.match(branch, /resolvePendingPassTerminal\(actor,'first-touch-candidate-acquire'/);
+  const terminal = match.match(/function resolvePendingPassTerminal\(actor,reason='possession-terminal',extra=\{\}\)\{([\s\S]*?)\n\s*\}/)?.[1] || '';
+  assert.match(terminal, /passer\.team===actor\.team&&passer!==actor/);
+  assert.match(terminal, /report\.teams\[actor\.team\]\.completed\+\+/);
+  assert.match(terminal, /assistCandidate=passer/);
+  assert.match(terminal, /lastPasser=null/);
+  assert.match(match, /resolvePendingPassTerminal\(null,'superseded-deliberate-kick'\)/);
+  assert.match(match, /resolvePendingPassTerminal\(null,'restart:/);
 });
 
 test('goal scorers roam for eight seconds and controller celebration input wins over replay skip', () => {

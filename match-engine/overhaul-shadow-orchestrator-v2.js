@@ -78,10 +78,20 @@
   }
 
   function clone(value) {
-    if (Array.isArray(value)) return value.map(clone);
+    if (Array.isArray(value)) {
+      const result = new Array(value.length);
+      for (let index = 0; index < value.length; index += 1) {
+        if (index in value) result[index] = clone(value[index]);
+      }
+      return result;
+    }
     if (!value || typeof value !== 'object') return value;
     const result = {};
-    Object.keys(value).forEach(key => { result[key] = clone(value[key]); });
+    const keys = Object.keys(value);
+    for (let index = 0; index < keys.length; index += 1) {
+      const key = keys[index];
+      result[key] = clone(value[key]);
+    }
     return result;
   }
 
@@ -95,6 +105,61 @@
 
   function stableJson(value) {
     return JSON.stringify(stableValue(value));
+  }
+
+  const STRUCTURAL_FALLBACK = Object.freeze({ stableJsonFallback: true });
+
+  function needsStableJsonSemantics(value) {
+    const type = typeof value;
+    return type === 'undefined' || type === 'function' || type === 'symbol' || type === 'bigint' ||
+      (type === 'number' && !Number.isFinite(value));
+  }
+
+  // Exact structural equality for the validated finite hot path. Values with
+  // JSON omission/null coercion semantics fall back to literal stableJson so
+  // direct public callers retain the previous comparison contract too.
+  function structuralEqualFast(first, second) {
+    if (needsStableJsonSemantics(first) || needsStableJsonSemantics(second)) return STRUCTURAL_FALLBACK;
+    // `stableJson()` treats signed zero identically; use strict equality so
+    // this hot-path comparator preserves that prior JSON semantic exactly.
+    if (first === second) return true;
+    if (!first || !second || typeof first !== 'object' || typeof second !== 'object') return false;
+    const firstArray = Array.isArray(first);
+    if (firstArray !== Array.isArray(second)) return false;
+    if (firstArray) {
+      if (first.length !== second.length) return false;
+      for (let index = 0; index < first.length; index += 1) {
+        if (!(index in first) || !(index in second)) return STRUCTURAL_FALLBACK;
+        const equal = structuralEqualFast(first[index], second[index]);
+        if (equal === STRUCTURAL_FALLBACK) return STRUCTURAL_FALLBACK;
+        if (!equal) return false;
+      }
+      return true;
+    }
+    const firstKeys = Object.keys(first);
+    const secondKeys = Object.keys(second);
+    for (let index = 0; index < firstKeys.length; index += 1) {
+      if (needsStableJsonSemantics(first[firstKeys[index]])) return STRUCTURAL_FALLBACK;
+    }
+    for (let index = 0; index < secondKeys.length; index += 1) {
+      if (needsStableJsonSemantics(second[secondKeys[index]])) return STRUCTURAL_FALLBACK;
+    }
+    if (firstKeys.length !== secondKeys.length) return false;
+    for (const key of firstKeys) {
+      if (!Object.prototype.hasOwnProperty.call(second, key)) return false;
+      const equal = structuralEqualFast(first[key], second[key]);
+      if (equal === STRUCTURAL_FALLBACK) return STRUCTURAL_FALLBACK;
+      if (!equal) return false;
+    }
+    return true;
+  }
+
+  function structuralEqual(first, second) {
+    const fastResult = structuralEqualFast(first, second);
+    // Accepted canonical ticks remain allocation-free. Any mismatch or
+    // unsupported value takes the literal former stableJson path so its
+    // traversal, coercion and throw timing stay exact for direct callers.
+    return fastResult === true ? true : stableJson(first) === stableJson(second);
   }
 
   function finite(value, fallback, label) {
@@ -189,16 +254,22 @@
   }
 
   function mapPlayer(player, mapping) {
-    const result = clone(player);
-    result.id = mapId(player && player.id, mapping, 'player');
-    return result;
+    return {
+      ...player,
+      id: mapId(player && player.id, mapping, 'player')
+    };
   }
 
   function mapMovementWorld(world, mapping, label) {
     if (!world || typeof world !== 'object') throw new TypeError(label + ' is required');
-    const result = clone(world);
-    result.players = (Array.isArray(world.players) ? world.players : []).map(player => mapPlayer(player, mapping));
-    result.ballOwnerId = world.ballOwnerId == null ? null : mapId(world.ballOwnerId, mapping, label + '.ballOwnerId');
+    // Movement.createWorldState is the canonical validator and deep-copy
+    // boundary. Only build a shallow ID-mapped shell here; cloning the whole
+    // world and every nested player first duplicated that exact work.
+    const result = {
+      ...world,
+      players: (Array.isArray(world.players) ? world.players : []).map(player => mapPlayer(player, mapping)),
+      ballOwnerId: world.ballOwnerId == null ? null : mapId(world.ballOwnerId, mapping, label + '.ballOwnerId')
+    };
     return Movement.createWorldState(result, mapping.movement.config);
   }
 
@@ -212,20 +283,23 @@
   }
 
   function mapCpuSnapshot(snapshot, mapping) {
-    const result = clone(snapshot);
-    result.players = (Array.isArray(snapshot.players) ? snapshot.players : []).map(player => mapPlayer(player, mapping));
-    result.carrierId = snapshot.carrierId == null ? null : mapId(snapshot.carrierId, mapping, 'cpu carrierId');
-    result.events = (Array.isArray(snapshot.events) ? snapshot.events : []).map(event => ({
-      ...clone(event),
-      playerId: event.playerId == null ? null : mapId(event.playerId, mapping, 'cpu event playerId')
-    }));
+    // CPU.validateSnapshot likewise returns a detached canonical tree.
+    const result = {
+      ...snapshot,
+      players: (Array.isArray(snapshot.players) ? snapshot.players : []).map(player => mapPlayer(player, mapping)),
+      carrierId: snapshot.carrierId == null ? null : mapId(snapshot.carrierId, mapping, 'cpu carrierId'),
+      events: (Array.isArray(snapshot.events) ? snapshot.events : []).map(event => ({
+        ...event,
+        playerId: event.playerId == null ? null : mapId(event.playerId, mapping, 'cpu event playerId')
+      }))
+    };
     return CPU.validateSnapshot(result, mapping.cpu.config);
   }
 
   function mapFormationRequest(request, mapping) {
-    const result = clone(request);
-    if (Array.isArray(result.lineup)) {
-      result.lineup = result.lineup.map(player => ({
+    const result = { ...request };
+    if (Array.isArray(request.lineup)) {
+      result.lineup = request.lineup.map(player => ({
         ...player,
         id: mapId(player.id, mapping, 'formation lineup player id')
       }));
@@ -406,7 +480,7 @@
             throw new Error('formation player must belong to the formation entry team: ' + target.playerId);
           }
         });
-        return { teamId: entry.teamId, request, validationOutput: output };
+        return { teamId: entry.teamId, validationOutput: output };
       }).sort((a, b) => a.teamId.localeCompare(b.teamId));
 
       const clock = legacy.clock;
@@ -632,10 +706,10 @@
   }
 
   function assertLegacyBoundaryContinuity(previousMovementAfter, previousBallAfter, previousClock, normalized, firstObservation) {
-    if (previousMovementAfter && stableJson(previousMovementAfter) !== stableJson(normalized.movement.before)) {
+    if (previousMovementAfter && !structuralEqual(previousMovementAfter, normalized.movement.before)) {
       throw new Error('legacy movement boundary continuity failed between accepted observations');
     }
-    if (previousBallAfter && stableJson(previousBallAfter) !== stableJson(normalized.ball.before)) {
+    if (previousBallAfter && !structuralEqual(previousBallAfter, normalized.ball.before)) {
       throw new Error('legacy ball boundary continuity failed between accepted observations');
     }
     const clock = normalized.clock;
@@ -724,11 +798,18 @@
       if (firstObservation && normalized.tick !== 1) {
         throw new Error('unified shadow must attach at pre-match tick 1 so all five candidate clocks share one epoch');
       }
-      const stagedMappingSignature = firstObservation ? stableJson(normalized.mapping) : mappingSignature;
+      if (firstObservation) {
+        // The former string signature rejected JSON-unsupported values (most
+        // notably BigInt) during attachment. Keep that exact public failure
+        // boundary once, then retain the cheaper detached structure for hot
+        // per-tick equality checks.
+        stableJson(normalized.mapping);
+      }
+      const stagedMappingSignature = firstObservation ? clone(normalized.mapping) : mappingSignature;
       if (normalized.tick !== (firstObservation ? 1 : expectedTick)) {
         throw new Error('unified shadow observations must be sequential fixed ticks');
       }
-      if (!firstObservation && stableJson(normalized.mapping) !== mappingSignature) {
+      if (!firstObservation && !structuralEqual(normalized.mapping, mappingSignature)) {
         throw new Error('unified mapping cannot change during a shadow trace');
       }
       assertLegacyBoundaryContinuity(
@@ -742,7 +823,10 @@
       let stagedBridge = bridge;
       let stagedMovementState = movementState;
       let stagedClockState = clockState;
-      const stagedCpuMemories = clone(cpuMemories);
+      // CPU.decide creates a detached memory before mutation. A shallow stage
+      // therefore preserves rollback while avoiding a redundant deep copy of
+      // every team's complete previous memory before it is copied by CPU.
+      const stagedCpuMemories = { ...cpuMemories };
       if (firstObservation) {
         stagedBridge = Bridge.createBridge({
           mode: Bridge.MODES.SHADOW,
@@ -761,9 +845,12 @@
       if (stagedClockState.tick !== normalized.tick - 1) throw new Error('MatchClock candidate tick lost unified alignment');
 
       stagedClockState = syncClockPhase(stagedClockState, normalized.clock);
+      // Normalisation already resolved each exact request to validate tick,
+      // identity and team ownership. Reuse that detached deterministic output
+      // instead of running the same formation engine a second time this tick.
       const formationOutputs = normalized.formation.map(entry => ({
         teamId: entry.teamId,
-        output: Formation.resolve(entry.request)
+        output: entry.validationOutput
       }));
       const decisions = normalized.cpu.map(entry => {
         const memory = stagedCpuMemories[entry.teamId] || CPU.createMemory();
@@ -879,9 +966,12 @@
       cpuMemories = stagedCpuMemories;
       mappingSignature = stagedMappingSignature;
       expectedTick = normalized.tick + 1;
-      lastLegacyMovementAfter = clone(normalized.movement.after);
-      lastLegacyBallAfter = clone(normalized.ball.after);
-      lastLegacyClock = clone(normalized.clock);
+      // These normalized boundaries are already detached from both the caller
+      // and every public return surface, so retain them directly for the next
+      // tick's exact continuity check.
+      lastLegacyMovementAfter = normalized.movement.after;
+      lastLegacyBallAfter = normalized.ball.after;
+      lastLegacyClock = normalized.clock;
       return output;
     }
 

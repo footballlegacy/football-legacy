@@ -115,18 +115,18 @@ test('pausing freezes goal presentation time and keeps the four-second broadcast
   assert.ok(camera.indexOf('goalBroadcastHoldTarget&&now<goalBroadcastHoldUntil') < camera.indexOf('goalReplay.active'), 'broadcast hold must precede replay/director cameras');
 });
 
-test('keeper carrying is an isolated floor and half-distance visual steps do not change world speed', () => {
+test('keeper carrying is an isolated floor and readable visual steps do not change world speed', () => {
   const locomotion = section('function ratedLocomotionSpeed', 'function applyLocomotionInput');
   const keeperCarry = section('function moveGoalkeeperWithBall', 'function updateGoalkeeper');
   const drawMovement = section("else if(spd>.14)", 'else{\n      const motion=u.motion');
   assert.match(locomotion, /carrying&&p\.isGK\?Math\.max\(1\.06,baseRatingScale\)/);
   assert.match(locomotion, /p\.isGK\?1:sprint\?\.90:\.96/);
   assert.match(keeperCarry, /pressure<250\?3\.90:3\.45/);
-  assert.match(drawMovement, /const gaitCadenceScale=2/);
+  assert.match(drawMovement, /const gaitCadenceScale=1\.2/);
   assert.match(drawMovement, /moved\*\(sprinting\?\.142:\.098\)\*gaitCadenceScale/);
-  assert.match(drawMovement, /sprinting\?\.60:\.42/);
-  assert.match(html, /gaitCadenceScale:2,visualStepDistanceRatio:\.5,worldSpeedScale:1/);
-  assert.match(html, /two visual foot-plant cycles cover the previous one-cycle distance without reducing world locomotion speed/);
+  assert.match(drawMovement, /sprinting\?\.36:\.252/);
+  assert.match(html, /gaitCadenceScale:1\.2,visualStepDistanceRatio:\.8333,worldSpeedScale:1/);
+  assert.match(html, /readable football gait cadence is presentation-only and does not reduce world locomotion speed/);
   assert.doesNotMatch(drawMovement, /(?:p\.x|p\.y|p\.vx|p\.vy)\s*[*/+-]?=/, 'presentation phase must not change world locomotion state');
 });
 

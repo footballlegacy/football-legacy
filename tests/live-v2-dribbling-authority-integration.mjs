@@ -72,13 +72,14 @@ function capability(workflow) {
   });
 }
 
-function attachment(workflow = 'single-player') {
+function attachment(workflow = 'single-player', profile = {}) {
   let committed = null;
   const live = Adapter.createAttachment({
     enabled: true,
     capability: capability(workflow),
     seed: 337733,
     dependencies,
+    ...profile,
     host: { prepareTick(projection) { return {
       commit() { committed = structuredClone(projection); },
       rollback() { committed = null; }
@@ -127,12 +128,67 @@ test('adapter pins Dribbling V2 dependency and capability provenance without ren
   assert.equal(Adapter.VERSION, '1.0.0-offline-live-authority-playtest');
 });
 
+test('CPU physical tackles respect one readable post-turnover protection window', () => {
+  const transition = { fromTeamId: 'you', toTeamId: 'opp', startedTick: 100, untilTick: 130 };
+  assert.equal(Adapter.TURNOVER_TACKLE_PROTECTION_TICKS, 30);
+  assert.equal(Adapter.cpuPhysicalActionAllowed(null, 100), true);
+  assert.equal(Adapter.cpuPhysicalActionAllowed(transition, 100), false);
+  assert.equal(Adapter.cpuPhysicalActionAllowed(transition, 130), false);
+  assert.equal(Adapter.cpuPhysicalActionAllowed(transition, 131), true);
+  assert.equal(Adapter.cpuPhysicalActionAllowed({ startedTick: NaN }, 131), false);
+});
+
+test('controlled-carry True Feel keeps ownership attached while producing readable foot cadence', () => {
+  const { live } = attachment('single-player', {
+    trueFeelPhysicalTouchAuthority: false,
+    cpuPassRaceFilter: true
+  });
+  let snapshot = initialSnapshot('single-player');
+  for (const player of snapshot.players) {
+    if (player.teamId === 'opp') {
+      player.contactEligible = false;
+      player.sentOff = true;
+    }
+  }
+  const touchTicks = [], feet = [];
+  let priorSequence = 0;
+  for (let tick = 1; tick <= 120; tick += 1) {
+    const frame = runTick(live, snapshot), projection = frame.hostProjection;
+    assert.equal(projection.physicalBallSeparated, false);
+    assert.equal(projection.logicalBallOwnerId, 'you-CAM');
+    assert.equal(projection.ball, null);
+    assert.equal(projection.dribbling.telemetry.authorityMode, 'attached-controlled-carry');
+    assert.equal(projection.dribbling.telemetry.physicsProfile, 'true-feel-controlled-carry');
+    assert.equal(projection.dribbling.presentation.animationPhase, 'dribble-secured');
+    assert.equal(projection.dribbling.presentation.outcome, 'controlled-carry');
+    assert.ok(projection.dribbling.presentation.targetSeparationMetres >= 0.5);
+    const sequence = projection.dribbling.telemetry.touchSequence;
+    if (sequence > priorSequence) {
+      touchTicks.push(tick);
+      feet.push(projection.dribbling.presentation.foot);
+    }
+    priorSequence = sequence;
+    snapshot = advanceSnapshot(snapshot, projection, tick + 1);
+  }
+  assert.ok(touchTicks.length >= 4, touchTicks.join(','));
+  const intervals = touchTicks.slice(1).map((tick, index) => tick - touchTicks[index]);
+  assert.ok(intervals.every(interval => interval >= Dribbling.CONFIG.minimumTouchCadenceTicks), intervals.join(','));
+  assert.ok(intervals.every(interval => interval <= Dribbling.CONFIG.maximumTouchCadenceTicks), intervals.join(','));
+  assert.ok(feet.every((foot, index) => index === 0 || foot !== feet[index - 1]), feet.join(','));
+  assert.deepEqual(live.status().authorityProfile, {
+    id: 'v2-football-baseline-reconciliation',
+    trueFeelPhysicalTouchAuthority: false,
+    cpuPassRaceFilter: true
+  });
+  assert.equal(live.status().enabled, true);
+});
+
 test('single-player adapter commits physical separation while retaining logical action authority', () => {
   const { live } = attachment();
   let snapshot = initialSnapshot();
   const phases = [];
   let separatedFrame = null;
-  for (let tick = 1; tick <= 8; tick += 1) {
+  for (let tick = 1; tick <= 48; tick += 1) {
     const frame = runTick(live, snapshot);
     phases.push(frame.hostProjection.dribbling.phase);
     if (frame.hostProjection.physicalBallSeparated && !separatedFrame) separatedFrame = frame;
@@ -153,10 +209,31 @@ test('single-player adapter commits physical separation while retaining logical 
   assert.ok(live.status().dribbling.state.touchSequence >= 1);
 });
 
+test('a separated True Feel carrier is guided back to the physical MR ball', () => {
+  const { live } = attachment();
+  let snapshot = initialSnapshot(), recovery = null;
+  for (let tick = 1; tick <= 72; tick += 1) {
+    const frame = runTick(live, snapshot), projection = frame.hostProjection;
+    recovery = projection.recoveryAssignments.find(row =>
+      row.authority === 'true-feel-lease-recovery' && row.playerId === 'you-CAM') || null;
+    if (recovery) {
+      assert.equal(projection.logicalBallOwnerId, 'you-CAM');
+      assert.equal(projection.physicalBallSeparated, true);
+      assert.ok(recovery.distanceMetres > 0.4 && recovery.distanceMetres < 2,
+        JSON.stringify(recovery));
+      assert.equal(recovery.intended, true);
+      assert.equal(recovery.human, true);
+      break;
+    }
+    snapshot = advanceSnapshot(snapshot, projection, tick + 1);
+  }
+  assert.ok(recovery, 'the lease owner must chase the physical touch instead of an unrelated shape target');
+});
+
 test('adapter buffers one action ID during a lease and suppresses duplicate CPU/host emission', () => {
   const { live } = attachment();
   let snapshot = initialSnapshot(), buffered = false, released = null;
-  for (let tick = 1; tick <= 22; tick += 1) {
+  for (let tick = 1; tick <= 72; tick += 1) {
     const frame = runTick(live, snapshot), projection = frame.hostProjection;
     const action = projection.physicalBallSeparated
       ? { id: 'buffered-shot-1', type: 'shot', actorId: 'you-CAM', commandTick: tick + 1, power: 0.7 }
@@ -178,9 +255,10 @@ test('adapter buffers one action ID during a lease and suppresses duplicate CPU/
 test('adapter export/restore resumes a physical lease with chunk-identical projections', () => {
   const first = attachment(), second = attachment();
   let snapshot = initialSnapshot(), frame;
-  for (let tick = 1; tick <= 5; tick += 1) {
+  for (let tick = 1; tick <= 48; tick += 1) {
     frame = runTick(first.live, snapshot);
     snapshot = advanceSnapshot(snapshot, frame.hostProjection, tick + 1);
+    if (frame.hostProjection.physicalBallSeparated) break;
   }
   assert.equal(frame.hostProjection.physicalBallSeparated, true);
   const checkpoint = first.live.exportState();
@@ -215,7 +293,7 @@ test('all-CPU adapter traverses the same physical touch states without a difficu
   const { live } = attachment('cpu-v-cpu');
   let snapshot = initialSnapshot('cpu-v-cpu');
   const phases = new Set();
-  for (let tick = 1; tick <= 10; tick += 1) {
+  for (let tick = 1; tick <= 48; tick += 1) {
     const frame = runTick(live, snapshot);
     phases.add(frame.hostProjection.dribbling.phase);
     assert.equal(frame.hostProjection.dribbling.telemetry.physicsProfile, 'shared-human-cpu-ratings-neutral');
@@ -225,4 +303,32 @@ test('all-CPU adapter traverses the same physical touch states without a difficu
   assert.ok(phases.has(Dribbling.PHASES.TOUCH_PREPARATION), [...phases].join(','));
   assert.ok(phases.has(Dribbling.PHASES.SEPARATED_TOUCH), [...phases].join(','));
   assert.ok(phases.has(Dribbling.PHASES.CHASE_RECOVERY), [...phases].join(','));
+});
+
+test('a sustained carry has readable physical touch cadence instead of a seven-frame possession loop', () => {
+  const { live } = attachment('single-player');
+  let snapshot = initialSnapshot('single-player');
+  // Isolate cadence from the separately covered contested-turnover path.
+  for (const player of snapshot.players) {
+    if (player.teamId === 'opp') {
+      player.contactEligible = false;
+      player.sentOff = true;
+    }
+  }
+  const touchTicks = [];
+  let previousSequence = 0;
+  for (let tick = 1; tick <= 180; tick += 1) {
+    const frame = runTick(live, snapshot), projection = frame.hostProjection;
+    const sequence = projection.dribbling.telemetry.touchSequence;
+    if (sequence > previousSequence) touchTicks.push(tick);
+    previousSequence = sequence;
+    assert.equal(projection.logicalBallOwnerId, 'you-CAM',
+      `logical possession lost at tick ${tick}: ${JSON.stringify(projection.dribbling.telemetry)}`);
+    snapshot = advanceSnapshot(snapshot, projection, tick + 1);
+  }
+  assert.ok(touchTicks.length >= 5, touchTicks.join(','));
+  const intervals = touchTicks.slice(1).map((tick, index) => tick - touchTicks[index]);
+  assert.ok(intervals.every(interval => interval >= Dribbling.CONFIG.minimumTouchCadenceTicks), intervals.join(','));
+  assert.ok(intervals.every(interval => interval <= Dribbling.CONFIG.maximumTouchCadenceTicks + 2), intervals.join(','));
+  assert.ok(!intervals.includes(7), 'the playtest seven-frame loop must not return');
 });

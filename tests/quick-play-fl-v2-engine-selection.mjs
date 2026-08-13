@@ -90,6 +90,14 @@ test('Build 173 is the default request and effective engine', () => {
   assert.match(htmlSource, /<option value="build-173" selected>Build 173 · Stable<\/option>/);
 });
 
+test('Quick Play defaults to the readable six-minute match clock while retaining every duration choice', () => {
+  assert.match(htmlSource, /<option value="4">4 minutes<\/option><option value="6" selected>6 minutes<\/option>/);
+  assert.match(appSource, /matchLength:Number\(query\.get\('matchMinutes'\)\)\|\|6/);
+  for (const minutes of [3, 4, 6, 8, 10]) {
+    assert.match(htmlSource, new RegExp(`<option value="${minutes}"`));
+  }
+});
+
 test('explicit strict FL V2 promotion covers offline Single Player, CPU vs CPU and Set-Piece Suite', () => {
   const payload = plain(Engine.finalizeMatchPayload(samplePayload('single-player'), 'fl-v2', false));
   assert.deepEqual(payload.engine, {
@@ -165,14 +173,19 @@ test('simulation seed is deterministic and engine envelope survives URL-safe pay
   assert.match(appSource, /applyEngineQueryMarkers\(params,data\.engine,data\.simulationSeed\)/);
 });
 
-test('every existing Quick Play mode and the exact Madrid BBC source bytes remain intact', () => {
+test('every Quick Play mode, Madrid BBC identity and historic reaction defaults remain intact', () => {
   for (const value of ['single-player', 'free-kick-suite', 'co-op', 'home-co-op', 'spectator']) {
     assert.match(htmlSource, new RegExp(`<option value="${value}"`));
   }
   assert.match(appSource, /requestedMode==='online'/);
   assert.match(appSource, /\.\.\/match-engine\/match\.html\?/);
   assert.match(appSource, /\.\.\/online\//);
-  assert.equal(createHash('sha256').update(historicSource).digest('hex'), 'd73acc66679cc40f4db9d7f5584b48d2b5237b5ac276e4f3d950f5d7c9bb8a94');
+  assert.equal(createHash('sha256').update(historicSource).digest('hex'), '4aacd4a33083eee996beace57ba038caf6e5b5a580f1896a9b1d765240b879d5');
+  assert.equal((historicSource.match(/reactions:overall/g) || []).length, 4,
+    'goalkeeper, defender, midfielder and forward defaults must all expose reactions');
+  assert.match(historicSource,
+    /Object\.entries\(\{\.\.\.roleDefaults\(role,overall\),\.\.\.specific\}\)/,
+    'historic defaults must remain overridable by a player-specific reactions rating');
   for (const identity of ['madrid-real-2013-14', 'Ancelotti Real Madrid BBC', 'rm-bale', 'rm-benzema', 'rm-ronaldo']) {
     assert.ok(historicSource.includes(identity), identity);
   }

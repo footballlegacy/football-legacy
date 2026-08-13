@@ -234,9 +234,10 @@ test('the live snapshot excludes a recent kicker and propagates that eligibility
   assert.match(normalize, /contactEligible:\s*player\.contactEligible\s*!==\s*false/);
   assert.match(adapterSource, /contactEligible:\s*!player\.sentOff\s*&&\s*!player\.isGK\s*&&\s*player\.contactEligible/);
   assert.match(snapshot, /shield:!!player\.shielding/, 'L2 shielding must cross the live V2 snapshot boundary');
-  assert.match(snapshot, /type:'directional-touch'[\s\S]*touchDistanceM:[\s\S]*active:true/, 'receiver input must author a directional First Touch V2 intent');
+  assert.match(snapshot, /type:'cushion'[\s\S]*touchDistanceM:\.18\+input\.strength\*\.28[\s\S]*active:false/, 'ordinary receiver input must author a directional cushion without forcing an ownerless knock-on');
+  assert.match(matchSource, /function performDirectionalKnockOn[\s\S]*flightType='directional-knock-on'/, 'the explicit L1 plus right-stick knock-on workflow must remain available');
   assert.match(adapterSource, /control\.shield\s*\?\s*'shield'/, 'shield mode must outrank run and sprint in Movement V2');
-  assert.match(adapterSource, /touchBurstUntilTick:\s*snapshot\.tick\s*\+\s*2/, 'directional contact must stage the two-tick acceleration-only burst');
+  assert.match(adapterSource, /touchBurstUntilTick:\s*snapshot\.tick\s*\+\s*2/, 'an explicit directional First Touch intent must retain its two-tick acceleration-only burst');
   assert.match(matchSource, /player\.locomotionState==='shield'[\s\S]*player\.shieldSide=/, 'the live projection must retain a mirrored visible shielding pose');
 });
 
@@ -384,7 +385,7 @@ test('every affected Build 173 launch path supplies the source lock used by live
   assert.match(cpuRestart, /kind==='THROW-IN'[\s\S]*standardThrowTrajectory\(legalDistance,50,18\)[\s\S]*playRestartBallToPoint\(taker,point,trajectory\.speed,trajectory\.loft,'throw-in',target,\{v2SpeedWorld:trajectory\.v2SpeedWorld,v2LoftWorld:trajectory\.v2LoftWorld\}\)/,
     'CPU throws must use the same distance-solved, source-locked launch seam as human throws');
   const humanRestart = sourceBetween(matchSource, 'function takeUserRestart', 'function keeperKick');
-  assert.match(humanRestart, /kind==='THROW-IN'[\s\S]*playRestartBallToPoint\(taker,aim,[\s\S]*'throw-in',target\)/);
+  assert.match(humanRestart, /kind==='THROW-IN'[\s\S]*maximumDistance=220\+300\*p[\s\S]*standardThrowTrajectory\(legalDistance,50,18\)[\s\S]*playRestartBallToPoint\(taker,point,trajectory\.speed,trajectory\.loft,'throw-in',target,\{v2SpeedWorld:trajectory\.v2SpeedWorld,v2LoftWorld:trajectory\.v2LoftWorld\}\)/);
 });
 
 test('manual passes nominate a chase-only receiver without changing the authored trajectory', () => {
@@ -415,7 +416,10 @@ test('throw-ins hold for visible movement, offer four routes and use aim plus ch
   assert.match(hints, /THROW-IN'.*LS<\/b> rotate and choose[\s\S]*hold\/release Cross \/ A<\/b> for throw power/);
   const humanRestart = sourceBetween(matchSource, 'function takeUserRestart', 'function keeperKick');
   assert.match(humanRestart, /const kind=restartMsg,taker=restartTaker,p=clamp\(power,0,1\),aim=setPieceAimPoint\(\)/);
-  assert.match(humanRestart, /playRestartBallToPoint\(taker,aim,5\.5\+p\*2\.2,2\.6\+p\*1\.2,'throw-in',target\)/);
+  assert.match(humanRestart, /maximumDistance=220\+300\*p/);
+  assert.match(humanRestart, /legalDistance=clamp\(rawDistance,70,maximumDistance\)/);
+  assert.match(humanRestart, /nearestPlayerToPoint\(taker\.team,point,q=>q!==taker\)/);
+  assert.match(humanRestart, /authority:'distance-solved-throw'/);
 });
 
 test('Triangle charges on press and tap versus hold produces monotonic through-ball power on release', () => {

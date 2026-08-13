@@ -49,6 +49,24 @@ function createdClub(tier) {
   };
 }
 
+function bounded2026Base(context, manager) {
+  const placeholderId = context.FLGrassroots.placeholderId('home-counties');
+  const game = context.FLGame.create(manager, context.FLData.clubs[0], {
+    seed: 20260813,
+    preselectedClubId: placeholderId
+  });
+  game.date = '2026-08-15';
+  Object.assign(game.meta, {
+    startYear: 2026,
+    worldSeed: game.meta.seed,
+    preselectedClubId: placeholderId,
+    headless: true
+  });
+  assert.equal(context.FLPyramid.applyDatabaseSnapshot(game, 2026), true, 'the bounded fixture should use the complete 2026 database snapshot');
+  game.fixtures = context.FLGame.makePyramidSchedule(game, 2026);
+  return context.FLGame.attachManager(game, manager, placeholderId);
+}
+
 test('Create-a-Club form owns grassroots and professional entry rules', () => {
   const html = fs.readFileSync(path.join(root, 'create-club/index.html'), 'utf8');
   assert.match(html, /id="startingTier"[^>]*min="1"[^>]*max="15"/);
@@ -59,12 +77,17 @@ test('Create-a-Club form owns grassroots and professional entry rules', () => {
   assert.match(html, /legendArchetype/);
   assert.match(html, /start-created-club\.html/);
   assert.doesNotMatch(html, /career-route\.html/);
+  const workflow = fs.readFileSync(path.join(careerRoot, 'js/grassroots-career.js'), 'utf8');
+  assert.match(workflow, /FLGame\.createStartYear\(manager,\s*placeholderId\(region\),\s*2026,\s*onProgress\)/, 'the real created-club workflow should still generate the complete 2026 history');
 });
 
-test('created club careers build playable grassroots and professional saves', { timeout: 120_000 }, async () => {
+test('created club careers build playable grassroots and professional saves', { timeout: 120_000 }, () => {
   const context = runtimeContext();
   const manager = { firstName: 'Career', lastName: 'Tester', age: 38, nationality: 'English', birthplace: 'England', managementStyle: 'Balanced', temperament: 'Measured', occupation: 'Full-time Football Manager' };
-  const base = await context.FLGame.createStartYear(manager, context.FLGrassroots.placeholderId('home-counties'), 2026);
+  // Full 138-season generation is integration-tested by career-world-integrity.
+  // This suite exercises created-club placement and playability against the same
+  // exported 2026 database/pyramid APIs without redundantly rebuilding history.
+  const base = bounded2026Base(context, manager);
 
   const grassroots = JSON.parse(JSON.stringify(base));
   context.FLGrassroots.applyCreatedClub(grassroots, createdClub(15), [], null, 'home-counties');

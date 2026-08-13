@@ -37,7 +37,7 @@ check(quickApp.includes('getProtocolTrace:()=>onlineProtocolTrace.slice()'), 'Lo
 check(!quickApp.match(/function applyOnlineSide\([^\n]+remoteReady=false/), 'Team replication must not silently erase Ready state');
 check(!quickApp.match(/function applyOnlineSettings\([^\n]+remoteReady=false/), 'Settings replication must not silently erase Ready state');
 check(onlineHtml.includes('app.js?v=174-controller-reconnect-1'), 'Online shell must bypass the cached raw-DualSense serializer while preserving the Build 172 lobby protocol');
-check(/app\.js\?v=174-controller-input-ready(?:-cpu-v2)?-1/.test(quickHtml), 'Quick Play must bypass the pre-input-readiness Build 174 cache while preserving the Build 172 lobby protocol');
+check(quickHtml.includes('app.js?v=174-fl-v2-final-candidate-2'), 'Quick Play must load the final-candidate bytes while preserving the Build 172 lobby protocol and frozen Build 173 gameplay authority');
 
 class ReadyPeer {
   constructor(side) {

@@ -153,6 +153,21 @@
     return JSON.stringify(stableValue(safeClone(value, 'stableJson')));
   }
 
+  function missedBallStateEquivalent(actual, expected) {
+    if (!Ball.isBallState(actual) || !Ball.isBallState(expected)) return false;
+    const actualCopy = safeClone(actual, 'missed result ball state');
+    const expectedCopy = safeClone(expected, 'missed request ball state');
+    const actualOrientation = actualCopy.orientation;
+    const expectedOrientation = expectedCopy.orientation;
+    delete actualCopy.orientation;
+    delete expectedCopy.orientation;
+    if (stableJson(actualCopy) !== stableJson(expectedCopy)) return false;
+    const keys = ['x', 'y', 'z', 'w'];
+    const directError = Math.max(...keys.map(key => Math.abs(actualOrientation[key] - expectedOrientation[key])));
+    const equivalentSignError = Math.max(...keys.map(key => Math.abs(actualOrientation[key] + expectedOrientation[key])));
+    return Math.min(directError, equivalentSignError) <= 1e-12;
+  }
+
   function digest(value) {
     const text = stableJson(value);
     let first = 2166136261;
@@ -320,8 +335,8 @@
         receiver.eligibleForContact === false) {
       throw new Error('sent-off, unavailable or contact-ineligible receiver cannot enter a first-touch handoff');
     }
-    if (magnitude2(receiver.velocity) > FirstTouch.DEFAULT_CONFIG.maximumOutputSpeed) {
-      throw new RangeError('receiver Movement velocity exceeds the First Touch output envelope');
+    if (magnitude2(receiver.velocity) > FirstTouch.DEFAULT_CONFIG.maximumPlayerSpeed) {
+      throw new RangeError('receiver Movement velocity exceeds the First Touch input envelope');
     }
     const profile = plainObject(source.receiverProfile, 'request.receiverProfile');
     if (profile.schema !== PROFILE_SCHEMA || profile.playerId !== receiver.id || profile.teamId !== receiver.teamId) {
@@ -441,7 +456,7 @@
       throw new Error('First Touch V2 returned a non-candidate result');
     }
     if (result.outcome === 'missed') {
-      if (result.ownerCandidateId !== null || FirstTouch.stableJson(result.ballState) !== FirstTouch.stableJson(request.ball)) {
+      if (result.ownerCandidateId !== null || !missedBallStateEquivalent(result.ballState, request.ball)) {
         throw new Error('missed First Touch result violated detached state continuity');
       }
       return;

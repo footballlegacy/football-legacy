@@ -381,14 +381,14 @@ test('movement can extend reach only when projected toward the contact point', (
   assert.equal(away.telemetry.geometry.towardContactSpeed, 0);
 });
 
-test('output and attachment speed obey the total 3D maximum', () => {
+test('ball output and player input movement obey their separate 3D safety limits', () => {
   const active = Touch.resolve(request({
     intent: { type: 'directional-touch', direction: { x: 1, y: 0.2 }, touchDistanceM: 8 }
   }), capability(), { maximumOutputSpeed: 5 });
   assert.ok(Math.hypot(active.ballState.velocity.x, active.ballState.velocity.y,
     active.ballState.velocity.z) <= 5 + 1e-12);
   assert.throws(() => Touch.resolve(request({
-    player: { velocity: { x: 15, y: 0 } }
+    player: { velocity: { x: Touch.DEFAULT_CONFIG.maximumPlayerSpeed + 0.01, y: 0 } }
   }), capability()), /player\.velocity magnitude/);
 });
 

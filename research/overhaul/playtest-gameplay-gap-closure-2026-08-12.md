@@ -6,7 +6,7 @@ This checkpoint closes only the three remaining gameplay gaps assigned from the 
 
 - World position, velocity, acceleration and top speed are unchanged.
 - The presentation phase now advances at `2x` cadence, with doubled jog/sprint phase caps.
-- One visible foot-plant cycle therefore covers roughly half the previous world distance (`visualStepDistanceRatio: .5`, `worldSpeedScale: 1`).
+- The later strict-V2 log showed the doubled cycle rate reading as fast-forward at roughly 40 rendered fps. The calibrated presentation now uses `gaitCadenceScale: 1.2` and `visualStepDistanceRatio: .8333`, while `worldSpeedScale` remains exactly `1`; world locomotion is unchanged.
 - The focused regression isolates the rendering section and rejects any write to player world position or velocity from the gait presentation branch.
 
 ## Minute-37 outfield loose-ball pickup

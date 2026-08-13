@@ -13,12 +13,12 @@ const Ball = require('../match-engine/ball-engine-v2.js');
 const Composer = require('../match-engine/live-v2-contact-authority-composer.js');
 
 const HASHES = Object.freeze({
-  'live-v2-contact-authority-composer.js': 'b44b417b00db779e0a1501c646bcdb31153480fd6e2e62486b907308e9d00615',
-  'first-touch-v2.js': '7f4d23e0bb76491957fbe95fed95a62d1019dfa69a372802ab303ddfd4017fc2',
-  'first-touch-authority-adapter-v2.js': 'fbbea7ff774015fff32806c32eeb012e23ff2197f86470d4441a9aec27ea4c3e',
+  'live-v2-contact-authority-composer.js': 'e54bd7576164aefe5a1a2e8926d4183c0773f9ed25ba5a2f02d6407665b6f838',
+  'first-touch-v2.js': 'f548c5c33c0d82ce044ebb083ec6deac0deb212f8287608f77e490794894152c',
+  'first-touch-authority-adapter-v2.js': '2c6bf8b63e327c653556d73ec4c820b742038e63fb1f46217ef912eccec432f2',
   'aerial-contact-v2.js': '54bf086bef9e0f149f9ed2445454da510fca5908e79aa77d95ba5f70d5e8b1ba',
-  'ball-engine-v2.js': '4084ff8968859af2a4149703ce02eb37e0691fa20a542dbc97d793c33342c504',
-  'movement-engine-v2.js': 'af10e98822e2c1d93aa5b8bb9ce2e31ebad61def47174cf3ad25510eb106811d'
+  'ball-engine-v2.js': 'e5491486a7ccae8c8c2b748f42dba97160dffd8d9f52667927c56f3c6c6ecc70',
+  'movement-engine-v2.js': '0c64f95736de7658352bd76f1ebcb2b506cc881c2569ffc80cd1f86f6af2aa18'
 });
 
 function sha(file) {
@@ -155,9 +155,30 @@ function aerialFixture(overrides = {}) {
 
 test('review is pinned to the declared contact composition and exact lower-engine bytes', () => {
   for (const [file, expected] of Object.entries(HASHES)) assert.equal(sha(file), expected, file);
+  const composerSource = fs.readFileSync(path.join(root, 'match-engine', 'live-v2-contact-authority-composer.js'), 'utf8');
   assert.equal(Composer.ACKNOWLEDGEMENT, 'EXPLICIT_OFFLINE_LIVE_V2_CONTACT_COMPOSITION');
   assert.equal(Composer.AUTHORITY, 'offline-live-v2-contact-plan');
   assert.deepEqual([...Composer.SUPPORTED_WORKFLOWS], ['single-player', 'cpu-v-cpu']);
+  assert.equal(Composer.MAX_RECENT_FIRST_TOUCH_IDS, 64);
+  assert.equal(Composer.RETAINED_RECONTACT_MIN_TICKS, 20);
+  assert.equal(Composer.RETAINED_RECONTACT_MAX_LOCK_TICKS, 45);
+  assert.equal(Composer.RETAINED_RECONTACT_MIN_TRAVEL_METRES, 0.9);
+  assert.ok(Composer.SOURCE_RELEASE_BODY_PROTECTION_TICKS > Composer.MAX_REACTION_DELAY_TICKS,
+    'the releasing player must remain outside passive body arbitration for the full reaction window');
+  assert.equal(Composer.REACTION_DELAY_MIN_TICKS, 3);
+  assert.equal(Composer.REACTION_DELAY_RATING_DIVISOR, 11);
+  assert.equal(Composer.INTENDED_RECEIVER_ANTICIPATION_TICKS, 3);
+  assert.equal(Composer.MAX_REACTION_DELAY_TICKS, 12);
+  assert.match(composerSource, /candidate\.intended && request\.firstTouchIntent/,
+    'a human receiver intent must not steer another candidate');
+  assert.match(composerSource, /consumedFirstTouchThroughTick/,
+    'bounded recent evidence must retain a monotonic exact-once watermark');
+  assert.match(composerSource, /if \(!request\.reactionContext \|\| !candidate\.roster\.bodyContactEligible\) return null/,
+    'MR passive player-body authority must require the deliberate-pass reaction context');
+  assert.match(composerSource, /Ball\.resolvePassiveBodyDeflection\(request\.ballState/);
+  assert.match(composerSource, /contactType: 'involuntary-deflection', ownerCandidateId: null/);
+  assert.match(composerSource, /outfieldBallBlock: true/,
+    'an authored MR body deflection must suppress the overlapping legacy body block exactly on that tick');
 });
 
 test('only factory-issued explicit offline Single Player or CPU-v-CPU capabilities can compose', () => {
@@ -234,8 +255,20 @@ test('retained same-player continuation is contact-authoritative without replayi
   assert.equal(first.contactType, 'first-touch');
   assert.equal(first.presentation.outcome, 'retained');
 
-  const continuationInput = fixture({
+  const lockedInput = fixture({
     tick: 59,
+    firstTouchIntent: directional,
+    contactCount: first.ballState.contactCount
+  });
+  lockedInput.ballState = Ball.createBallState({
+    ...structuredClone(first.ballState),
+    lastOuterTick: lockedInput.tick
+  });
+  const locked = Composer.compose(lockedInput, capability());
+  assert.equal(locked.status, 'no-contact', 'the old eighteen-frame recontact loop must remain blocked');
+
+  const continuationInput = fixture({
+    tick: 87,
     firstTouchIntent: directional,
     contactCount: first.ballState.contactCount
   });

@@ -252,20 +252,18 @@ test('extreme finite player/pressure vectors fail closed before Infinity geometr
   assert.throws(() => Touch.resolve(input, capability()), /finite|range|bound|position/i);
 });
 
-test('controlled attachment obeys the configured total output-speed ceiling', () => {
+test('fast receiver contact stays loose and obeys the separate ball output-speed ceiling', () => {
   const input = fixture({ player: { velocity: { x: 15, y: 0 } } });
   input.ball = Ball.createBallState({ ...input.ball, velocity: { x: 7, y: 0, z: 0 } });
-  let result = null;
-  try {
-    result = Touch.resolve(input, capability());
-  } catch (error) {
-    assert.match(String(error && error.message), /player\.velocity.*envelope|output.*speed|speed.*bound/i);
-  }
-  if (result) {
-    assert.equal(result.outcome, 'controlled');
-    assert.ok(speed3(result.ballState.velocity) <= Touch.DEFAULT_CONFIG.maximumOutputSpeed + 1e-9,
-      `controlled output ${speed3(result.ballState.velocity)} exceeds configured ceiling`);
-  }
+  const result = Touch.resolve(input, capability());
+  assert.equal(result.outcome, 'retained');
+  assert.equal(result.ownerCandidateId, null);
+  assert.equal(result.telemetry.controlledAttachmentSafe, false);
+  assert.ok(speed3(result.ballState.velocity) <= Touch.DEFAULT_CONFIG.maximumOutputSpeed + 1e-9,
+    `controlled output ${speed3(result.ballState.velocity)} exceeds configured ceiling`);
+
+  const unsafe = fixture({ player: { velocity: { x: 20.01, y: 0 } } });
+  assert.throws(() => Touch.resolve(unsafe, capability()), /player\.velocity.*envelope/i);
 });
 
 test('dynamic reach is directional: moving away cannot gain contact reach', () => {

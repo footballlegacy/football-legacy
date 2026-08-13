@@ -1,11 +1,11 @@
 'use strict';
 
 /*
- * Football Legacy Ball Engine V2
+ * Football Legacy Magnus Reynolds (MR) Engine — Ball Engine V2
  *
- * A deterministic, SI-unit candidate engine for shadow and controlled-suite
- * evaluation. It is deliberately not loaded by match.html and cannot become
- * live authority merely by existing. Build 173 remains authoritative.
+ * A deterministic, SI-unit engine for shadow, controlled-suite and explicit
+ * offline FL V2 authority. Loading the module alone grants no authority; the
+ * live adapter still requires an exact offline capability and transaction.
  */
 (function exposeBallEngineV2(root, factory) {
   const api = factory();
@@ -15,6 +15,7 @@
   'use strict';
 
   const VERSION = '2.0.0-shadow';
+  const ENGINE_NAME = 'Magnus Reynolds (MR) Engine';
   const STATE_SCHEMA = 'football-legacy-ball-v2-state';
   const CONTEXT_SCHEMA = 'football-legacy-ball-v2-context';
   const TRACE_SCHEMA = 'football-legacy-ball-v2-step-trace';
@@ -101,7 +102,12 @@
       minimumBounceSpeed: 0.65,
       skidSlipSpeed: 0.55,
       skidFriction: 0.22,
-      rollingFriction: 0.014,
+      // Effective natural-grass rolling resistance. The original 0.014 value let a
+      // missed ordinary pass retain several metres per second for five-plus
+      // seconds, so the ball appeared to float away from play. 0.14 keeps a
+      // firm pass alive through its receiving window while allowing realistic
+      // loose-ball deceleration after that window.
+      rollingFriction: 0.14,
       spinMatchRate: 13,
       settleLinearSpeed: 0.04,
       settleAngularSpeed: 0.8,
@@ -927,6 +933,132 @@
     return { velocity: nextVelocity, angularVelocity: nextAngular, captured, supportContact };
   }
 
+  function cloneDetachedValue(value, seen) {
+    if (!value || typeof value !== 'object') return value;
+    const references = seen || new WeakMap();
+    if (references.has(value)) return references.get(value);
+    const clone = Array.isArray(value) ? [] : {};
+    references.set(value, clone);
+    Object.keys(value).forEach(key => { clone[key] = cloneDetachedValue(value[key], references); });
+    return clone;
+  }
+
+  function clonedQueryVector(value, fallback, label) {
+    const source = value && typeof value === 'object' ? value : {};
+    for (const axis of ['x', 'y', 'z']) {
+      if (Object.prototype.hasOwnProperty.call(source, axis) && !Number.isFinite(source[axis])) {
+        throw new TypeError(label + '.' + axis + ' must be finite');
+      }
+    }
+    return vector(source, fallback);
+  }
+
+  /*
+   * Resolve at most one passive player-body contact along an already sampled
+   * ball segment. body.position is the current centre of the capsule footprint
+   * at its base; heightM is the capsule's total ground-to-head extent. The
+   * previous body capsule is inferred from velocity over fixedTickSeconds so
+   * both participants are swept over the same interval. This pure query clones
+   * its inputs and does not integrate or advance simulationTime/lastOuterTick.
+   */
+  function resolvePassiveBodyDeflection(stateInput, input) {
+    const source = input && typeof input === 'object' ? input : {};
+    const body = source.body && typeof source.body === 'object' ? source.body : null;
+    if (!body) throw new TypeError('passive body deflection requires a body');
+    if (!body.position || typeof body.position !== 'object') {
+      throw new TypeError('passive body deflection requires body.position');
+    }
+    if (!body.velocity || typeof body.velocity !== 'object') {
+      throw new TypeError('passive body deflection requires body.velocity');
+    }
+    if (!source.previousBallPosition || typeof source.previousBallPosition !== 'object') {
+      throw new TypeError('passive body deflection requires previousBallPosition');
+    }
+    if (!Number.isInteger(source.tick) || source.tick < 0) {
+      throw new TypeError('passive body deflection tick must be a non-negative integer');
+    }
+    const config = createConfig();
+    // A body is passive even when its capsule is translating. It may redirect
+    // existing ball energy, but it must never create any in this public path.
+    config.energy.maximumPassiveGainRatio = 0;
+    config.energy.absoluteToleranceJ = 0;
+
+    const state = cloneBallState(stateInput, config);
+    state.metadata = cloneDetachedValue(state.metadata);
+    const previousBallPosition = clonedQueryVector(source.previousBallPosition, state.position, 'previousBallPosition');
+    const position = clonedQueryVector(body.position, { x: 0, y: 0, z: 0 }, 'body.position');
+    const velocity = clonedQueryVector(body.velocity, { x: 0, y: 0, z: 0 }, 'body.velocity');
+    const radius = positive(body.radius, NaN, 'player body radius');
+    const height = positive(body.heightM, NaN, 'player body heightM');
+    if (height <= radius * 2) {
+      throw new RangeError('player body height must exceed twice its radius');
+    }
+    const duration = positive(source.fixedTickSeconds, config.fixedDelta, 'passive body fixedTickSeconds');
+    if (duration > config.maxDuration + 1e-12) {
+      throw new RangeError('passive body fixedTickSeconds exceeds the configured safety bound');
+    }
+    const previousBodyPosition = subtract(position, scale(velocity, duration));
+    if (!['x', 'y', 'z'].every(axis => Number.isFinite(previousBodyPosition[axis]))) {
+      throw new RangeError('passive body sweep exceeds finite geometry bounds');
+    }
+    const colliderId = String(body.id || 'player-body');
+    if (colliderId === '__ground__') {
+      throw new RangeError('__ground__ is reserved and cannot identify a player body');
+    }
+
+    const collider = createCapsuleCollider({
+      id: colliderId,
+      role: 'player-body',
+      start: {
+        x: previousBodyPosition.x,
+        y: previousBodyPosition.y,
+        z: previousBodyPosition.z + radius
+      },
+      end: {
+        x: previousBodyPosition.x,
+        y: previousBodyPosition.y,
+        z: previousBodyPosition.z + height - radius
+      },
+      radius,
+      velocity,
+      material: MATERIALS.playerBody
+    });
+    const hit = sweepCapsule(previousBallPosition, state.position, state.radius, collider, duration);
+    if (!hit) return deepFreeze({ hit: false, state, event: null, timeFraction: null });
+
+    // A swept query can begin inside a capsule after a prior contact or after
+    // the source player releases the ball. Overlap alone is not a new impact:
+    // if the ball is already stationary relative to, or separating from, the
+    // body's contact normal, resolving/logging another collision creates the
+    // repeated no-op "deflections" seen in the live playtest. Preserve the
+    // detached input state and wait for a future genuine inward crossing.
+    const incomingNormal = dot(subtract(state.velocity, collider.velocity), hit.normal);
+    if (incomingNormal >= -1e-6) {
+      return deepFreeze({ hit: false, state, event: null, timeFraction: null });
+    }
+
+    state.position = add(
+      lerpVector(previousBallPosition, state.position, hit.t),
+      scale(hit.normal, config.collisionEpsilon + hit.penetration)
+    );
+    const events = [];
+    const response = resolveContact(
+      state,
+      { ...hit, collider },
+      state.velocity,
+      state.angularVelocity,
+      config,
+      { outerTick: source.tick, substepCount: 0 },
+      events
+    );
+    state.velocity = response.velocity;
+    state.angularVelocity = response.angularVelocity;
+    if (events.length !== 1 || state.contactCount !== stateInput.contactCount + 1) {
+      throw new Error('passive body deflection must resolve exactly one contact');
+    }
+    return deepFreeze({ hit: true, state, event: events[0], timeFraction: hit.t });
+  }
+
   function integrateMotionWithContacts(
     state,
     velocity,
@@ -1278,6 +1410,7 @@
   }
 
   return Object.freeze({
+    ENGINE_NAME,
     VERSION,
     STATE_SCHEMA,
     CONTEXT_SCHEMA,
@@ -1299,6 +1432,7 @@
     createPlaneCollider,
     createSphereCollider,
     createCapsuleCollider,
+    resolvePassiveBodyDeflection,
     createGoalFrame,
     interpolateDragCoefficient,
     aerodynamicAcceleration,

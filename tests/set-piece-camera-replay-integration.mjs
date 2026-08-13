@@ -38,6 +38,28 @@ assert.match(cameraFollow, /LIVE_V2_PREFLIGHT\.workflow==='set-piece-suite'/);
 assert.match(cameraFollow, /updatePracticeRoamCamera\(now\)/);
 assert.match(html, /function practiceRoamCameraInputActive\(isSecond=false\)\{return !isSecond&&FREE_KICK_PRACTICE&&LIVE_V2_PREFLIGHT\.workflow==='set-piece-suite'/);
 assert.match(html, /if\(practiceRoamCameraInputActive\(isSecond\)\)/);
+assert.match(html, /return practiceRoamCameraInputActive\(false\)&&controlled\?cameraRelativePracticeMovement\(raw,controlled,practiceRoamCamera\):raw/);
+assert.match(cameraFollow, /lx=cx\+nx\*52;lz=cz\+nz\*52/);
+
+const cameraRelativeMovementSource = section('function cameraRelativePracticeMovement', 'function movementInput');
+const cameraRelativePracticeMovement = new Function(`
+  const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
+  const attackDirection=team=>team==='you'?1:-1;
+  ${cameraRelativeMovementSource}
+  return cameraRelativePracticeMovement;
+`)();
+const closeTo=(actual,expected,message)=>assert.ok(Math.abs(actual-expected)<1e-9,`${message}: ${actual}`);
+const facingGoal={team:'you',fx:1,fy:0};
+const cameraForward=cameraRelativePracticeMovement({x:0,y:-1,strength:1},facingGoal,{orbit:0});
+closeTo(cameraForward.x,1,'stick up must move away from a camera placed behind the player');
+closeTo(cameraForward.y,0,'stick up must not leak across the camera plane');
+const cameraRight=cameraRelativePracticeMovement({x:1,y:0,strength:1},facingGoal,{orbit:0});
+closeTo(cameraRight.x,0,'stick right must not move toward goal at the default orbit');
+closeTo(cameraRight.y,1,'stick right must move to screen-right at the default orbit');
+const quarterOrbitForward=cameraRelativePracticeMovement({x:0,y:-1,strength:.7,keyboard:true},facingGoal,{orbit:Math.PI/2});
+closeTo(quarterOrbitForward.x,0,'movement must rotate with the local camera orbit');
+closeTo(quarterOrbitForward.y,.7,'movement strength must be preserved through camera-relative rotation');
+assert.equal(quarterOrbitForward.keyboard,true);
 
 const cameraRigSource = section('function resolveSetPieceCameraRig', 'const isDualSenseDevice');
 const resolveSetPieceCameraRig = new Function(`
@@ -60,6 +82,11 @@ const fkRig = resolveSetPieceCameraRig({kind:'FREE KICK', team:'you', originX:25
 assert.equal(fkRig.back, 420, 'free-kick camera must be dollied farther back than the retired 238-unit shot');
 const mirroredFkRig = resolveSetPieceCameraRig({kind:'FREE KICK', team:'opp', originX:844, originY:1142, aimY:1022, aimHeight:.6, taker:{x:964,y:1172}});
 assert.ok(Math.abs(fkRig.back-mirroredFkRig.back)<.001 && Math.sign(fkRig.forward.x)===-Math.sign(mirroredFkRig.forward.x), 'free-kick camera must mirror at opposite ends');
+const loggedCornerRig = resolveSetPieceCameraRig({kind:'CORNER', team:'you', originX:3242, originY:18, aimY:1071, aimHeight:.5, taker:{x:3217,y:18}});
+assert.equal(loggedCornerRig.deliveryAxisFramed, true, 'corner camera must frame the delivery axis into the box');
+assert.ok(loggedCornerRig.forward.x<-.20 && loggedCornerRig.forward.z>.85, 'a near-side corner camera must look diagonally into the box rather than along the goal line');
+const cornerCameraToDelivery={x:loggedCornerRig.deliveryAxis.x-loggedCornerRig.position.x,z:loggedCornerRig.deliveryAxis.z-loggedCornerRig.position.z};
+assert.ok(cornerCameraToDelivery.x*loggedCornerRig.forward.x+cornerCameraToDelivery.z*loggedCornerRig.forward.z>0, 'the penalty-spot delivery area must remain in front of the behind-taker corner camera');
 
 const runUpSource = section('function freeKickRunUpGeometry', 'function holdSetPieceStrikeCamera');
 const runUpRuntime = new Function(`
@@ -83,6 +110,25 @@ assert.deepEqual(runUpRuntime.freeKickRunUpPoint(rightFoot,0), {x:rightFoot.star
 const contactPoint = runUpRuntime.freeKickRunUpPoint(rightFoot,1);
 assert.equal(contactPoint.x, rightFoot.contactX);
 assert.equal(contactPoint.y, rightFoot.contactY);
+
+const penaltyExclusionSource = section('function penaltyExclusionPoint', 'function penaltyPlayersLegal');
+const penaltyExclusionPoint = new Function(`
+  const W=3344,H=2142,M=84,BOX_D=(W-2*M)*(16.5/105),rad=12.75,PITCH_UNITS_PER_METRE=(H-12)/68,FREE_KICK_WALL_DISTANCE_METRES=9.15;
+  const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
+  const attackDirection=team=>team==='you'?1:-1;
+  ${penaltyExclusionSource}
+  return penaltyExclusionPoint;
+`)();
+const penaltyUnits=(2142-12)/68,penaltyRadius=9.15*penaltyUnits+12.75;
+const homeMark=3344-84-11*penaltyUnits,awayMark=84+11*penaltyUnits;
+const homeStaged=penaltyExclusionPoint({x:homeMark-100,y:1071+66},'you',homeMark,1071);
+const awayStaged=penaltyExclusionPoint({x:awayMark+100,y:1071-66},'opp',awayMark,1071);
+assert.ok(homeStaged.x<3344-84-(3344-168)*(16.5/105)-12.75, 'home penalty outfielders must be outside the attacking penalty area');
+assert.ok(awayStaged.x>84+(3344-168)*(16.5/105)+12.75, 'away penalty outfielders must be outside the attacking penalty area');
+assert.ok(Math.hypot(homeStaged.x-homeMark,homeStaged.y-1071)>=penaltyRadius-.001, 'home penalty staging must respect the 9.15m exclusion radius');
+assert.ok(Math.hypot(awayStaged.x-awayMark,awayStaged.y-1071)>=penaltyRadius-.001, 'away penalty staging must respect the 9.15m exclusion radius');
+assert.ok(homeStaged.x<homeMark && awayStaged.x>awayMark, 'all non-takers must remain behind the penalty mark');
+assert.match(html, /if\(restartMsg==='PENALTY'&&restartTaker\)\{enforcePenaltyExclusion\(\);if\(!penaltyPlayersLegal\(\)\)return false;\}/);
 
 const deliverySource = section('function standardLobTrajectory', 'function flairPassExecution');
 const setPieceDeliveryPlan = new Function(`

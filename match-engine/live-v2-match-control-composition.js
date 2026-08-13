@@ -771,8 +771,12 @@
       if (runtime.workflow === 'set-piece-suite' && normalized.restartIncident && !restartAlreadyProcessed) {
         throw new Error('offside presentation is frozen out of the Set-Piece Suite workflow');
       }
+      const terminalSuitePresentationEvent = normalized.setPieceEvent &&
+        ['contact', 'resolve'].includes(normalized.setPieceEvent.action) &&
+        ['replay', 'celebration'].includes(normalized.hostPhase);
       if (normalized.setPieceEvent && !setPieceAlreadyProcessed &&
-          normalized.setPieceEvent.action !== 'menu' && normalized.hostPhase !== 'set-piece') {
+          normalized.setPieceEvent.action !== 'menu' && normalized.hostPhase !== 'set-piece' &&
+          !terminalSuitePresentationEvent) {
         throw new Error('set-piece lifecycle actions require the set-piece host phase');
       }
       if ((state.restartState.active || (normalized.restartIncident && !restartAlreadyProcessed)) &&

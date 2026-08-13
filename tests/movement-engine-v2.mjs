@@ -57,6 +57,37 @@ function world(players, data = {}) {
   };
 }
 
+function loadOldConfigPathReference() {
+  const replacements = [
+    [
+      '.map(player => createPlayerStateWithConfig(player, config));',
+      '.map(player => createPlayerState(player, config));'
+    ],
+    [
+      'players.map(player => createPlayerStateWithConfig(player, config)).sort',
+      'players.map(player => createPlayerState(player, config)).sort'
+    ],
+    [
+      'const world = createWorldStateWithConfig(worldState, config);',
+      'const world = createWorldState(worldState, config);'
+    ],
+    [
+      'const separated = separatePlayersWithConfig(world.players, world.bounds, config);',
+      'const separated = separatePlayers(world.players, world.bounds, config);'
+    ]
+  ];
+  let referenceSource = source;
+  for (const [current, oldPath] of replacements) {
+    assert.equal(referenceSource.includes(current), true, `missing movement reference splice: ${current}`);
+    referenceSource = referenceSource.replace(current, oldPath);
+  }
+  const context = { module: { exports: {} }, exports: {} };
+  vm.runInNewContext(referenceSource, context, { filename: 'movement-engine-v2-old-config-path.js' });
+  return context.module.exports;
+}
+
+const OldConfigPathMovement = loadOldConfigPathReference();
+
 test('CommonJS module exposes the complete dormant movement/contact v2 API', () => {
   assert.equal(Movement.VERSION, '2.0.0-dormant');
   assert.equal(Movement.PLAYER_SCHEMA, 'football-legacy-movement-player-v2');
@@ -101,6 +132,79 @@ test('fixed-tick contract and explicit command ticks are enforced', () => {
   assert.throws(() => Movement.advance(base, [{ playerId: 'runner', type: 'move' }], 1), /explicit/);
   assert.throws(() => Movement.advance(base, [], 1.5), /ticks/);
   assert.throws(() => Movement.advance(base, [], 3601), /ticks/);
+});
+
+test('validated-config reuse is byte-identical to the old per-player config path', () => {
+  const config = { fixedTickSeconds: FIXED_TICK, separationIterations: 3, playerRadius: 0.42 };
+  const sample = world([
+    player('alpha', 'home', -0.1, 0, {
+      role: 'CM', velocity: { x: 0.3, y: -0.1 }, facing: { x: 0.8, y: 0.2 },
+      attributes: { pace: 91, acceleration: 88, balance: 83, strength: 79, control: 92 }
+    }),
+    player('beta', 'away', 0.15, 0.08, {
+      role: 'CB', velocity: { x: -0.2, y: 0.05 }, attributes: { defending: 90, strength: 91 }
+    }),
+    player('gamma', 'home', 8, 4, { role: 'LW', staminaLevel: 72 })
+  ], { ballOwnerId: 'alpha' });
+  const commands = [{
+    id: 'representative-config-reuse', tick: 1, playerId: 'alpha', type: 'move',
+    move: { x: 0.9, y: 0.25 }, facing: { x: 0.9, y: 0.25 }, mode: 'sprint', durationTicks: 2
+  }];
+
+  assert.equal(
+    JSON.stringify(Movement.createWorldState(sample, config)),
+    JSON.stringify(OldConfigPathMovement.createWorldState(sample, config))
+  );
+  assert.equal(
+    JSON.stringify(Movement.step(sample, commands, config)),
+    JSON.stringify(OldConfigPathMovement.step(sample, commands, config))
+  );
+  assert.equal(
+    JSON.stringify(Movement.advance(sample, commands, 24, config)),
+    JSON.stringify(OldConfigPathMovement.advance(sample, commands, 24, config)),
+    'the internal canonical-player shortcut must preserve exact multi-tick recanonicalisation semantics'
+  );
+  assert.equal(
+    JSON.stringify(Movement.separatePlayers(sample.players, sample.bounds, config)),
+    JSON.stringify(OldConfigPathMovement.separatePlayers(sample.players, sample.bounds, config))
+  );
+});
+
+test('canonical-player shortcut preserves exact multi-tick facing recanonicalisation', () => {
+  const config = {
+    fixedTickSeconds: FIXED_TICK,
+    playerRadius: 0.2221336681395769,
+    separationIterations: 3,
+    safetyVelocityLimit: 16.49476738460362
+  };
+  const sample = world([player('recanonicalised-facing', 'home', 36.88385374844074, -28.86006292887032, {
+    role: 'CB',
+    velocity: { x: -5.779067503288388, y: -0.5312072215601802 },
+    facing: { x: -0.6710189022123814, y: 0.7728325622156262 },
+    staminaLevel: 40.03216866403818,
+    attributes: {
+      pace: 60.38762742653489, acceleration: 63.87030973099172,
+      agility: 99, balance: 33.58910319395363, strength: 10.32207241281867,
+      stamina: 15.911103738471866, defending: 98.2784366235137,
+      aggression: 63.048910880461335, control: 36.71145664528012
+    }
+  })], {
+    tick: 17,
+    bounds: { xMin: -60, xMax: 60, yMin: -40, yMax: 40 }
+  });
+  const commands = [{ id: 'stop-recanonicalised-facing', tick: 18, playerId: 'recanonicalised-facing', type: 'stop' }];
+  assert.equal(
+    JSON.stringify(Movement.advance(sample, commands, 12, config)),
+    JSON.stringify(OldConfigPathMovement.advance(sample, commands, 12, config))
+  );
+});
+
+test('public movement APIs still fail closed on invalid config after internal reuse', () => {
+  const sample = world([player('fail-closed', 'home', 0, 0)]);
+  assert.throws(() => Movement.createPlayerState(sample.players[0], { playerRadius: -1 }), /playerRadius.*positive/);
+  assert.throws(() => Movement.createWorldState(sample, { fixedTickSeconds: 0 }), /fixedTickSeconds.*positive/);
+  assert.throws(() => Movement.separatePlayers(sample.players, sample.bounds, { separationIterations: -1 }), /separationIterations/);
+  assert.throws(() => Movement.step(sample, [], { safetyVelocityLimit: 0 }), /safetyVelocityLimit.*positive/);
 });
 
 test('state factories sanitize non-finite input and stepping is pure and JSON-safe', () => {

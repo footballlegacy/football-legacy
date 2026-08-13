@@ -1,10 +1,11 @@
-# Football Legacy Dribbling State V2 contract
+# Football Legacy True Feel — Dribbling State V2 contract
 
 Status: offline live-V2 candidate authority for explicit Single Player and CPU-v-CPU workflows. Build 173 remains the pre-match default. Set-Piece Suite, online play, keepers, restarts, replays, rules, protected skills, cameras and rendering remain outside this module.
 
 ## Authority and dependencies
 
 - Module: `match-engine/dribbling-state-v2.js`
+- Public engine name: `True Feel` (the V2 module/API filename remains stable)
 - Browser global: `FootballLegacyDribblingStateV2`
 - Version: `2.0.0-offline-live-dribbling-state`
 - Required reviewed dependency: Ball Engine V2 `2.0.0-shadow`
@@ -34,8 +35,8 @@ The module does not synthesize a cosmetic tether or sine-wave offset. Every rele
 ## Touch and lease bounds
 
 - Preparation: exactly 1 fixed tick.
-- Minimum physical separation: 3 ticks before carrier resecure.
-- Touch cadence: 7-14 ticks.
+- Minimum physical separation: 5 ticks before carrier resecure.
+- Standard-carry touch cadence: 20-34 ticks. The selected next-contact boundary survives resecure; it is not reset to a two-tick preparation timer.
 - Physical lease: 9-17 ticks.
 - Action buffer: 12 ticks.
 - Action exact-once ledger: identities never evict or become reusable when `commandTick` changes. Future-dated commands fail closed, and the 2,048-ID match capacity fails closed before it could forget an accepted action.
@@ -88,7 +89,7 @@ The match host must:
 6. Execute `dribbling.releasedAction` once through the existing pass/shot launch path after resecure, using the direction captured with the command rather than a later stick position, while suppressing any same-frame overlapping intelligence action.
 7. Include pending action ID, receiver selection and current dribbling host presentation/lease markers in host transaction capture/restore.
 8. A separated touch suppresses the legacy reception resolver for the full physical lease. First Touch keeps its contact-owned pose on the securing frame; heavy touch and turnover animate the previous carrier rather than the player who wins the ball.
-8. Treat `authorityHandoff.executeExactlyOnce` as an exact-once protected Build 173 boundary; do not run both the dribble lease and the protected skill.
+9. Treat `authorityHandoff.executeExactlyOnce` as an exact-once protected Build 173 boundary; do not run both the dribble lease and the protected skill.
 
 Set-Piece Suite never creates the live gameplay attachment and therefore never enters this state machine.
 

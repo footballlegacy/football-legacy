@@ -81,5 +81,6 @@ unstyled line.
   `overhaul-foundation` pins for `match-engine/match.html`; that file changed in
   the authority integration lane and was not edited by this change. The
   foundation manifest was deliberately not updated here.
-- Madrid BBC source remains exactly SHA-256
-  `d73acc66679cc40f4db9d7f5584b48d2b5237b5ac276e4f3d950f5d7c9bb8a94`.
+- Madrid BBC source, including the backward-compatible explicit `reactions`
+  default used by the True Feel/MR contact window, remains exactly SHA-256
+  `4aacd4a33083eee996beace57ba038caf6e5b5a580f1896a9b1d765240b879d5`.

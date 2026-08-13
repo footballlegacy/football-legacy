@@ -126,6 +126,7 @@ function request(overrides = {}) {
     firstTouchIntent: overrides.firstTouchIntent || null,
     aerialIntent: overrides.aerialIntent || null,
     consumedFirstTouchIds: overrides.consumedFirstTouchIds || [],
+    consumedFirstTouchThroughTick: overrides.consumedFirstTouchThroughTick || 0,
     consumedAerialIds: overrides.consumedAerialIds || [],
     gate: {
       livePlay: true,
@@ -263,7 +264,19 @@ test('clean pass reception emits one canonical controlled first-touch handoff', 
   });
 });
 
-test('same-player retained contacts stay physical but cannot restart reception presentation every 18 ticks', () => {
+test('moderate directional receiving is a controlled cushion, not an automatic loose-ball race', () => {
+  const guided = Composer.compose(request({
+    firstTouchIntent: {
+      type: 'cushion', direction: { x: 0.8, y: 0.6 }, touchDistanceM: 0.62, active: false
+    }
+  }), capability());
+  assert.equal(guided.status, 'contact');
+  assert.equal(guided.presentation.outcome, 'controlled');
+  assert.equal(guided.presentation.possessionDisposition, 'candidate-acquire');
+  assert.equal(guided.ownerCandidateId, 'receiver');
+});
+
+test('same-player retained contacts require both elapsed time and physical travel before another touch', () => {
   const directional = {
     type: 'directional-touch', direction: { x: 1, y: 0 }, touchDistanceM: 1.1, active: true
   };
@@ -272,27 +285,92 @@ test('same-player retained contacts stay physical but cannot restart reception p
   assert.equal(first.presentation.outcome, 'retained');
   assert.equal(first.presentation.phase, 'reception');
 
-  const secondInput = request({ tick: 35, firstTouchIntent: directional, contactCount: first.ballState.contactCount });
+  const secondInput = request({ tick: 35, firstTouchIntent: directional,
+    consumedFirstTouchIds: first.consumedFirstTouchIds,
+    consumedFirstTouchThroughTick: first.consumedFirstTouchThroughTick,
+    contactCount: first.ballState.contactCount });
   secondInput.ballState = Ball.createBallState({
     ...structuredClone(first.ballState),
     lastOuterTick: secondInput.tick
   });
   const second = Composer.compose(secondInput, capability());
-  assert.equal(second.status, 'contact');
-  assert.equal(second.contactType, 'dribble-touch');
-  assert.equal(second.presentation.phase, Composer.DRIBBLE_CONTINUATION_PHASE);
-  assert.equal(second.detail.retainedTouchContinuation, true);
-  assert.equal(second.ballState.contactCount, first.ballState.contactCount + 1);
-  assert.equal(second.suppressLegacy.reception, true);
+  assert.equal(second.status, 'no-contact');
+  assert.equal(second.contactType, null);
+  assert.equal(second.consumedFirstTouchThroughTick, first.tick);
 
-  const thirdInput = request({ tick: 53, firstTouchIntent: directional, contactCount: second.ballState.contactCount });
+  const movedPosition = { x: first.ballState.position.x + 1, y: first.ballState.position.y, z: first.ballState.position.z };
+  const thirdInput = request({ tick: 53, firstTouchIntent: directional,
+    receiver: player('receiver', 'you', movedPosition.x - 0.2),
+    ballPosition: movedPosition,
+    consumedFirstTouchIds: first.consumedFirstTouchIds,
+    consumedFirstTouchThroughTick: first.consumedFirstTouchThroughTick,
+    contactCount: first.ballState.contactCount });
   thirdInput.ballState = Ball.createBallState({
-    ...structuredClone(second.ballState),
+    ...structuredClone(first.ballState),
+    position: movedPosition,
     lastOuterTick: thirdInput.tick
   });
   const third = Composer.compose(thirdInput, capability());
+  assert.equal(third.status, 'contact');
   assert.equal(third.contactType, 'dribble-touch');
   assert.equal(third.presentation.phase, Composer.DRIBBLE_CONTINUATION_PHASE);
+  assert.equal(third.detail.retainedTouchContinuation, true);
+  assert.equal(third.consumedFirstTouchThroughTick, third.tick);
+  assert.ok(third.consumedFirstTouchIds.length <= Composer.MAX_RECENT_FIRST_TOUCH_IDS);
+});
+
+test('a settled retained ball becomes playable again after the bounded self-contact lock', () => {
+  const directional = {
+    type: 'directional-touch', direction: { x: 1, y: 0 }, touchDistanceM: 1.1, active: true
+  };
+  const first = Composer.compose(request({ tick: 17, firstTouchIntent: directional }), capability());
+  assert.equal(first.presentation.outcome, 'retained');
+  const replayTick = first.tick + Composer.RETAINED_RECONTACT_MAX_LOCK_TICKS + 1;
+  const settled = request({
+    tick: replayTick,
+    receiver: player('receiver', 'you', first.ballState.position.x - 0.2),
+    ballPosition: first.ballState.position,
+    firstTouchIntent: directional,
+    consumedFirstTouchIds: first.consumedFirstTouchIds,
+    consumedFirstTouchThroughTick: first.consumedFirstTouchThroughTick,
+    contactCount: first.ballState.contactCount
+  });
+  settled.ballState = Ball.createBallState({
+    ...structuredClone(first.ballState),
+    velocity: { x: 0, y: 0, z: 0 },
+    position: first.ballState.position,
+    lastOuterTick: replayTick
+  });
+  const reacquired = Composer.compose(settled, capability());
+  assert.equal(reacquired.status, 'contact');
+  assert.equal(reacquired.contactType, 'dribble-touch');
+});
+
+test('more than 256 legitimate first touches use bounded recent evidence plus a monotonic exact-once watermark', () => {
+  const cap = capability();
+  let consumedFirstTouchIds = [], consumedFirstTouchThroughTick = 0;
+  for (let tick = 1; tick <= 320; tick += 1) {
+    const result = Composer.compose(request({
+      tick,
+      contactCount: tick - 1,
+      consumedFirstTouchIds,
+      consumedFirstTouchThroughTick
+    }), cap);
+    assert.equal(result.status, 'contact', `legitimate contact ${tick} must remain available`);
+    consumedFirstTouchIds = result.consumedFirstTouchIds;
+    consumedFirstTouchThroughTick = result.consumedFirstTouchThroughTick;
+    assert.ok(consumedFirstTouchIds.length <= Composer.MAX_RECENT_FIRST_TOUCH_IDS);
+    assert.equal(consumedFirstTouchThroughTick, tick);
+  }
+  const replay = Composer.compose(request({
+    tick: 320,
+    contactCount: 319,
+    consumedFirstTouchIds,
+    consumedFirstTouchThroughTick
+  }), cap);
+  assert.equal(replay.status, 'already-consumed');
+  assert.equal(replay.detail, 'first-touch-high-water');
+  assert.equal(replay.consumedFirstTouchThroughTick, 320);
 });
 
 test('pressured weak receiver produces a deterministic heavy touch that remains loose', () => {

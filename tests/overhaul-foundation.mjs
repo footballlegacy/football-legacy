@@ -62,7 +62,7 @@ test('every pinned protected file exists and matches its candidate SHA-256', () 
 });
 
 test('every pinned promoted runtime file is new to the baseline, scoped and hash-sealed', () => {
-  assert.equal(manifest.promotedFiles.length, 22);
+  assert.equal(manifest.promotedFiles.length, 23);
   const paths = manifest.promotedFiles.map(entry => entry.path);
   assert.equal(new Set(paths).size, paths.length, 'promoted file paths must be unique');
   for (const entry of manifest.promotedFiles) {
@@ -83,6 +83,11 @@ test('every pinned promoted runtime file is new to the baseline, scoped and hash
   );
   assert.ok(paths.includes('match-engine/dribbling-state-v2.js'));
   assert.ok(paths.includes('match-engine/instant-replay-review-v2.js'));
+  assert.ok(paths.includes('match-engine/playtest-full-state-replay-v1.js'));
+  assert.deepEqual(
+    manifest.promotedFiles.find(entry => entry.path === 'match-engine/playtest-full-state-replay-v1.js').authorityScope,
+    ['diagnostics-and-playtest-exports']
+  );
 });
 
 test('release freeze has no unresolved candidate hash pins', () => {
@@ -159,8 +164,9 @@ test('the match page conditionally loads the exact FL V2 runtime only after fail
     priorIndex = index;
     assert.doesNotMatch(matchHtml, new RegExp(`<script\\s+src=["'][^"']*${filename.replace(/\./g, '\\.')}`, 'i'), `${filename} must not load unconditionally`);
   }
-  assert.equal(authority.scriptCacheVersion, '174-fl-v2-playtest-notes-1');
-  assert.match(preflight, /pieces\.forEach\(src=>document\.write\('<script src="'\+src\+'\?v=174-fl-v2-playtest-notes-1/);
+  assert.equal(authority.scriptCacheVersion, '174-fl-v2-final-candidate-2');
+  assert.match(preflight, /pieces\.forEach\(src=>document\.write\('<script src="'\+src\+'\?v=174-fl-v2-final-candidate-2/);
+  assert.match(matchHtml, /trueFeelPhysicalTouchAuthority:false,cpuPassRaceFilter:true/);
 });
 
 test('the live host composes candidate transactions with rollback and a blocking strict V2 stop', () => {

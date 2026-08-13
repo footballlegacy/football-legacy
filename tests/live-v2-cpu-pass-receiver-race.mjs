@@ -1,0 +1,733 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import test from 'node:test';
+
+const require = createRequire(import.meta.url);
+const Adapter = require('../match-engine/live-v2-authority-adapter.js');
+const Ball = require('../match-engine/ball-engine-v2.js');
+const Movement = require('../match-engine/movement-engine-v2.js');
+const CPU = require('../match-engine/cpu-intelligence-v2.js');
+const Formation = require('../match-engine/formation-behaviour-v2.js');
+const Contact = require('../match-engine/live-v2-contact-authority-composer.js');
+const Dribbling = require('../match-engine/dribbling-state-v2.js');
+const ADAPTER_SOURCE = readFileSync(new URL('../match-engine/live-v2-authority-adapter.js', import.meta.url), 'utf8');
+
+const PITCH = Object.freeze({ xMin: 84, xMax: 3260, yMin: 6, yMax: 2136 });
+const UNITS = Object.freeze({
+  xPerMetre: (PITCH.xMax - PITCH.xMin) / 105,
+  yPerMetre: (PITCH.yMax - PITCH.yMin) / 68,
+  zPerMetre: 30
+});
+const OWNER_ID = 'you-CAM';
+const RECEIVER_ID = 'you-RW';
+
+function canonicalLineup(teamId) {
+  return Formation.canonicalLineup('4-3-3').map(row => ({ ...row, id: `${teamId}-${row.slotId}` }));
+}
+
+function worldPoint(metric) {
+  return {
+    x: PITCH.xMin + metric.x * UNITS.xPerMetre,
+    y: (PITCH.yMin + PITCH.yMax) / 2 + metric.y * UNITS.yPerMetre
+  };
+}
+
+function forcedPassCpu(target) {
+  return {
+    ...CPU,
+    decide(snapshot, previousMemory, options) {
+      const decision = CPU.decide(snapshot, previousMemory, options);
+      if (snapshot.teamId !== snapshot.possessionTeamId || snapshot.carrierId == null) return decision;
+      return {
+        ...decision,
+        carrierIntent: {
+          type: 'pass',
+          targetPlayerId: RECEIVER_ID,
+          target: { ...target },
+          confidence: .91,
+          reason: 'forced-pass-race-fixture'
+        }
+      };
+    }
+  };
+}
+
+function forcedProgressiveRiskCpu(target, confidence = .86) {
+  const base = forcedPassCpu(target);
+  return {
+    ...base,
+    decide(snapshot, previousMemory, options) {
+      const decision = base.decide(snapshot, previousMemory, options);
+      if (decision.carrierIntent?.type !== 'pass') return decision;
+      return { ...decision, carrierIntent: { ...decision.carrierIntent, confidence,
+        reason: 'forced-progressive-risk-fixture' } };
+    }
+  };
+}
+
+function forcedShortSupportCpu(target) {
+  const base = forcedPassCpu(target);
+  return {
+    ...base,
+    decide(snapshot, previousMemory, options) {
+      const decision = base.decide(snapshot, previousMemory, options);
+      if (decision.carrierIntent?.type !== 'pass') return decision;
+      return {
+        ...decision,
+        carrierIntent: {
+          ...decision.carrierIntent,
+          confidence: .76,
+          reason: 'short-support-circulation',
+          supportKind: 'support',
+          supportMetrics: { distance: 242, progress: 120, laneClearance: 82, receiverSpace: 118 }
+        }
+      };
+    }
+  };
+}
+
+function snapshotFixture({ tick = 1, workflow = 'cpu-v-cpu', receiver = { x: 55, y: 0 },
+  receiverVelocity = { x: 0, y: 0 }, target = { x: 55, y: 0 }, interceptor = null,
+  interceptorVelocity = { x: 0, y: 0 } } = {}) {
+  const teams = ['you', 'opp'].map(teamId => ({
+    id: teamId,
+    formation: '4-3-3',
+    phase: teamId === 'you' ? 'settled-attack' : 'defend',
+    philosophy: teamId === 'you' ? 'ancelotti-bbc-433' : null,
+    attackingDirection: teamId === 'you' ? 1 : -1,
+    offsideLine: worldPoint({ x: teamId === 'you' ? 92 : 18, y: 0 }).x,
+    tactics: {},
+    lineup: canonicalLineup(teamId)
+  }));
+  const players = [];
+  for (const team of teams) {
+    for (const [index, row] of team.lineup.entries()) {
+      const metric = team.id === 'you'
+        ? { x: 20 + index * .35, y: -28 + index * 5.2 }
+        : { x: 91 + index * .18, y: -29 + index * 5.4 };
+      if (row.id === OWNER_ID) Object.assign(metric, { x: 34, y: 0 });
+      if (row.id === RECEIVER_ID) Object.assign(metric, receiver);
+      if (interceptor && row.id === 'opp-LCB') Object.assign(metric, interceptor);
+      const live = worldPoint(metric);
+      const velocity = row.id === RECEIVER_ID ? receiverVelocity
+        : interceptor && row.id === 'opp-LCB' ? interceptorVelocity
+          : { x: 0, y: 0 };
+      players.push({
+        id: row.id,
+        teamId: team.id,
+        role: row.position,
+        position: row.position,
+        slotId: row.slotId,
+        x: live.x,
+        y: live.y,
+        vx: velocity.x * UNITS.xPerMetre / 60,
+        vy: velocity.y * UNITS.yPerMetre / 60,
+        fx: team.attackingDirection,
+        fy: 0,
+        radius: .36 * Math.sqrt(UNITS.xPerMetre * UNITS.yPerMetre),
+        stamina: 100,
+        heightM: 1.82,
+        attrs: {
+          pace: 84,
+          accel: 84,
+          acceleration: 84,
+          agility: 84,
+          balance: 82,
+          strength: 78,
+          stamina: 86,
+          awareness: 86,
+          pass: 88,
+          shoot: 74,
+          control: 86,
+          defend: 76,
+          aggression: 74
+        },
+        isGK: row.position === 'GK',
+        sentOff: false,
+        contactEligible: row.position !== 'GK',
+        tackleActive: false,
+        shoulderActive: false,
+        control: null
+      });
+    }
+  }
+  const owner = players.find(player => player.id === OWNER_ID);
+  if (workflow === 'single-player') owner.control = { x: 1, y: 0, strength: .72, sprint: false, shield: false };
+  return {
+    target,
+    snapshot: {
+      tick,
+      fixedTickSeconds: 1 / 60,
+      pitch: { ...PITCH },
+      units: { ...UNITS },
+      players,
+      humanPlayerIds: workflow === 'single-player' ? [OWNER_ID] : [],
+      ball: {
+        id: 'pass-race-ball', x: owner.x, y: owner.y, z: 0, vx: 0, vy: 0, zv: 0,
+        spin: 0, dip: 0, ownerId: OWNER_ID, targetId: null, lastKickerId: null,
+        flightType: '', launchIntent: null
+      },
+      teams,
+      contact: {
+        intendedReceiverId: null, firstTouchIntent: null, aerialIntent: null,
+        gate: { livePlay: true, restartActive: false, replayActive: false, keeperAuthority: false,
+          offsideInvolvementPending: false, specialActionAuthority: false }
+      },
+      dribbling: { surface: 'dry', actionIntent: null }
+    }
+  };
+}
+
+function capability(workflow) {
+  return Adapter.createCapability({
+    acknowledgement: Adapter.ACKNOWLEDGEMENT,
+    workflow,
+    online: false,
+    onlineMarkers: {},
+    ...(workflow === 'cpu-v-cpu'
+      ? { controlOwnership: { humanPlayerIds: [], cpuTeamIds: ['you', 'opp'] } }
+      : {})
+  });
+}
+
+function attachment(workflow, target) {
+  return Adapter.createAttachment({
+    enabled: true,
+    capability: capability(workflow),
+    seed: 201020,
+    dependencies: { ball: Ball, movement: Movement, cpu: forcedPassCpu(target), formation: Formation,
+      contact: Contact, dribbling: Dribbling },
+    host: { prepareTick() { return { commit() {}, rollback() {} }; } }
+  });
+}
+
+function riskAttachment(target, confidence) {
+  return Adapter.createAttachment({
+    enabled: true,
+    capability: capability('cpu-v-cpu'),
+    seed: 201021,
+    dependencies: { ball: Ball, movement: Movement, cpu: forcedProgressiveRiskCpu(target, confidence),
+      formation: Formation, contact: Contact, dribbling: Dribbling },
+    host: { prepareTick() { return { commit() {}, rollback() {} }; } }
+  });
+}
+
+function shortSupportAttachment(target) {
+  return Adapter.createAttachment({
+    enabled: true,
+    capability: capability('cpu-v-cpu'),
+    seed: 201022,
+    dependencies: { ball: Ball, movement: Movement, cpu: forcedShortSupportCpu(target),
+      formation: Formation, contact: Contact, dribbling: Dribbling },
+    host: { prepareTick() { return { commit() {}, rollback() {} }; } }
+  });
+}
+
+function runTick(live, snapshot) {
+  const frame = live.planTick(snapshot);
+  assert.ok(frame, JSON.stringify(live.status()));
+  assert.equal(live.commitTick(frame), true, JSON.stringify(live.status()));
+  return frame;
+}
+
+function launchSnapshotFromAcceptedPass(fixture, frame) {
+  const next = structuredClone(fixture.snapshot);
+  const intent = frame.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  assert.equal(intent?.type, 'pass', JSON.stringify(intent));
+  assert.equal(intent?.targetPlayerId, RECEIVER_ID);
+  assert.equal(intent?.passRace?.accepted, true, JSON.stringify(intent?.passRace));
+  for (const movement of frame.hostProjection.movement) {
+    const player = next.players.find(row => row.id === movement.id);
+    Object.assign(player, {
+      x: movement.x, y: movement.y, vx: movement.vx, vy: movement.vy,
+      fx: movement.fx, fy: movement.fy, stamina: movement.stamina
+    });
+  }
+  const origin = { x: next.ball.x, y: next.ball.y, z: Math.max(1, next.ball.z || 0) };
+  const dx = intent.target.x - origin.x;
+  const dy = intent.target.y - origin.y;
+  const metric = { x: dx / UNITS.xPerMetre, y: dy / UNITS.yPerMetre };
+  const length = Math.hypot(metric.x, metric.y) || 1;
+  next.tick = 2;
+  next.ball = {
+    ...next.ball,
+    x: origin.x,
+    y: origin.y,
+    z: origin.z,
+    vx: 0,
+    vy: 0,
+    zv: 0,
+    ownerId: null,
+    targetId: RECEIVER_ID,
+    lastKickerId: OWNER_ID,
+    flightType: 'ground-pass',
+    launchIntent: {
+      sequence: 'independent-accepted-pass-1',
+      sourcePlayerId: OWNER_ID,
+      targetPlayerId: RECEIVER_ID,
+      origin,
+      target: { x: intent.target.x, y: intent.target.y },
+      direction: { x: metric.x / length, y: metric.y / length },
+      speedMetresPerSecond: intent.passRace.launchSpeedMetresPerSecond,
+      liftAngleDeg: intent.passRace.launchLiftAngleDeg,
+      sideSpinRpm: 0,
+      topSpinRpm: 0,
+      source: 'ground-pass'
+    }
+  };
+  next.contact.intendedReceiverId = RECEIVER_ID;
+  next.players.find(row => row.id === OWNER_ID).contactEligible = false;
+  return next;
+}
+
+function advanceFlightSnapshot(snapshot, frame) {
+  const next = structuredClone(snapshot);
+  next.tick += 1;
+  for (const movement of frame.hostProjection.movement) {
+    const player = next.players.find(row => row.id === movement.id);
+    Object.assign(player, {
+      x: movement.x, y: movement.y, vx: movement.vx, vy: movement.vy,
+      fx: movement.fx, fy: movement.fy, stamina: movement.stamina
+    });
+  }
+  if (frame.hostProjection.ball) Object.assign(next.ball, frame.hostProjection.ball);
+  next.ball.ownerId = frame.hostProjection.physicalBallSeparated
+    ? null : frame.hostProjection.logicalBallOwnerId;
+  next.ball.launchIntent = null;
+  if (frame.hostProjection.contact?.contactType === 'involuntary-deflection') {
+    next.ball.targetId = null;
+    next.ball.flightType = 'involuntary-deflection';
+  }
+  next.contact.intendedReceiverId = next.ball.targetId;
+  return next;
+}
+
+test('CPU-v-CPU accepts a projected MR pass only when its receiver wins the rated race by six ticks', () => {
+  const fixture = snapshotFixture();
+  const frame = runTick(attachment('cpu-v-cpu', fixture.target), fixture.snapshot);
+  const intent = frame.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  assert.equal(intent.type, 'pass');
+  assert.equal(intent.targetPlayerId, RECEIVER_ID);
+  assert.equal(intent.passRace.accepted, true);
+  assert.equal(intent.passRace.requiredMarginTicks, 6);
+  assert.equal(intent.passRace.requiredReceiverReadyBufferTicks, 8);
+  assert.ok(intent.passRace.receiverReadyBufferTicks >= 8);
+  assert.equal(intent.passRace.reason, 'receiver-arrives-with-six-tick-margin');
+  assert.ok(intent.passRace.receiverContactTick >= intent.passRace.ballArrivalTick);
+  assert.equal(intent.passRace.opponentContactTick, null);
+  assert.match(intent.passRace.trajectorySignature, /^[0-9a-f]{8}$/);
+  assert.deepEqual(intent.target, worldPoint(fixture.target));
+  assert.ok(intent.continuationTarget && Number.isFinite(intent.continuationTarget.x) && Number.isFinite(intent.continuationTarget.y));
+});
+
+test('CPU-v-CPU rejects both a receiver that cannot arrive and an interception race below the six-tick margin', () => {
+  const unreachable = snapshotFixture({ receiver: { x: 10, y: 28 }, target: { x: 78, y: 0 } });
+  const unreachableFrame = runTick(attachment('cpu-v-cpu', unreachable.target), unreachable.snapshot);
+  const unreachableIntent = unreachableFrame.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  assert.ok(['carry', 'wait'].includes(unreachableIntent.type) ||
+    (unreachableIntent.type === 'pass' && unreachableIntent.reason === 'unsafe-progressive-pass-safe-recycle'));
+  assert.notEqual(unreachableIntent.targetPlayerId, RECEIVER_ID);
+  assert.equal(unreachableIntent.fallbackFrom, 'pass');
+  assert.equal(unreachableIntent.passRace.accepted, false);
+  assert.ok(['receiver-cannot-arrive', 'trajectory-misses-target-window', 'receiver-arrival-buffer-below-eight-ticks'].includes(unreachableIntent.passRace.reason));
+
+  const contested = snapshotFixture({ interceptor: { x: 55, y: 0 } });
+  const contestedFrame = runTick(attachment('cpu-v-cpu', contested.target), contested.snapshot);
+  const contestedIntent = contestedFrame.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  assert.ok(['carry', 'wait'].includes(contestedIntent.type) ||
+    (contestedIntent.type === 'pass' && contestedIntent.reason === 'unsafe-progressive-pass-safe-recycle'));
+  assert.notEqual(contestedIntent.targetPlayerId, RECEIVER_ID);
+  assert.equal(contestedIntent.fallbackFrom, 'pass');
+  assert.equal(contestedIntent.passRace.accepted, false);
+  assert.equal(contestedIntent.passRace.reason, 'interception-margin-below-six-ticks');
+  assert.ok(contestedIntent.passRace.opponentContactTick < contestedIntent.passRace.receiverContactTick + 6);
+});
+
+test('receiver and interceptor races use rated movement to the MR path rather than release-tick origins', () => {
+  const movingReceiver = snapshotFixture({
+    receiver: { x: 52, y: 2 },
+    receiverVelocity: { x: 3.2, y: -2.4 },
+    target: { x: 55, y: 0 }
+  });
+  const receiverFrame = runTick(attachment('cpu-v-cpu', movingReceiver.target), movingReceiver.snapshot);
+  const receiverIntent = receiverFrame.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  assert.equal(receiverIntent.type, 'pass', JSON.stringify(receiverIntent));
+  assert.equal(receiverIntent.targetPlayerId, RECEIVER_ID);
+  assert.equal(receiverIntent.passRace.accepted, true, JSON.stringify(receiverIntent.passRace));
+  assert.equal(receiverIntent.passRace.reason, 'receiver-arrives-with-six-tick-margin');
+
+  const movingInterceptor = snapshotFixture({
+    receiver: { x: 55, y: 0 },
+    target: { x: 55, y: 0 },
+    interceptor: { x: 53.5, y: 2 },
+    interceptorVelocity: { x: 1.2, y: -4.8 }
+  });
+  const interceptorFrame = runTick(attachment('cpu-v-cpu', movingInterceptor.target), movingInterceptor.snapshot);
+  const interceptorIntent = interceptorFrame.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  assert.ok(interceptorIntent.type !== 'pass' || interceptorIntent.targetPlayerId !== RECEIVER_ID,
+    JSON.stringify(interceptorIntent));
+  assert.equal(interceptorIntent.fallbackFrom, 'pass');
+  assert.equal(interceptorIntent.passRace.accepted, false);
+  assert.equal(interceptorIntent.passRace.reason, 'interception-margin-below-six-ticks');
+});
+
+test('an accepted 10-to-15-metre MR pass cannot candidate-acquire beside its source before arrival', () => {
+  const fixture = snapshotFixture({
+    receiver: { x: 37, y: 0 },
+    target: { x: 46.55, y: 0 }
+  });
+  const live = attachment('cpu-v-cpu', fixture.target);
+  const releaseFrame = runTick(live, fixture.snapshot);
+  const releaseIntent = releaseFrame.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  const passRace = releaseIntent.passRace || releaseIntent.rejectedPassRace;
+  const authoredDistanceMetres = Math.hypot(fixture.target.x - 34, fixture.target.y);
+
+  assert.ok(authoredDistanceMetres >= 10 && authoredDistanceMetres <= 15);
+  assert.ok(passRace, JSON.stringify(releaseIntent));
+  assert.ok(passRace.ballArrivalTick >= Math.floor(authoredDistanceMetres /
+    passRace.launchSpeedMetresPerSecond * 60), JSON.stringify(passRace));
+  assert.ok(passRace.receiverContactTick == null || passRace.receiverContactTick >= passRace.ballArrivalTick,
+    JSON.stringify(passRace));
+  if (releaseIntent.type === 'pass' && releaseIntent.targetPlayerId === RECEIVER_ID) {
+    let flightSnapshot = launchSnapshotFromAcceptedPass(fixture, releaseFrame);
+    let preArrivalTicks = 0;
+    for (let step = 0; step < Math.min(120, passRace.ballArrivalTick + 6); step += 1) {
+      const flightFrame = runTick(live, flightSnapshot);
+      const contact = flightFrame.hostProjection.contact;
+      const arrivalWindowEntered = flightFrame.hostProjection.possession.arrivalWindowEntered === true;
+      if (!arrivalWindowEntered) {
+        preArrivalTicks += 1;
+        assert.notEqual(contact?.ownerCandidateId, RECEIVER_ID,
+          `premature receiver acquisition at tick ${flightSnapshot.tick}: ${JSON.stringify(contact)}`);
+        if (contact) {
+          assert.equal(contact.contactType, 'involuntary-deflection', JSON.stringify(contact));
+          assert.equal(contact.ownerCandidateId, null);
+          break;
+        }
+      } else {
+        break;
+      }
+      flightSnapshot = advanceFlightSnapshot(flightSnapshot, flightFrame);
+    }
+    assert.ok(preArrivalTicks >= 3, `only observed ${preArrivalTicks} pre-arrival ticks`);
+  } else {
+    assert.equal(releaseIntent.fallbackFrom, 'pass');
+    assert.equal(passRace.accepted, false);
+  }
+});
+
+test('wide CPU rendezvous points stay inside a deterministic 4.5-metre boundary corridor', () => {
+  const fixture = snapshotFixture({ receiver: { x: 48, y: 29.5 }, target: { x: 48, y: 34 } });
+  const owner = fixture.snapshot.players.find(player => player.id === OWNER_ID);
+  const shifted = worldPoint({ x: 34, y: 25 });
+  Object.assign(owner, { x: shifted.x, y: shifted.y });
+  Object.assign(fixture.snapshot.ball, { x: shifted.x, y: shifted.y });
+  const frame = runTick(attachment('cpu-v-cpu', fixture.target), fixture.snapshot);
+  const intent = frame.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  assert.equal(intent.type, 'pass');
+  assert.equal(intent.targetPlayerId, RECEIVER_ID);
+  assert.deepEqual(intent.target, worldPoint({ x: 48, y: 29.5 }));
+  assert.equal(intent.passRace.boundaryRetarget.distanceMetres, 4.5);
+  assert.equal(intent.passRace.boundaryRetarget.marginMetres, 4.5);
+});
+
+test('only a rated progressive pass can use the bounded late-arrival risk envelope', () => {
+  const fixture = snapshotFixture({ receiver: { x: 48, y: 0 }, target: { x: 55, y: 0 },
+    interceptor: { x: 60.8, y: 0 } });
+  const high = runTick(riskAttachment(fixture.target, .86), structuredClone(fixture.snapshot));
+  const highIntent = high.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  assert.equal(highIntent.type, 'pass', JSON.stringify(highIntent));
+  assert.equal(highIntent.targetPlayerId, RECEIVER_ID);
+  assert.equal(highIntent.passRace.reason, 'high-confidence-progressive-risk-envelope');
+  assert.equal(highIntent.passRace.riskEnvelope.minimumReceiverReadyBufferTicks, -4);
+  assert.equal(highIntent.passRace.riskEnvelope.minimumOpponentMarginTicks, -2);
+  const low = runTick(riskAttachment(fixture.target, .7), structuredClone(fixture.snapshot));
+  const lowIntent = low.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  assert.notEqual(lowIntent.passRace?.reason, 'high-confidence-progressive-risk-envelope');
+});
+
+test('a short support pass uses the cheap lane release instead of a 150-tick MR pre-simulation', () => {
+  const fixture = snapshotFixture({ receiver: { x: 42, y: 0 }, target: { x: 42, y: 0 } });
+  const frame = runTick(shortSupportAttachment(fixture.target), fixture.snapshot);
+  const intent = frame.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  assert.equal(intent.type, 'pass', JSON.stringify(intent));
+  assert.equal(intent.targetPlayerId, RECEIVER_ID);
+  assert.equal(intent.passRace.accepted, true);
+  assert.equal(intent.passRace.reason, 'short-support-lane-release');
+  assert.equal(intent.passRace.projectedFlightTicks, 0);
+  assert.equal(intent.passRace.lightweight, true);
+});
+
+test('overlapping CPU support stays under controlled carry instead of launching a micro-pass', () => {
+  const fixture = snapshotFixture({ receiver: { x: 37, y: 0 }, target: { x: 37, y: 0 } });
+  const frame = runTick(attachment('cpu-v-cpu', fixture.target), fixture.snapshot);
+  const intent = frame.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  assert.ok(intent.type !== 'pass' || intent.targetPlayerId !== RECEIVER_ID, JSON.stringify(intent));
+  assert.equal(intent.fallbackFrom, 'pass');
+  assert.equal(intent.passRace.reason, 'pass-distance-below-control-threshold');
+  assert.ok(intent.passRace.distanceMetres < 5.5);
+});
+
+test('the accepted receiver rendezvous persists after the one-frame carrier intent has gone', () => {
+  assert.match(ADAPTER_SOURCE,
+    /possession\s*&&\s*possession\.inFlight\s*&&\s*possession\.intendedReceiverId\s*&&\s*possession\.intendedTarget/);
+  assert.match(ADAPTER_SOURCE,
+    /reception\[String\(possession\.intendedReceiverId\)\]\s*=\s*\{/);
+
+  const fixture = snapshotFixture({
+    receiver: { x: 52, y: 2 },
+    receiverVelocity: { x: 0, y: 0 },
+    target: { x: 55, y: 0 }
+  });
+  const live = attachment('cpu-v-cpu', fixture.target);
+  const releaseFrame = runTick(live, fixture.snapshot);
+  const flightSnapshot = launchSnapshotFromAcceptedPass(fixture, releaseFrame);
+  const before = flightSnapshot.players.find(row => row.id === RECEIVER_ID);
+  const intended = flightSnapshot.ball.launchIntent.target;
+  const beforeDistance = Math.hypot(
+    (before.x - intended.x) / UNITS.xPerMetre,
+    (before.y - intended.y) / UNITS.yPerMetre
+  );
+
+  const flightFrame = runTick(live, flightSnapshot);
+  assert.equal(flightFrame.hostProjection.intelligence.some(row => row.playerId === OWNER_ID), false,
+    'carrier pass intent must be absent on the flight tick');
+  assert.equal(flightFrame.hostProjection.recoveryAssignments.some(row => row.playerId === RECEIVER_ID), false,
+    'own receiver route must not be replaced by generic loose-ball recovery');
+  const after = flightFrame.hostProjection.movement.find(row => row.id === RECEIVER_ID);
+  const afterDistance = Math.hypot(
+    (after.x - intended.x) / UNITS.xPerMetre,
+    (after.y - intended.y) / UNITS.yPerMetre
+  );
+  assert.ok(afterDistance < beforeDistance,
+    `receiver did not persist toward rendezvous: ${beforeDistance} -> ${afterDistance}`);
+  assert.ok(['walk', 'run', 'sprint'].includes(after.locomotionState), JSON.stringify(after));
+});
+
+test('pass-race output is replay-identical and remains chunk-identical after adapter export/restore', () => {
+  const fixture = snapshotFixture();
+  const replayA = attachment('cpu-v-cpu', fixture.target);
+  const replayB = attachment('cpu-v-cpu', fixture.target);
+  const firstA = replayA.planTick(structuredClone(fixture.snapshot));
+  const firstB = replayB.planTick(structuredClone(fixture.snapshot));
+  assert.deepEqual(firstB.hostProjection, firstA.hostProjection);
+  assert.equal(replayA.commitTick(firstA), true);
+  assert.equal(replayB.commitTick(firstB), true);
+
+  const uninterrupted = attachment('cpu-v-cpu', fixture.target);
+  const firstChunk = attachment('cpu-v-cpu', fixture.target);
+  const direct = [];
+  for (let tick = 1; tick <= 7; tick += 1) {
+    const current = structuredClone(fixture.snapshot);
+    current.tick = tick;
+    direct.push(runTick(uninterrupted, current).hostProjection);
+  }
+  for (let tick = 1; tick <= 3; tick += 1) {
+    const current = structuredClone(fixture.snapshot);
+    current.tick = tick;
+    runTick(firstChunk, current);
+  }
+  const resumed = attachment('cpu-v-cpu', fixture.target);
+  assert.equal(resumed.restoreState(structuredClone(firstChunk.exportState())), true);
+  for (let tick = 4; tick <= 7; tick += 1) {
+    const current = structuredClone(fixture.snapshot);
+    current.tick = tick;
+    assert.deepEqual(runTick(resumed, current).hostProjection, direct[tick - 1]);
+  }
+});
+
+test('the CPU receiver-race gate never rewrites a human-owned Single Player pass path', () => {
+  const fixture = snapshotFixture({ workflow: 'single-player', interceptor: { x: 55, y: 0 } });
+  const frame = runTick(attachment('single-player', fixture.target), fixture.snapshot);
+  assert.equal(frame.cpu.you.carrierIntent.type, 'pass');
+  assert.equal(Object.hasOwn(frame.cpu.you.carrierIntent, 'passRace'), false);
+  assert.equal(frame.hostProjection.intelligence.some(row => row.playerId === OWNER_ID), false);
+  assert.equal(frame.hostProjection.logicalBallOwnerId, OWNER_ID);
+});
+
+test('a non-intended teammate in the pass lane produces a physical pre-reaction deflection rather than a magic reception', () => {
+  const fixture = snapshotFixture();
+  const bystander = fixture.snapshot.players.find(player => player.id === 'you-LCB');
+  assert.ok(bystander);
+  Object.assign(bystander, worldPoint({ x: 34.45, y: 0 }));
+
+  const live = attachment('cpu-v-cpu', fixture.target);
+  const releaseFrame = runTick(live, fixture.snapshot);
+  const flightSnapshot = launchSnapshotFromAcceptedPass(fixture, releaseFrame);
+  const flightFrame = runTick(live, flightSnapshot);
+  const contact = flightFrame.hostProjection.contact;
+
+  assert.equal(contact?.contactType, 'involuntary-deflection', JSON.stringify(contact));
+  assert.equal(contact?.presentation?.playerId, bystander.id, JSON.stringify(contact));
+  assert.equal(contact?.ownerCandidateId, null);
+  assert.equal(contact?.ballState?.lastContact?.colliderId, bystander.id);
+  assert.equal(contact?.ballState?.lastContact?.materialId, 'player-body');
+  assert.equal(contact?.detail?.reaction?.ready, false);
+  assert.equal(contact?.detail?.involuntary, true);
+  assert.notDeepEqual(contact?.detail?.incomingVelocity, contact?.detail?.outgoingVelocity);
+});
+
+test('the deliberate-pass teammate lock cannot suppress an attacking shot rebound', () => {
+  const fixture = snapshotFixture();
+  const attacker = fixture.snapshot.players.find(player => player.id === 'you-LCB');
+  assert.ok(attacker);
+  Object.assign(attacker, worldPoint({ x: 34.45, y: 0 }));
+
+  const live = attachment('cpu-v-cpu', fixture.target);
+  const releaseFrame = runTick(live, fixture.snapshot);
+  const shotSnapshot = launchSnapshotFromAcceptedPass(fixture, releaseFrame);
+  Object.assign(shotSnapshot.ball, { flightType: 'shot', targetId: null });
+  Object.assign(shotSnapshot.ball.launchIntent, {
+    source: 'shot',
+    targetPlayerId: null,
+    target: worldPoint({ x: 105, y: 0 })
+  });
+  shotSnapshot.contact.intendedReceiverId = null;
+  const contact = runTick(live, shotSnapshot).hostProjection.contact;
+
+  assert.equal(contact?.presentation?.playerId, attacker.id, JSON.stringify(contact));
+  assert.equal(contact?.ballState?.lastContact?.colliderId, attacker.id, JSON.stringify(contact));
+});
+
+test('a shot contract cannot keep attackers contact-ineligible after an explicit opposing touch', () => {
+  const fixture = snapshotFixture();
+  const attacker = fixture.snapshot.players.find(player => player.id === 'you-LCB');
+  const shooter = fixture.snapshot.players.find(player => player.id === OWNER_ID);
+  const target = worldPoint({ x: 104, y: 0 });
+  const origin = { x: shooter.x, y: shooter.y, z: 1 };
+  const dxM = (target.x - origin.x) / UNITS.xPerMetre;
+  const dyM = (target.y - origin.y) / UNITS.yPerMetre;
+  const distanceM = Math.hypot(dxM, dyM) || 1;
+  Object.assign(attacker, worldPoint({ x: 45, y: 0 }));
+  Object.assign(fixture.snapshot.ball, {
+    ownerId: null,
+    lastKickerId: shooter.id,
+    targetId: null,
+    flightType: 'shot',
+    launchIntent: {
+      sequence: 'independent-shot-1',
+      sourcePlayerId: shooter.id,
+      targetPlayerId: null,
+      origin,
+      target,
+      direction: { x: dxM / distanceM, y: dyM / distanceM },
+      speedMetresPerSecond: 28,
+      liftAngleDeg: 5,
+      sideSpinRpm: 0,
+      topSpinRpm: 0,
+      source: 'shot'
+    }
+  });
+
+  const live = attachment('cpu-v-cpu', fixture.target);
+  runTick(live, fixture.snapshot);
+
+  const rebound = structuredClone(fixture.snapshot);
+  rebound.tick = 2;
+  rebound.ball = {
+    ...rebound.ball,
+    ...worldPoint({ x: 45, y: 0 }),
+    z: 0,
+    vx: -5,
+    vy: 0,
+    zv: 0,
+    ownerId: null,
+    targetId: null,
+    lastKickerId: 'opp-GK',
+    flightType: 'shot',
+    launchIntent: null
+  };
+  const frame = runTick(live, rebound);
+  const contact = frame.hostProjection.contact;
+  assert.equal(contact?.presentation?.playerId, attacker.id,
+    `attacker remained locked after opposing touch: ${JSON.stringify(contact)}`);
+});
+
+test('an explicit opposing deflection ends the original team pass-flight contact lock', () => {
+  const fixture = snapshotFixture();
+  const attacker = fixture.snapshot.players.find(player => player.id === 'you-LCB');
+  const live = attachment('cpu-v-cpu', fixture.target);
+  const releaseFrame = runTick(live, fixture.snapshot);
+  const flight = launchSnapshotFromAcceptedPass(fixture, releaseFrame);
+  const flightFrame = runTick(live, flight);
+  const deflection = structuredClone(flight);
+  deflection.tick = 3;
+  for (const movement of flightFrame.hostProjection.movement) {
+    const player = deflection.players.find(row => row.id === movement.id);
+    Object.assign(player, {
+      x: movement.x, y: movement.y, vx: movement.vx, vy: movement.vy,
+      fx: movement.fx, fy: movement.fy, stamina: movement.stamina
+    });
+  }
+  const loosePoint = worldPoint({ x: 45, y: 0 });
+  Object.assign(attacker, loosePoint);
+  Object.assign(deflection.players.find(player => player.id === attacker.id), loosePoint);
+  Object.assign(deflection.ball, {
+    ...loosePoint,
+    z: 0,
+    vx: -5,
+    vy: 0,
+    zv: 0,
+    targetId: null,
+    lastKickerId: 'opp-LCB',
+    flightType: 'ground-pass',
+    launchIntent: null
+  });
+
+  const frame = runTick(live, deflection);
+  const contact = frame.hostProjection.contact;
+  assert.equal(contact?.presentation?.playerId, attacker.id,
+    `original team remained locked after opposing deflection: ${JSON.stringify(contact)}`);
+});
+
+test('a human receiver cushion intent cannot steer an opponent interception', () => {
+  const makeFlight = firstTouchIntent => {
+    const fixture = snapshotFixture({ workflow: 'single-player' });
+    const source = fixture.snapshot.players.find(player => player.id === OWNER_ID);
+    const receiver = fixture.snapshot.players.find(player => player.id === RECEIVER_ID);
+    const interceptor = fixture.snapshot.players.find(player => player.id === 'opp-LCB');
+    const originMetric = { x: 34, y: 0 };
+    const origin = { ...worldPoint(originMetric), z: 1 };
+    const target = worldPoint(fixture.target);
+    Object.assign(interceptor, worldPoint({ x: 34.35, y: 0 }));
+    source.control = null;
+    receiver.control = { x: 0, y: 1, strength: .9, sprint: false, shield: false };
+    fixture.snapshot.humanPlayerIds = [RECEIVER_ID];
+    const dxM = fixture.target.x - originMetric.x;
+    const dyM = fixture.target.y - originMetric.y;
+    const distanceM = Math.hypot(dxM, dyM) || 1;
+    Object.assign(fixture.snapshot.ball, {
+      x: origin.x,
+      y: origin.y,
+      z: origin.z,
+      ownerId: null,
+      targetId: RECEIVER_ID,
+      lastKickerId: OWNER_ID,
+      flightType: 'ground-pass',
+      launchIntent: {
+        sequence: 'human-receiver-intent-scope',
+        sourcePlayerId: OWNER_ID,
+        targetPlayerId: RECEIVER_ID,
+        origin,
+        target,
+        direction: { x: dxM / distanceM, y: dyM / distanceM },
+        speedMetresPerSecond: 20,
+        liftAngleDeg: 0,
+        sideSpinRpm: 0,
+        topSpinRpm: 0,
+        source: 'ground-pass'
+      }
+    });
+    fixture.snapshot.contact.intendedReceiverId = RECEIVER_ID;
+    fixture.snapshot.contact.firstTouchIntent = firstTouchIntent;
+    return runTick(attachment('single-player', fixture.target), fixture.snapshot).hostProjection.contact;
+  };
+
+  const guided = makeFlight({ type: 'cushion', direction: { x: 0, y: 1 }, touchDistanceM: .46, active: false });
+  const neutral = makeFlight(null);
+  assert.equal(guided?.presentation?.playerId, 'opp-LCB', JSON.stringify(guided));
+  assert.equal(neutral?.presentation?.playerId, 'opp-LCB', JSON.stringify(neutral));
+  assert.deepEqual(guided.ballState, neutral.ballState,
+    'the human receiver intent changed the opponent interception physics');
+});

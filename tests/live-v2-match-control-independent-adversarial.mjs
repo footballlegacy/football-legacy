@@ -16,7 +16,7 @@ const HASHES = Object.freeze({
   'restart-presentation-v2.js': '1d6e6c17c240152f2279a96f69431b9cf4ff38954b35a50a87e063704ebbf54c',
   'set-piece-suite-v2.js': 'ac49f9edce6120bfccf0c4f4f1462a0db57bdbe23a54711c7582ee38a632fcb0',
   'set-piece-coordinate-contract-v2.js': '7f5226aba8a58a4132501c3519820a536b921a6344bca99e65d2e49ec87247e0',
-  'live-v2-match-control-composition.js': 'ab6b48ab4c032c2f1efadf6c8f30be7d1bbfeba8937bbb249aefa53892c35e58'
+  'live-v2-match-control-composition.js': 'b71bb462f8b788f9e16d1d8342f8c97bb87a605e0f2fd99e19e633c7acaeda29'
 });
 
 function sha(file) {

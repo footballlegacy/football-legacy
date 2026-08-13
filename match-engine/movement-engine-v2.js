@@ -200,7 +200,11 @@
       move: vector(source.move, { x: 0, y: 0 }),
       facing: source.facing ? normalize(source.facing, { x: 1, y: 0 }) : null,
       intensity: clamp(finite(source.intensity, 0), 0, 1),
-      mode: CONTEXT_MODES.has(requestedMode) ? requestedMode : 'idle'
+      mode: CONTEXT_MODES.has(requestedMode) ? requestedMode : 'idle',
+      // Live human control may ask for a more responsive interpretation of
+      // the same rated turn/deceleration model. The default remains exactly
+      // one, so CPU and legacy callers retain their existing arithmetic.
+      responsivenessMultiplier: clamp(finite(source.responsivenessMultiplier, 1), 1, 1.5)
     };
   }
 
@@ -223,8 +227,7 @@
     };
   }
 
-  function createPlayerState(initial, configOverrides) {
-    const config = configWith(configOverrides);
+  function createPlayerStateWithConfig(initial, config) {
     const source = initial && typeof initial === 'object' ? initial : {};
     if (typeof source.id !== 'string' || !source.id) throw new TypeError('player id is required');
     const role = typeof source.role === 'string' && source.role
@@ -263,6 +266,10 @@
     };
   }
 
+  function createPlayerState(initial, configOverrides) {
+    return createPlayerStateWithConfig(initial, configWith(configOverrides));
+  }
+
   function normalizeBounds(value) {
     const source = value && typeof value === 'object' ? value : {};
     const bounds = {
@@ -277,8 +284,7 @@
     return bounds;
   }
 
-  function createWorldState(initial, configOverrides) {
-    const config = configWith(configOverrides);
+  function createWorldStateWithConfig(initial, config) {
     const source = initial && typeof initial === 'object' ? initial : {};
     if (!Number.isInteger(source.tick) || source.tick < 0) {
       if (source.tick !== undefined) throw new TypeError('world tick must be a non-negative integer');
@@ -287,7 +293,8 @@
     if (!(fixedTickSeconds > 0) || Math.abs(fixedTickSeconds - config.fixedTickSeconds) > 1e-12) {
       throw new RangeError('world fixedTickSeconds must match configured fixed tick');
     }
-    const players = (Array.isArray(source.players) ? source.players : []).map(player => createPlayerState(player, config));
+    const players = (Array.isArray(source.players) ? source.players : [])
+      .map(player => createPlayerStateWithConfig(player, config));
     const ids = new Set();
     for (const player of players) {
       if (ids.has(player.id)) throw new TypeError('player ids must be unique');
@@ -304,6 +311,10 @@
       ballOwnerId,
       players: players.sort((a, b) => a.id.localeCompare(b.id))
     };
+  }
+
+  function createWorldState(initial, configOverrides) {
+    return createWorldStateWithConfig(initial, configWith(configOverrides));
   }
 
   function isCompleteWorldState(world) {
@@ -340,6 +351,7 @@
       facing: source.facing ? normalize(source.facing, { x: 1, y: 0 }) : null,
       intensity: clamp(finite(source.intensity, type === 'move' ? 1 : 0), 0, 1),
       mode: CONTEXT_MODES.has(requestedMode) ? requestedMode : 'run',
+      responsivenessMultiplier: clamp(finite(source.responsivenessMultiplier, 1), 1, 1.5),
       durationTicks: Math.max(1, Math.trunc(finite(source.durationTicks, 1))),
       targetId: source.targetId == null ? null : String(source.targetId)
     };
@@ -388,7 +400,8 @@
         move: command.move,
         facing: command.facing,
         intensity: command.intensity,
-        mode: command.mode
+        mode: command.mode,
+        responsivenessMultiplier: command.responsivenessMultiplier
       });
       return;
     }
@@ -510,15 +523,27 @@
     const contextualMode = CONTEXT_MODES.has(mode) ? mode : 'run';
     const limits = limitsFor(player, contextualMode, config);
     const speed = magnitude(player.velocity);
-    const maximumTurn = limits.turnRate / (1 + speed * config.speedTurnInertia) * dt;
+    const response = control.responsivenessMultiplier;
+    // With no retained momentum there is nothing physical to preserve: a
+    // human can plant and leave in the requested direction instead of taking
+    // several frames of forward steps while the old facing slowly rotates.
+    const maximumTurn = response > 1 && speed <= 0.25
+      ? Math.PI
+      : limits.turnRate / (1 + speed * config.speedTurnInertia) * response * dt;
     player.facing = rotateToward(player.facing, desiredDirection, maximumTurn);
     const targetSpeed = forcedSpeed == null ? limits.speed * inputMagnitude : forcedSpeed;
     const targetVelocity = { x: player.facing.x * targetSpeed, y: player.facing.y * targetSpeed };
     const delta = { x: targetVelocity.x - player.velocity.x, y: targetVelocity.y - player.velocity.y };
     const deltaLength = magnitude(delta);
-    const braking = targetSpeed < speed || inputMagnitude <= 1e-9 || (liveAction && livePhase === 'recovery');
+    const velocityDirection = speed > 1e-9 ? normalize(player.velocity, desiredDirection) : desiredDirection;
+    const directionAlignment = dot(velocityDirection, desiredDirection);
+    const responsiveReorientation = !liveAction && inputMagnitude > 1e-9 && response > 1 && directionAlignment < 0.82;
+    const braking = targetSpeed < speed || inputMagnitude <= 1e-9 ||
+      responsiveReorientation || (liveAction && livePhase === 'recovery');
     const touchBurst = !braking && player.touchBurstUntilTick >= tick ? player.touchBurstAccelerationMultiplier : 1;
-    const rate = forcedAcceleration == null ? (braking ? limits.deceleration : limits.acceleration * touchBurst) : forcedAcceleration;
+    const rate = forcedAcceleration == null
+      ? (braking ? limits.deceleration * (responsiveReorientation ? response : 1) : limits.acceleration * touchBurst)
+      : forcedAcceleration;
     const maximumDelta = rate * dt;
     if (deltaLength > maximumDelta && deltaLength > 1e-12) {
       player.velocity.x += delta.x / deltaLength * maximumDelta;
@@ -672,10 +697,9 @@
     return firstId.localeCompare(secondId) <= 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
   }
 
-  function separatePlayers(players, boundsValue, configOverrides) {
-    const config = configWith(configOverrides);
+  function separatePlayersWithConfig(players, boundsValue, config) {
     const bounds = normalizeBounds(boundsValue);
-    const result = players.map(player => createPlayerState(player, config)).sort((a, b) => a.id.localeCompare(b.id));
+    const result = players.map(player => createPlayerStateWithConfig(player, config)).sort((a, b) => a.id.localeCompare(b.id));
     const contactMap = {};
     for (let iteration = 0; iteration < config.separationIterations; iteration += 1) {
       for (let firstIndex = 0; firstIndex < result.length; firstIndex += 1) {
@@ -719,6 +743,10 @@
       a.firstId.localeCompare(b.firstId) || a.secondId.localeCompare(b.secondId)) };
   }
 
+  function separatePlayers(players, boundsValue, configOverrides) {
+    return separatePlayersWithConfig(players, boundsValue, configWith(configOverrides));
+  }
+
   function safetyGuard(player, fallbackPosition, config, tick, telemetry) {
     const invalidPosition = !Number.isFinite(player.position.x) || !Number.isFinite(player.position.y) ||
       Math.abs(player.position.x) > config.safetyPositionLimit || Math.abs(player.position.y) > config.safetyPositionLimit;
@@ -760,7 +788,7 @@
     const starts = Object.fromEntries(world.players.map(player => [player.id, { ...player.position }]));
     for (const player of world.players) integratePlayer(player, tick, config);
     resolveActionContacts(world, starts, tick, config, telemetry);
-    const separated = separatePlayers(world.players, world.bounds, config);
+    const separated = separatePlayersWithConfig(world.players, world.bounds, config);
     world.players = separated.players;
     for (const contact of separated.contacts) telemetry.contacts.push({ ...contact, tick });
     for (const player of world.players) safetyGuard(player, starts[player.id], config, tick, telemetry);
@@ -769,7 +797,7 @@
 
   function advance(worldState, commandTimeline, ticks, configOverrides) {
     const config = configWith(configOverrides);
-    const world = createWorldState(worldState, config);
+    const world = createWorldStateWithConfig(worldState, config);
     if (Math.abs(world.fixedTickSeconds - config.fixedTickSeconds) > 1e-12) {
       throw new RangeError('world fixed tick does not match configuration');
     }

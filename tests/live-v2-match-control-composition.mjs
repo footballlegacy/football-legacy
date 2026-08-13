@@ -219,7 +219,7 @@ plan = Adapter.prepareTick(suiteRuntime, tickInput(4, 'set-piece', 'set-piece-su
   setPieceEvent: { eventId: 'suite-launch-1', action: 'launch' }
 }), suiteCap);
 commitPlan(suiteRuntime, suiteCap, plan);
-plan = Adapter.prepareTick(suiteRuntime, tickInput(5, 'set-piece', 'set-piece-suite', {
+plan = Adapter.prepareTick(suiteRuntime, tickInput(5, 'replay', 'set-piece-suite', {
   setPieceEvent: { eventId: 'suite-outcome-1', action: 'resolve', outcome: { result: 'goal' } }
 }), suiteCap);
 snap = commitPlan(suiteRuntime, suiteCap, plan);
@@ -227,6 +227,14 @@ equal(snap.setPieceSuite.session.lifecycle, 'resolved', 'suite lifecycle reaches
 equal(snap.ledgers.processedEventIds.length, 4, 'event ledger is monotonic and de-duplicates replayed input');
 check(snap.ledgers.processedEventIds.every(id => id.startsWith('suite:')),
   'suite event ledger uses a stable domain namespace');
+const stageDuringReplay = Adapter.prepareTick(suiteRuntime, tickInput(6, 'replay', 'set-piece-suite', {
+  setPieceEvent: {
+    eventId: 'suite-stage-during-replay', action: 'stage', scenario: 'free-kick-left-23m',
+    takerOwner: 'controller-1', goalkeeperOwner: 'cpu', attackingDirection: 1
+  }
+}), suiteCap);
+equal(stageDuringReplay.effectiveEngine, 'build-173',
+  'replay accepts terminal resolution but fail-closes a new staged attempt');
 
 // Canonical suite geometry is transformed into the declared live pitch in both directions.
 const rightLaunch = launchHandoffs[0].payload.launchIntent;

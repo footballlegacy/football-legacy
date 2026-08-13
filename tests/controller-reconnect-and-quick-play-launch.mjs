@@ -90,7 +90,8 @@ check(quickPlaySource.includes('requestAnimationFrame(()=>setTimeout(()=>'),'The
 check(!quickPlaySource.includes("elements.startMatch.addEventListener('click',()=>{syncSetupState();saveAndLaunch(buildMatchData())})"),'Quick Play no longer performs an unacknowledged synchronous launch directly in the click handler');
 check(quickPlaySource.includes('for(const index of padState.keys())if(!present.has(index))padState.delete(index)'),'The Quick Play shoulder carousel drops stale disconnected-pad state');
 check(quickPlaySource.includes('detected, but no input received'),'Quick Play distinguishes a detected Bluetooth slot from a working controller');
-check(/app\.js\?v=174-controller-input-ready(?:-cpu-v2)?-1/.test(quickPlayHtml),'Quick Play cache-busts the controller-readiness and launch acknowledgement');
+check(quickPlayHtml.includes('app.js?v=174-fl-v2-final-candidate-2'),'Quick Play loads the final-candidate bytes while retaining controller-readiness and launch acknowledgement');
+check(quickPlayHtml.includes('historic-playtest-squads.js?v=174-fl-v2-final-candidate-2'),'Quick Play cache-busts the final historic ratings alongside the final gameplay candidate');
 check(quickPlayHtml.includes('../controller-ui.js?v=174-controller-input-ready-1'),'Quick Play cache-busts the input-verified controller UI');
 
 console.log(`controller reconnect and Quick Play launch: ${passed}/${passed} checks passed`);

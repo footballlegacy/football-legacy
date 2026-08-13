@@ -7,7 +7,7 @@ approved adapter/capture dependencies.
 
 ## Current reviewed bytes
 
-- `match-engine/match.html`: `1787fa39b8f2d11954fd58a48257ce885f24492fdd20e5d9e654ae017bf29aa6`
+- `match-engine/match.html`: `22aa09cca9c2e4124f5b3594b44e44296ce015ad9148d588efbe158b7548a8fa`
 - `match-engine/build173-live-shadow-hook-v2.js`: `61c4ab42563f3b4b8585371b37e8e2527073bdab4eb5598cb75b677fd1c12fca`
 - `match-engine/build173-live-shadow-adapter-v2.js`: `b7cbd0f9366c97b966962c2a2c26c16d592cdb46358c0a7eb9e25cd3e60600e5`
 - `match-engine/build173-shadow-host-capture-v2.js`: `c6556fafdb0caf1877e4b6b78f27bc4784d2dff5cfcee21b501849db96ea16c5`
@@ -17,8 +17,9 @@ contract. `match.html` subsequently gained a separate exact offline FL V2 live
 preflight; the shadow preflight still rejects that live-engine marker and the
 two capabilities cannot arm together.
 
-The later `FL-MSPYQGTA` reconciliation changed only normal/live playtest
-telemetry, goalkeeper distribution eligibility and pause/goal presentation.
+Later playtest reconciliation and the reaction-rated MR passive-deflection
+integration changed only normal/live playtest authority, telemetry, goalkeeper
+distribution eligibility and presentation.
 The shadow loader, capture, adapter, mutual exclusion and read-only surface are
 unchanged and remain covered by the same lifecycle gates.
 

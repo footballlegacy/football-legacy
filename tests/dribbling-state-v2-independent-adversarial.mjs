@@ -43,7 +43,10 @@ function fixture(tick, state, ballState, sourceKind = 'human') {
 }
 
 test('independent source audit finds an explicit finite machine, no ambient randomness, and no difficulty branch', () => {
-  assert.equal(createHash('sha256').update(source).digest('hex'), '6c57e9626b4844233c7cafe5aee8d42743cd1244e74b55aeb7144a2838b2b29a');
+  assert.equal(createHash('sha256').update(source).digest('hex'), 'fa1e9e2d4acb64f8f7028e2a21df2ab9e49bcf9c7f11eefaf6e3dfa402150eab');
+  assert.equal(Dribbling.ENGINE_NAME, 'True Feel');
+  assert.equal(Dribbling.CONFIG.minimumTouchCadenceTicks, 20);
+  assert.equal(Dribbling.CONFIG.maximumTouchCadenceTicks, 34);
   assert.doesNotMatch(source, /Math\.random\s*\(/);
   assert.doesNotMatch(source, /difficulty\s*[.\[]|difficulty\s*===|difficulty\s*>|difficulty\s*</);
   for (const phase of ['secured-control', 'touch-preparation', 'separated-touch', 'chase-recovery', 'resecure', 'heavy-touch', 'shield', 'turnover']) {
@@ -54,6 +57,9 @@ test('independent source audit finds an explicit finite machine, no ambient rand
   assert.match(source, /ACTION_BUFFER_TICKS = 12/);
   assert.match(source, /MAX_CONSUMED_ACTION_IDS = 2048/);
   assert.match(source, /consumedActionHighWaterTick/);
+  assert.match(source, /consumedActionIdsAtHighWater/);
+  assert.match(source, /TOUCH_CADENCE_BASE_TICKS/);
+  assert.match(source, /turn-replanned/);
   const telemetryLiteral = source.slice(source.indexOf('const telemetry = {'), source.indexOf('\n    };', source.indexOf('const telemetry = {')));
   assert.equal((telemetryLiteral.match(/\n      pressure:/g) || []).length, 1);
 });

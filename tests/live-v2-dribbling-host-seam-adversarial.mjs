@@ -197,6 +197,9 @@ test('host snapshot carries one weather-only surface and pending action through 
   const dribblingLiteral = snapshot.slice(snapshot.indexOf('dribbling:'), snapshot.indexOf('dribbling:') + 260);
   assert.doesNotMatch(dribblingLiteral, /difficulty|D0|aiDifficulty/i,
     'difficulty must not enter the physical dribbling request');
+  assert.match(snapshot, /firstTouchIntent=human&&target===human&&input\.strength>\.15\?\{type:'cushion'/,
+    'ordinary left-stick receiving must be a guided cushion, not an automatic ownerless directional knock-on');
+  assert.match(snapshot, /touchDistanceM:\.18\+input\.strength\*\.28,active:false/);
 
   const run = functionSource('liveV2RunTick');
   const prepare = functionSource('liveV2PrepareHostTick');
@@ -225,6 +228,23 @@ test('separated projection preserves logical lease, clears physical ownership, a
   assert.match(contactApply, /liveV2SuppressLegacyReception=projection\.physicalBallSeparated===true/);
   assert.match(contactApply, /liveV2SuppressLegacyReception=dribblingOwnsReception\|\|suppress\.reception===true/,
     'a separated Dribbling V2 tick must not be reclaimed by the same-frame legacy reception loop');
+  assert.match(dribbling, /result\.phase\|\|''\)==='heavy-touch'&&logicalOwnerId===null\)liveV2SuppressLegacyReception=true/,
+    'a terminal True Feel heavy touch must stay loose until the next V2 contact arbitration');
+  const passResolution = functionSource('liveV2ResolvePassContact');
+  const passTerminal = sourceWindow('function resolvePendingPassTerminal', 'function liveV2ResolvePassContact');
+  assert.match(passResolution, /disposition!=='candidate-acquire'/,
+    'a retained loose touch must not terminate the pending pass');
+  assert.match(passResolution, /logEvent\('pass-contact'/,
+    'a non-terminal physical contact must remain auditable');
+  assert.match(passResolution, /resolvePendingPassTerminal\(actor,'first-touch-candidate-acquire'/);
+  assert.match(passTerminal, /terminal:true,completed/);
+  assert.match(passTerminal, /logEvent\('pass-resolved'/,
+    'actual possession acquisition must resolve pass telemetry exactly once');
+  assert.match(passTerminal, /lastPasser=null/);
+  assert.match(functionSource('trackLivePossession'), /resolvePendingPassTerminal\(owner,'logical-possession-acquired'\)/,
+    'keeper and other authoritative ownership must terminate a pending pass');
+  assert.match(functionSource('restart'), /resolvePendingPassTerminal\(null,'restart:/,
+    'out-of-play and restart boundaries must terminate a pending pass');
 
   const order = [
     'liveV2ApplyMovement(projection)',
@@ -236,6 +256,47 @@ test('separated projection preserves logical lease, clears physical ownership, a
   assert.ok(order.every(index => index >= 0), `missing host apply call(s): ${JSON.stringify(order)}`);
   assert.deepEqual(order, [...order].sort((a, b) => a - b),
     'host must apply movement, intelligence, Ball, contact, then dribbling presentation');
+});
+
+test('pending pass telemetry survives retained contacts and resolves exactly once on real possession', () => {
+  const terminalSource = sourceWindow('function resolvePendingPassTerminal', 'function liveV2ResolvePassContact');
+  const contactSource = sourceWindow('function liveV2ResolvePassContact', 'function liveV2ApplyContact');
+  const events = [];
+  const passer = { id: 'passer', team: 'you', stats: { completed: 0 } };
+  const receiver = { id: 'receiver', team: 'you', stats: {} };
+  const context = vm.createContext({
+    lastPasser: passer,
+    assistCandidate: null,
+    report: { teams: { you: { completed: 0 }, opp: { completed: 0 } } },
+    logEvent(type, team, actor, detail) { events.push({ type, team, actorId: actor && actor.id, detail }); }
+  });
+  vm.runInContext(`${terminalSource}\n${contactSource}`, context);
+
+  assert.equal(context.liveV2ResolvePassContact(
+    { ownerCandidateId: null }, receiver,
+    { possessionDisposition: 'retained', outcome: 'retained' }
+  ), false);
+  assert.equal(context.lastPasser.id, passer.id, 'a loose cushion must preserve the pending pass');
+  assert.equal(passer.stats.completed, 0);
+  assert.equal(events.filter(event => event.type === 'pass-resolved').length, 0);
+
+  assert.equal(context.liveV2ResolvePassContact(
+    { ownerCandidateId: receiver.id }, receiver,
+    { possessionDisposition: 'candidate-acquire', outcome: 'controlled' }
+  ), true);
+  assert.equal(context.lastPasser, null);
+  assert.equal(passer.stats.completed, 1);
+  assert.equal(context.report.teams.you.completed, 1);
+  assert.equal(context.assistCandidate.id, passer.id);
+  assert.equal(events.filter(event => event.type === 'pass-resolved').length, 1);
+
+  const secondPasser = { id: 'second-passer', team: 'you', stats: { completed: 0 } };
+  context.lastPasser = secondPasser;
+  assert.equal(context.resolvePendingPassTerminal(null, 'restart:throw-in'), true);
+  assert.equal(secondPasser.stats.completed, 0);
+  assert.equal(context.lastPasser, null);
+  assert.equal(events.filter(event => event.type === 'pass-resolved').length, 2,
+    'a restart must close the pending pass once without inventing a completion');
 });
 
 test('lease queue accepts one pass or shot, rejects non-lease input, and acknowledgement clears only the matching ID once', () => {
