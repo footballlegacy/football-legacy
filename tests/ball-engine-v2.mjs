@@ -34,7 +34,8 @@ const kineticEnergy = state => 0.5 * state.mass * (
   state.angularVelocity.x ** 2 + state.angularVelocity.y ** 2 + state.angularVelocity.z ** 2
 );
 
-test('Ball Engine V2 exposes a browser/CommonJS shadow API without joining live authority', () => {
+test('the MR engine exposes its browser/CommonJS API and joins live authority only through the exact V2 preflight', () => {
+  assert.equal(Ball.ENGINE_NAME, 'Magnus Reynolds (MR) Engine');
   assert.equal(Ball.VERSION, '2.0.0-shadow');
   for (const name of [
     'createConfig', 'createSimulationContext', 'createBallState', 'createLaunchIntent',
@@ -46,7 +47,11 @@ test('Ball Engine V2 exposes a browser/CommonJS shadow API without joining live 
   assert.equal(browser.window.FootballLegacyBallEngineV2.VERSION, Ball.VERSION);
   assert.doesNotMatch(matchHtml, /<script\s+src=["']ball-engine-v2\.js/i);
   assert.match(matchHtml, /id="build173V2ShadowPreflight"/);
-  assert.doesNotMatch(matchHtml, /FootballLegacyBallEngineV2/);
+  assert.match(matchHtml, /id="offlineLiveV2Preflight"/);
+  assert.match(matchHtml, /if\(!eligible\)return;[\s\S]*pieces=\['ball-engine-v2\.js'/,
+    'the live module must remain behind the exact offline V2 capability gate');
+  assert.match(matchHtml, /FootballLegacyBallEngineV2/,
+    'the active V2 report should expose the public MR engine identity');
 });
 
 test('the candidate has no unseeded random source or presentation-clock dependency', () => {
@@ -239,6 +244,25 @@ test('ground regimes progress from skid through roll to a deterministic settle',
   assert.equal(final.state.regime, Ball.REGIMES.SETTLED);
   assert.equal(final.state.settled, true);
   assert.deepEqual(final.state.velocity, { x: 0, y: 0, z: 0 });
+});
+
+test('default grass resistance prevents missed ground passes floating away', () => {
+  const rollout = speed => Ball.advance(Ball.createBallState({
+    position: { x: 0, y: 0, z: 0.11 },
+    velocity: { x: speed, y: 0, z: 0 },
+    angularVelocity: { x: 0, y: 0, z: 0 },
+    grounded: true,
+    regime: Ball.REGIMES.SKID
+  }), Ball.createSimulationContext({ seed: 701 }), { duration: 5 });
+  const short = rollout(5);
+  const firm = rollout(9);
+  assert.ok(short.state.position.x >= 6 && short.state.position.x <= 7,
+    `5 m/s loose ball rolled ${short.state.position.x}m`);
+  assert.equal(short.state.settled, true);
+  assert.ok(firm.state.position.x >= 17 && firm.state.position.x <= 19,
+    `9 m/s loose ball rolled ${firm.state.position.x}m`);
+  assert.ok(Math.hypot(firm.state.velocity.x, firm.state.velocity.y) < 0.15,
+    `9 m/s loose ball still travelled at ${Math.hypot(firm.state.velocity.x, firm.state.velocity.y)}m/s`);
 });
 
 test('passive ground projection cannot create combined linear and rotational energy', () => {

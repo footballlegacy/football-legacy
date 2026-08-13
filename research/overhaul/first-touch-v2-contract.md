@@ -1,8 +1,10 @@
 # First Touch V2 contract
 
-Status: dormant, additive, offline-only candidate. It is not loaded or called
-by `match-engine/match.html` and cannot alter a Build 173 player, ball,
-possession, input, animation, restart, replay, or online workflow.
+Status: immutable offline resolver foundation. Build 174 conditionally loads it
+only after the exact offline FL V2 preflight for Single Player, CPU v CPU or the
+Set-Piece Suite. Build 173/default and every online route remain outside that
+dependency graph. The module itself still returns detached advisory output and
+cannot mutate a player, ball, possession, input, animation, restart or replay.
 
 Implementation: `match-engine/first-touch-v2.js`
 Focused gates: `tests/first-touch-v2.mjs`
@@ -75,7 +77,18 @@ Timing bands are exact and symmetric:
 
 Quality combines the six declared attributes, facing/incoming alignment,
 target alignment, technique difficulty, timing, relative ball speed, and
-bounded nearby-opponent pressure. Outcome is one of:
+bounded nearby-opponent pressure.
+
+Routine ground traps/cushions have a separate deterministic technical-security
+gate. It applies only to reachable sole/foot contacts with perfect/good timing,
+relative speed no greater than `14 m/s`, and pressure score no greater than
+`0.12`. Reliability is `50% control + 30% technique + 20% awareness`. The
+seed-keyed failure prior is `12%` at reliability 50, `2%` at 70, and falls to a
+`0.1%` elite floor; ratings below 50 receive no routine-control assurance.
+Meaningful pressure, late timing, excessive pace, unreachable geometry, upper
+body contacts and active directional/layoff touches cannot use this gate.
+
+Outcome is one of:
 
 - `controlled`: clean trap/cushion with an advisory owner;
 - `retained`: purposeful but still loose directional control;
@@ -83,7 +96,9 @@ bounded nearby-opponent pressure. Outcome is one of:
 - `missed`: ball remains byte-semantically on its incoming state.
 
 The small directional error is keyed deterministically by seed, tick, ball,
-player, and intent. It consumes no ambient RNG and is replay/chunk invariant.
+player, and intent. Routine-control security uses a separate stable key over
+the same authority identity. Neither consumes ambient RNG; both are
+replay/chunk invariant.
 
 ## Ball and energy handoff
 
@@ -116,6 +131,8 @@ records:
 - geometry and chosen technique;
 - timing band and offset;
 - quality components and nearest pressure;
+- routine-control eligibility, reliability, failure prior, keyed roll and
+  control basis;
 - relative speed and direction error;
 - before/after energy and whether the contact is active;
 - outcome, reason, and advisory ownership; and
@@ -123,15 +140,28 @@ records:
 
 Focused gates cover CommonJS/browser parity, dormancy, capability isolation,
 all five body regions, timing boundaries, clean and pressured controls,
-unreachable contacts, passive-energy safety, deterministic directional touch,
+rating-ordered routine-control calibration, unreachable contacts,
+passive-energy safety, deterministic directional touch,
 current Ball Engine V2 field continuity, contact-normal semantics,
 approach-only dynamic reach, total-speed limits, input/order invariance, finite
 output, hostile metadata, and malformed input rejection.
 
-## Promotion boundary
+## Build 174 composition boundary
 
-Promotion requires a separately reviewed ordered adapter after Movement V2
-positions the receiver and before Ball V2 advances the post-contact state.
-That adapter must also coordinate visible animation acknowledgement, possession
-transfer, replay telemetry, online authority, and automatic-finish guards. No
-such adapter exists in this change, and no current workflow is changed.
+The separately reviewed First-Touch Authority Adapter and live V2 contact
+composer now place this resolver after Movement V2 positions the receiver and
+after the incoming Ball V2 step. On an exact offline FL V2 route, that separate
+composer validates the advisory handoff, owns the bounded exact-once ledger and
+may commit the resulting contact/possession through the live authority adapter.
+The composer also reads the resolver's stable Ball contact metadata: a retained
+same-player contact in one uninterrupted loose-ball chain remains physically
+authoritative but is classified as `dribble-touch` / `dribble-continuation`,
+not replayed as a new `first-touch` reception after the host animation timer
+expires. A different player, a new launch, or a non-retained prior outcome
+starts a new reception phase.
+
+This module is not itself promoted: its result and telemetry still say
+`liveApplied:false`, it exposes no apply/commit/consume surface, and it receives
+only its original factory-issued offline capability. The normal Build 173 path
+does not request or load the conditional graph, and online markers fail the
+preflight before any First-Touch dependency is written.

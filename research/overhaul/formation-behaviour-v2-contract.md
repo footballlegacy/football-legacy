@@ -1,6 +1,6 @@
 # Formation / Team Behaviour V2 contract
 
-Status: **dormant additive candidate**. Build 173 remains authoritative. The module is not loaded or called by `match-engine/match.html`, and this work removes or replaces no existing workflow.
+Status: **offline FL V2 opt-in authority** for Single Player and CPU-v-CPU Quick Play only. Build 173 remains the deliberate default and owns every other workflow and all online play. An opted-in V2 candidate fault rolls back and freezes the playtest; it cannot continue through same-tick legacy gameplay. No workflow is removed.
 
 ## Audited formation inventory
 
@@ -56,6 +56,8 @@ Telemetry records unavailable, removed and active slot IDs. This makes 10/9/8/7-
 
 Every base shape declares a minimum rest-defence unit. Selection is deterministic by role and formation order, then constrained behind a phase-specific maximum attacking progress. A philosophy can increase or change the per-phase number without altering the base formation.
 
+Live playtest feedback also requires carrier-relative support floors. A philosophy may therefore declare phase/slot `carrierSupportFloors`: normalized minimum progress relative to the current carrier. These floors are applied before pitch and offside safety clamps, so support can advance with play rather than remaining behind an absolute static anchor. The Invincibles 4-4-2 keeps Cole as the advancing left lane while Lauren supplies the asymmetric third rest defender; its two forwards and wide support remain beyond an advancing carrier. Conte's 3-4-3 gives both central midfielders, wing-backs and front three carrier-relative support floors so a wide carry does not strand the midfield.
+
 ## Philosophy overlay interface
 
 Philosophies are independent of club/team IDs. A valid overlay declares:
@@ -64,21 +66,23 @@ Philosophies are independent of club/team IDs. A valid overlay declares:
 - optional phase-shape labels;
 - optional phase width/depth/compactness multipliers;
 - optional per-phase, per-slot progress/lateral adjustments and instructions;
+- optional per-phase, per-slot carrier-relative progress floors;
 - optional per-phase rest-defence counts;
 - descriptive principles.
 
 The validator explicitly rejects `teamId` and `teamIds`. This lets future career data assign a philosophy to any compatible team while preserving one reusable geometry contract.
 
-Two named examples prove the interface:
+Three named examples prove the interface:
 
 - `invincibles-442`: 4-4-2 defensive base, 4-4-1-1 buildup/transition, 3-2-5 settled attack, left overlap/inside rotation, connector plus depth runner, three-player rest defence.
 - `conte-343`: 3-4-2-1 buildup, 3-2-5 settled attack, 5-4-1 defence, wing-back width/recovery, half-space wide forwards, back-three rest defence.
+- `ancelotti-bbc-433`: 4-3-3 with the BBC front line, a stable midfield three and asymmetric full-back support for the 2013/14 representative Quick Play side.
 
-Neither example contains a Football Legacy team ID or a team-specific runtime branch.
+None of the examples contains a Football Legacy team ID or a team-specific runtime branch.
 
-## Required promotion gates
+## Required live-authority gates
 
-The dormant contract may not become live authority until an explicit later migration adds shadow comparison against Build 173. Current focused gates prove:
+Current focused and live-adapter gates prove:
 
 - full repository inventory coverage;
 - eleven unique role-valid slots and one goalkeeper per formation;
@@ -89,9 +93,10 @@ The dormant contract may not become live authority until an explicit later migra
 - rest-defence stability;
 - deterministic 10/9/8/7-player adaptation;
 - lateral and attacking-direction mirror consistency;
-- generic Invincibles and Conte overlay behaviour;
+- generic Invincibles, Conte and Ancelotti BBC overlay behaviour;
+- carrier-relative forward, wide and central support floors without offside or pitch-bound violations;
 - custom career-facing overlay validation with team-ID rejection;
 - byte-stable telemetry JSON;
-- no live load/call and no workflow removal.
+- conditional offline-only load/call, Build 173 default/fallback and no workflow removal.
 
-Future live work should first log Build 173 and V2 targets side by side for identical fixed-tick snapshots, then approve formation-by-formation golden traces before any opt-in authority switch. Geometry tuning and live integration are deliberately outside this dormant change.
+Geometry remains a playtest tuning surface; engine ownership and fallback are not inferred from a formation result. Every output remains deterministic and bounded by the same live transaction.

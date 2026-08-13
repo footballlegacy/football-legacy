@@ -438,6 +438,87 @@ test('sequential snapshots must preserve legacy movement and ball boundary conti
   assert.throws(() => ballAdapter.observe(snapshot(2, { ballBefore: { x: 999 } })), /continuity|legacy ball/i);
 });
 
+test('structural continuity preserves stable-JSON equivalence for signed zero', () => {
+  const instance = adapter();
+  instance.observe(snapshot(1, { ballAfter: { vx: -0 } }));
+  assert.doesNotThrow(() => instance.observe(snapshot(2, { ballBefore: { vx: 0 } })));
+});
+
+test('structural continuity catches nested movement mutations while ignoring object key insertion order', () => {
+  const reordered = adapter();
+  reordered.observe(snapshot(1));
+  const tickTwo = snapshot(2);
+  const mappingEntries = Object.entries(tickTwo.mapping).reverse();
+  tickTwo.mapping = Object.fromEntries(mappingEntries);
+  assert.doesNotThrow(() => reordered.observe(tickTwo));
+
+  const nestedMutation = adapter();
+  nestedMutation.observe(snapshot(1));
+  const changed = snapshot(2);
+  changed.legacy.movement.before.players[0].attributes.control += 1;
+  assert.throws(() => nestedMutation.observe(changed), /continuity|legacy movement/i);
+});
+
+test('structural continuity preserves stable JSON signed-zero equivalence', () => {
+  const instance = adapter();
+  instance.observe(snapshot(1, {
+    ballAfter: { vx: -0 },
+    movementAfter: world(1, LEGACY_PITCH, movementPlayers().map(player => ({
+      ...player,
+      velocity: { x: -0, y: player.velocity.y }
+    })))
+  }));
+  assert.doesNotThrow(() => instance.observe(snapshot(2, {
+    ballBefore: { vx: 0 },
+    movementBefore: world(1, LEGACY_PITCH, movementPlayers())
+  })));
+});
+
+test('structural mapping guard catches nested mutations after attachment', () => {
+  const instance = adapter();
+  instance.observe(snapshot(1));
+  const changed = snapshot(2);
+  changed.mapping.clock.config.acceleration = 2;
+  assert.throws(() => instance.observe(changed), /mapping cannot change/i);
+});
+
+test('structural mapping guard preserves stable JSON omission and null coercion semantics', () => {
+  const first = snapshot(1);
+  first.mapping.diagnostic = {
+    omitted: undefined,
+    omittedFunction() {},
+    nullNumber: Number.NaN,
+    nullInfinity: Number.POSITIVE_INFINITY,
+    arrayNull: [undefined, Number.NEGATIVE_INFINITY]
+  };
+  const second = snapshot(2);
+  second.mapping.diagnostic = {
+    nullNumber: null,
+    nullInfinity: null,
+    arrayNull: [null, null]
+  };
+  const instance = adapter();
+  instance.observe(first);
+  assert.doesNotThrow(() => instance.observe(second));
+});
+
+test('first mapping observation preserves stable JSON BigInt rejection timing', () => {
+  const supplied = snapshot(1);
+  supplied.mapping.diagnostic = { unsupportedInteger: 1n };
+  assert.throws(() => adapter().observe(supplied), /BigInt|serializ/i);
+});
+
+test('continuity mismatch still traverses stable JSON unsupported values before rejecting', () => {
+  const instance = adapter();
+  instance.observe(snapshot(1));
+  assert.throws(() => instance.observe(snapshot(2, {
+    ballBefore: {
+      x: 999,
+      diagnostic: { unsupportedInteger: 1n }
+    }
+  })), /BigInt|serializ/i);
+});
+
 test('expected and supplied CPU team identities are unique before any engine advances', () => {
   const players = movementPlayers();
   const duplicateMapping = mapping(players, {
@@ -553,6 +634,30 @@ test('input snapshots and returned projections are isolated from shadow state', 
   assert.equal(instance.exportTrace().records[0].telemetry.components.cpu.length, 1);
 });
 
+test('caller mutation after observe cannot alter retained nested player or event state', () => {
+  const first = snapshot(1, {
+    cpuOverrides: {
+      events: [{
+        id: 'nested-caller-event', type: 'run-request', tick: 1, teamId: 'home',
+        playerId: 'home-runner', runType: 'penetrating', target: { x: 1800, y: 420 }
+      }]
+    }
+  });
+  const cleanFirst = clone(first);
+  const second = snapshot(2);
+  const reused = adapter({ sessionId: 'post-observe-detachment' });
+  const clean = adapter({ sessionId: 'post-observe-detachment' });
+  reused.observe(first);
+  clean.observe(cleanFirst);
+
+  first.legacy.movement.after.players[0].attributes.control = 1;
+  first.legacy.cpu[0].snapshot.players[0].formationAnchor.x = -999999;
+  first.legacy.cpu[0].snapshot.events[0].target.x = -999999;
+
+  assert.deepEqual(comparableOutput(reused.observe(second)), comparableOutput(clean.observe(clone(second))));
+  assert.equal(reused.stableTraceJson(), clean.stableTraceJson());
+});
+
 test('online remains frozen even with an offline capability object and forged online flags', () => {
   const offlineCapability = capability();
   for (const options of [
@@ -582,7 +687,7 @@ test('public shadow API remains observation-only while live authority uses a sep
     assert.ok(matchHtml.split(`'${filename}'`).length - 1 >= 1, filename);
     assert.doesNotMatch(matchHtml, new RegExp(`<script\\s+src=["'][^"']*${filename.replace(/\./g, '\\.')}`, 'i'));
   }
-  assert.match(matchHtml, /const liveWorkflow=matchType==='single-player'\?'single-player':matchType==='free-kick-suite'\?'set-piece-suite':null/);
+  assert.match(matchHtml, /const liveWorkflow=matchType==='single-player'\?'single-player':matchType==='spectator'\?'cpu-v-cpu':matchType==='free-kick-suite'\?'set-piece-suite':null/);
   assert.match(matchHtml, /if\(!eligible\)return;[\s\S]*'aerial-contact-v2\.js'/);
   assert.doesNotMatch(matchHtml, /<script[^>]+src=["']aerial-contact-v2\.js/);
   assert.match(matchHtml, /requested=values\.length===1&&values\[0\]==='1'/);
@@ -699,18 +804,6 @@ test('CPU decisions remain semantically invariant between canonical and metric p
   }
 });
 
-test('representative 22-player trace is invariant across arbitrary render-frame batches', () => {
-  const snapshots = Array.from({ length: 48 }, (_, index) => representativeSnapshot(index + 1));
-  const individual = adapter({ traceLimit: 64, sessionId: 'chunk-invariance' });
-  const batched = adapter({ traceLimit: 64, sessionId: 'chunk-invariance' });
-  snapshots.forEach(item => individual.observe(item));
-  for (const [start, end] of [[0, 1], [1, 8], [8, 9], [9, 27], [27, 48]]) {
-    batched.observeTimeline(snapshots.slice(start, end));
-  }
-  assert.deepEqual(batched.getShadowState(), individual.getShadowState());
-  assert.equal(batched.stableTraceJson(), individual.stableTraceJson());
-});
-
 test('representative 22-player read-only shadow stays inside a bounded per-tick CPU budget and trace window', t => {
   const tickCount = 180;
   const instance = adapter({ traceLimit: 16, sessionId: 'performance-bound' });
@@ -724,6 +817,33 @@ test('representative 22-player read-only shadow stays inside a bounded per-tick 
   assert.equal(trace.recordCount, 16);
   assert.equal(trace.ballTrace.recordCount, 16);
   assert.ok(JSON.stringify(trace).length < 2_000_000, 'bounded trace unexpectedly exceeds 2 MB');
+});
+
+test('representative 22-player trace is invariant across arbitrary render-frame batches', () => {
+  const snapshots = Array.from({ length: 48 }, (_, index) => representativeSnapshot(index + 1));
+  const individual = adapter({ traceLimit: 64, sessionId: 'chunk-invariance' });
+  const batched = adapter({ traceLimit: 64, sessionId: 'chunk-invariance' });
+  snapshots.forEach(item => individual.observe(item));
+  for (const [start, end] of [[0, 1], [1, 8], [8, 9], [9, 27], [27, 48]]) {
+    batched.observeTimeline(snapshots.slice(start, end));
+  }
+  assert.deepEqual(batched.getShadowState(), individual.getShadowState());
+  assert.equal(batched.stableTraceJson(), individual.stableTraceJson());
+});
+
+test('unified formation telemetry reuses the exact validated deterministic output', () => {
+  const supplied = representativeSnapshot(1);
+  const expected = supplied.legacy.formation.map(entry => ({
+    teamId: entry.teamId,
+    output: Formation.resolve(entry.request)
+  })).sort((a, b) => a.teamId.localeCompare(b.teamId));
+  const observed = adapter({ traceLimit: 2, sessionId: 'formation-output-equivalence' }).observe(supplied);
+
+  assert.deepEqual(observed.candidate.formation, expected);
+  assert.deepEqual(
+    observed.telemetry.components.formation,
+    expected.map(entry => ({ teamId: entry.teamId, telemetry: clone(entry.output.telemetry) }))
+  );
 });
 
 test('bounded trace retention never exposes a candidate projection method', () => {

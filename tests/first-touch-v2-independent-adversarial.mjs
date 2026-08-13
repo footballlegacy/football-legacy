@@ -131,6 +131,44 @@ test('contact metadata uses a unit normal and normal-relative speed rather than 
     `normalSpeed ${contact.normalSpeed} must equal relative normal projection ${projected}`);
 });
 
+test('seeded routine-control assurance is bounded to low-pressure ground arrivals and ordered by technique', () => {
+  const run = (rating, pressure = []) => {
+    let failures = 0;
+    for (let seed = 1; seed <= 300; seed += 1) {
+      const result = Touch.resolve(fixture({
+        seed,
+        player: {
+          facing: { x: 0, y: 1 },
+          attributes: {
+            control: rating, technique: rating, balance: rating,
+            agility: rating, strength: rating, awareness: rating
+          }
+        },
+        pressure
+      }), capability());
+      if (result.outcome !== 'controlled') failures += 1;
+    }
+    return failures;
+  };
+  const failures = { low: run(50), ordinary: run(70), elite: run(90) };
+  assert.ok(failures.low > failures.ordinary, JSON.stringify(failures));
+  assert.ok(failures.ordinary > failures.elite, JSON.stringify(failures));
+  assert.ok(failures.ordinary <= 15 && failures.elite <= 8, JSON.stringify(failures));
+
+  const pressured = Touch.resolve(fixture({
+    player: {
+      facing: { x: 0, y: 1 },
+      attributes: { control: 90, technique: 90, balance: 90, agility: 90, strength: 90, awareness: 90 }
+    },
+    pressure: [{
+      id: 'close-defender', teamId: 'away', position: { x: 0.1, y: 0 },
+      velocity: { x: 0, y: 0 }, strength: 99
+    }]
+  }), capability());
+  assert.equal(pressured.telemetry.routineControl.eligible, false);
+  assert.notEqual(pressured.outcome, 'controlled');
+});
+
 test('schema completeness gate: every declared player attribute is required', () => {
   for (const attribute of ['control', 'technique', 'balance', 'agility', 'strength', 'awareness']) {
     const input = fixture();
@@ -214,20 +252,18 @@ test('extreme finite player/pressure vectors fail closed before Infinity geometr
   assert.throws(() => Touch.resolve(input, capability()), /finite|range|bound|position/i);
 });
 
-test('controlled attachment obeys the configured total output-speed ceiling', () => {
+test('fast receiver contact stays loose and obeys the separate ball output-speed ceiling', () => {
   const input = fixture({ player: { velocity: { x: 15, y: 0 } } });
   input.ball = Ball.createBallState({ ...input.ball, velocity: { x: 7, y: 0, z: 0 } });
-  let result = null;
-  try {
-    result = Touch.resolve(input, capability());
-  } catch (error) {
-    assert.match(String(error && error.message), /player\.velocity.*envelope|output.*speed|speed.*bound/i);
-  }
-  if (result) {
-    assert.equal(result.outcome, 'controlled');
-    assert.ok(speed3(result.ballState.velocity) <= Touch.DEFAULT_CONFIG.maximumOutputSpeed + 1e-9,
-      `controlled output ${speed3(result.ballState.velocity)} exceeds configured ceiling`);
-  }
+  const result = Touch.resolve(input, capability());
+  assert.equal(result.outcome, 'retained');
+  assert.equal(result.ownerCandidateId, null);
+  assert.equal(result.telemetry.controlledAttachmentSafe, false);
+  assert.ok(speed3(result.ballState.velocity) <= Touch.DEFAULT_CONFIG.maximumOutputSpeed + 1e-9,
+    `controlled output ${speed3(result.ballState.velocity)} exceeds configured ceiling`);
+
+  const unsafe = fixture({ player: { velocity: { x: 20.01, y: 0 } } });
+  assert.throws(() => Touch.resolve(unsafe, capability()), /player\.velocity.*envelope/i);
 });
 
 test('dynamic reach is directional: moving away cannot gain contact reach', () => {

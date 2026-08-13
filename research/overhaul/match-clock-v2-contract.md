@@ -93,6 +93,6 @@ This dormant candidate must not become live authority until a later approved sha
 - first half, second half, added time, half-time and full-time gates agree with approved golden matches;
 - replay, VAR, cards, substitutions, set pieces and offside presentation cannot decide gameplay from wall time;
 - local, replay and online host traces agree for the same input timeline;
-- Build 173 remains available as the rollback authority until opt-in comparison is accepted.
+- Build 173 remains the deliberate pre-match default. In an opted-in strict V2 playtest, rollback restores the candidate transaction and then freezes the match; Build 173 does not take over gameplay.
 
 Live integration, tuning of competition-specific added-time policy and any alteration of `match.html` are deliberately outside this change.

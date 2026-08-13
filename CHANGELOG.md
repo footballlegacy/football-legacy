@@ -1,6 +1,6 @@
 # Football Legacy — Changelog
 
-Last reviewed: 12 August 2026 — Build 174 FL V2 release preparation
+Last reviewed: 12 August 2026 — current local Build 174 FL V2 integration
 
 This file records the two source lines and the combined build produced from them:
 
@@ -10,16 +10,24 @@ This file records the two source lines and the combined build produced from them
 
 ## Build 174 — explicit offline FL V2 playtest
 
-- Adds **FL V2 · Experimental Offline** to the existing Quick Play setup while retaining **Build 173 · Stable** as the default.
-- Limits FL V2 to explicit offline **Single Player** and **Free Kick Practice** selections. Local 2P, same-team co-op, CPU vs CPU, Online and all career/creation workflows remain on their established authority.
-- Promotes deterministic Ball, Movement, CPU, Formation, First Touch and Aerial systems for the Single Player playtest, with one visible fail-closed switch back to Build 173 if candidate preparation or commit fails.
-- Promotes the reviewed Match Clock, Restart, Set-Piece and coordinate systems for the Free Kick Practice route while preserving the normal Quick Play entry flow.
+- Adds **FL V2 · Strict Offline Playtest** to the existing Quick Play setup while retaining **Build 173 · Stable** as the deliberate pre-match default.
+- Limits FL V2 to explicit offline **Single Player**, all-CPU **CPU vs CPU**, and **Set-Piece Suite** selections. Local 2P, same-team co-op and Online remain on Build 173; all career/creation workflows remain intact.
+- Promotes deterministic Ball, Movement, CPU, Formation, First Touch and Aerial systems for Single Player and all-CPU CPU vs CPU, with one visible fail-closed switch back to Build 173 if candidate preparation or commit fails.
+- Promotes the reviewed Match Clock, Restart, Set-Piece and coordinate systems for the Set-Piece Suite while preserving the normal Quick Play entry flow.
+- Replaces silent mid-match fallback with strict playtest enforcement: any FL V2 authority fault rolls back the candidate tick, freezes the match, and presents export/restart/exit actions without executing a Build 173 gameplay tick.
 - Adds Ancelotti's representative 2013/14 Real Madrid BBC squad, preferred 4-3-3 selection and team-behaviour overlay alongside the existing Invincibles and Conte Chelsea historic teams. Ratings are Football Legacy playtest values, not official EA ratings.
+- Applies the three latest playtest-log batches: directional and charged pass/through-ball/throw-in control, rebuilt lob and low-cross delivery, receiver self-contact protection, first-touch acceleration, rating-scaled carrier movement, faster shielding, improved collision ownership and more assertive goalkeeper loose-ball/release behaviour.
+- Adds targeted carrier-relative attacking-support and rest-defence corrections for the Invincibles and Conte Chelsea while preserving each historic tactical identity; Arsenal's full-match support/pressing shape remains open for visual calibration. CPU free kicks use the calibrated lob trajectory and CPU vs CPU now runs the live V2 authority rather than silently falling back to Build 173.
+- Re-anchors goal, shot and foul replays to the actual incident, adds the owned three-view set-piece replay package, and keeps CPU restart cameras on the live match angle while preserving human and goalkeeper-controlled penalty views.
+- Improves controller disconnect/reconnect handling, prevents held/stale D-pad input after reconnection, isolates text-entry fields from gameplay input, and makes Quick Play launch single-flight with immediate loading feedback.
+- Adds charged, rotating throw-in aim with supporting runs; low crosses on R1 + Square; nearest-ball L1 switching; revised goalkeeper possession spacing; and the high-contrast Total 90-inspired match ball treatment.
+- Hardens controller reconnect state and prevents false Firefox D-pad input after device reuse. USB-C remains the verified DualSense playtest route; Bluetooth can still enumerate without supplying gameplay input on some Mac/browser combinations and is not claimed fixed.
 - Removes the temporary deferred normal-match free-kick replay queue. Goal, immediate dead-ball and per-attempt practice replays remain.
 - Adds the whistle, assistant-referee flag and exact-once free-kick handoff presentation for offside, plus the requested human/CPU restart-camera ownership policy.
+- Gives free kicks a slower preferred-foot and technique-sensitive 3.5–4.3 metre approach, and moves the set-piece camera farther behind the player while keeping the ball, full taker, wall and goal framed together.
+- Adds one consistent directional service vocabulary to free kicks, corners and goal kicks: Square for normal loft and bend, R1 + Square for a lower/faster service, and L1 + R1 + Square for a driven flatter ball. The left stick at release supplies the line and spin bias; direct free-kick Circle shots remain separate.
 - Preserves Build 172's Online signalling, lobby, controller and quality/recovery protocols; FL V2 cannot arm in Online.
-- Known post-release P1: the Invincibles 4-4-2 uses overly static attacking anchors and currently assigns the wrong full-back to rest defence, which can leave attacks under-supported. This is recorded, not presented as fixed.
-- Final release gate counts and public verification are recorded at publication; this section does not claim a branch-only build is live.
+- Build 173 is already published as the stable baseline. This section records the current local Build 174 release candidate; publication still requires the deliberate branch/PR/merge and public cache-bust verification.
 
 ## Mandatory GitHub setup for Connor's AI agent
 

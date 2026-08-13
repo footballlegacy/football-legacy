@@ -1,21 +1,21 @@
-# Football Legacy — Build 174 FL V2 offline playtest
+# Football Legacy — local Build 174 FL V2 playtest
 
 Football Legacy is a browser football game prototype with Quick Play, local controller multiplayer, an early friends-only Online Versus mode, creation tools, Career Mode and Grassroots to Glory.
 
 ## Playtest FL V2
 
-Use the hosted game and open **Quick Play**:
-
-**[Open Football Legacy](https://footballlegacy.github.io/football-legacy/)**
+Launch the current checkout and open **Quick Play**:
 
 1. Choose **Quick Play**, select the teams and continue to Match Setup.
-2. Choose **Single Player** or **Free Kick Practice**.
-3. Set **Gameplay Engine** to **FL V2 · Experimental Offline**.
+2. Choose **Single Player**, all-CPU **CPU vs CPU**, or the **Set-Piece Suite**.
+3. Set **Gameplay Engine** to **FL V2 · Strict Offline Playtest**.
 4. Finish setup and launch the match normally.
 
-FL V2 is an explicit offline playtest route. Single Player activates the new deterministic Ball, Movement, CPU, Formation, First Touch and Aerial systems. Free Kick Practice activates the reviewed Clock, Restart, Set-Piece and coordinate systems. **Build 173 · Stable** remains the default and the immediate safety fallback. Local 2P, same-team co-op, CPU vs CPU, Online, Career, Create-a-Club, Player Career and the creation tools retain their established workflows.
+FL V2 is an explicit offline playtest route. Single Player and all-CPU CPU vs CPU activate the deterministic Ball, Movement, CPU, Formation, First Touch and Aerial systems. The Set-Piece Suite activates the reviewed Clock, Restart, Set-Piece and coordinate systems. **Build 173 · Stable** remains the deliberate default before kickoff. Once an FL V2 match launches, a V2 authority fault freezes the simulation behind an exportable diagnostic screen; the match never silently continues as Build 173. Local 2P, same-team co-op and Online remain on Build 173; Career, Create-a-Club, Player Career and the creation tools retain their established workflows.
 
-Known playtest issue: the Invincibles 4-4-2 currently uses overly static attacking anchors and assigns the wrong full-back to rest defence, so forward support can become too sparse. This remains a post-release priority rather than being hidden as fixed.
+This local Build 174 state incorporates the three latest playtest logs: calibrated passing, through balls, lobs, crosses and throw-ins; more responsive first touches, shielding, collisions, goalkeeper possession and support runs; corrected CPU restarts and replay anchoring; set-piece camera/replay revisions; and controller reconnect plus single-launch loading feedback. Targeted carrier-relative support corrections were added for the Invincibles and Conte Chelsea, but Arsenal's full-match support/pressing shape still needs visual calibration and is not claimed closed. Ancelotti's representative 2013/14 Real Madrid BBC team is available alongside them.
+
+Build 173 has already been published as the stable baseline. This README describes the current local Build 174 working state and does not claim that FL V2 has been publicly released.
 
 ## Play Online with a friend
 
@@ -45,7 +45,7 @@ Do not use a downloaded `file://` ZIP for Online Versus. Local-file browser orig
 
 ## Fastest PS5 controller playtest
 
-1. Connect one or two DualSense controllers by USB-C or macOS Bluetooth.
+1. Connect one or two DualSense controllers. USB-C is the verified route. Bluetooth may show as connected without delivering input on some Mac/browser combinations and is not yet claimed fixed.
 2. Double-click `START-PS5-SINGLE-PLAYER.command` or `START-PS5-TWO-PLAYER.command`.
 3. In the match, press **Options** to open the pause menu and controller preview.
 
@@ -72,7 +72,9 @@ Menu controls are available across the game:
 - L2 + right-stick vertical flick: chained stepovers
 - Right stick down half-circle: roulette
 
-Read `PLAYTEST-NOTES-v0.28.6.md` for the exact changes and test checklist.
+At a free kick, corner or goal kick, the left stick chooses the service line. Square gives the normal lofted delivery, R1 + Square gives a lower/faster ball, and L1 + R1 + Square gives the driven delivery. Direct free-kick shots remain on Circle with their existing dipping, driven and curved modifiers.
+
+Read `research/overhaul/set-piece-directional-camera-runup-closure-2026-08-12.md` for the current set-piece controls and visual evidence, and `PLAYTEST-NOTES-v0.28.6.md` for the older visual-pass history.
 
 ## Development
 

@@ -1319,7 +1319,9 @@ window.FLGame = (() => {
   function currentCompetition(game){return window.FLPyramid?FLPyramid.competitionForClub(game,game.controlledClubId):(window.FLTimeline?FLTimeline.currentCompetition(game):{id:'football-league',name:'Football League',official:true});}
   return {create,createWorld,fastForwardToYear,attachManager,createStartYear,clubHistorySummary,club,controlledClub,nextFixture,fixtureOn,repairMissingFixtures,advanceDay,table,allTables,teamProfile,simulateDetailedMatch,simulateMatchday,finalizeMatchStats,currentRules,currentCompetition,makePyramidSchedule,repairWorldBalance,compactMatchRecords};
 })();
-window.FLGame = (() => {
+// Historical duplicate retained for source compatibility, but never allowed to
+// overwrite the complete engine defined above.
+window.FLGame = window.FLGame || (() => {
   const DAY = 86400000;
   function hashSeed(text){ let h=2166136261; for(const c of text){h^=c.charCodeAt(0);h=Math.imul(h,16777619);} return h>>>0; }
   function rng(seed){ let s=seed>>>0; return () => { s=(Math.imul(s,1664525)+1013904223)>>>0; return s/4294967296; }; }

@@ -3,9 +3,11 @@
 Status: exact-flag read-only shadow integration plus a release-gated
 `offline-opt-in` promotion. Build 173 remains the default authority everywhere.
 FL V2 can become authoritative only when it is explicitly selected in Quick
-Play for offline Single Player or the Set-Piece Suite and the query, payload,
-workflow, version, and deterministic seed agree exactly. All other workflows,
-including every online route, remain Build 173-authoritative.
+Play for offline Single Player, CPU versus CPU, or the Set-Piece Suite and the
+query, payload, workflow, version, and deterministic seed agree exactly. CPU
+versus CPU additionally requires zero human owners, both teams assigned to the
+CPU, and one exact `autoplay=1` marker. All other workflows, including every
+online route, remain Build 173-authoritative.
 
 ## Current implementation checkpoint — 2026-08-12
 
@@ -29,22 +31,26 @@ including every online route, remain Build 173-authoritative.
   one.
 - The normal Quick Play surface now owns the playable promotion. Its Gameplay
   Engine selector defaults to `Build 173 · Stable`. Selecting
-  `FL V2 · Experimental Offline` is accepted only for Single Player
-  (`single-player`) and Free Kick Practice / Set-Piece Suite
-  (`free-kick-suite` -> `set-piece-suite`). Co-op, Home Co-op, CPU v CPU,
-  online, and every unsupported mode visibly remain on Build 173.
+  `FL V2 · Strict Offline Playtest` is accepted only for Single Player
+  (`single-player`), CPU v CPU (`spectator` -> `cpu-v-cpu`), and the Set-Piece
+  Suite (`free-kick-suite` -> `set-piece-suite`). Co-op,
+  Home Co-op, online, and every unsupported mode visibly remain on Build 173.
 - The FL V2 launch contract carries the exact engine request and a deterministic
   positive uint32 seed in both the Quick Play payload and the match URL. The
   match page fails closed on missing, duplicate, contradictory, online, shadow,
   unsupported, malformed, or seed-mismatched markers before loading any live V2
   authority module.
-- Single Player composes movement, CPU, formation, ball, first touch, aerial and
-  protected contact handling with the match-control transaction. The Set-Piece
-  Suite uses the same match-control, clock, restart, coordinate and suite
-  contracts without claiming the Single Player gameplay adapter.
+- Single Player and CPU v CPU compose movement, CPU, formation, ball, first
+  touch, aerial and protected contact handling with the match-control
+  transaction. CPU v CPU preserves its external workflow identity while both
+  teams remain CPU-controlled and no human input can enter the authority tick.
+  The Set-Piece Suite uses the same match-control, clock, restart, coordinate
+  and suite contracts without claiming the normal-match gameplay adapter.
 - Candidate host changes are prepared, applied, finalized, and receipted as one
   outer tick. A fault restores the captured host state, rolls back candidate
-  ledgers, disables V2, and visibly continues on Build 173 in that same tick.
+  ledgers, disables further simulation, and opens a blocking diagnostic with
+  export, V2 restart, and setup-exit actions. An opted-in V2 match never
+  continues as Build 173.
 - The Build 173 observation adapter and host capture passed independent review
   and are attached behind the exact `v2Shadow=1` flag. The default path loads
   none of the V2 comparison stack; online-marked URLs freeze it before loading;
@@ -61,13 +67,15 @@ including every online route, remain Build 173-authoritative.
   earlier contention timeout as a workflow regression.
 - Quick Play remains the real shared playtest surface for team selection,
   Single Player, CPU v CPU, Set Piece Suite, local two-player and Home Co-op.
-  The two exact offline opt-ins use that existing surface; no parallel
+  The three exact offline opt-ins use that existing surface; no parallel
   replacement match UI was introduced.
 - The authority ladder below remains binding. Passing module tests does not
-  widen the two-workflow authority scope or change the Build 173 default.
-- Final release hash sealing, real-browser proof through both Quick Play opt-ins,
-  protected regression gates, publication, and public-asset verification remain
-  mandatory before this checkpoint can be called published.
+  widen the three-workflow authority scope or change the Build 173 default.
+- Final release hash sealing is complete. Frozen-byte real-browser proof is
+  complete for Single Player and CPU versus CPU; the Set-Piece Suite still
+  needs its final confirmation. Protected regression gates, publication, and
+  public-asset verification remain mandatory before this checkpoint can be
+  called published.
 
 ## Non-removal contract
 
@@ -81,7 +89,7 @@ Protected workflows:
 - The existing online-versus path, which stays frozen while offline foundations change.
 - Keyboard, DualSense, generic gamepad, controller switching, pause, restart, replay, and diagnostics.
 - Normal-match free kicks, corners, penalties, throw-ins, goal kicks, and kick-offs.
-- The current Free Kick Suite, renamed and expanded later as the Set Piece Suite.
+- The Set-Piece Suite, whose internal compatibility route remains `free-kick-suite`.
 - Career Mode, Create-a-Club, and Player Career. Player Career may be archived only in a separate, explicit future change; it is not removed here.
 - Existing team, formation, tactics, stadium, kit, historic-team, and save-data inputs.
 - Existing self-tests, playtest exports, and direct offline diagnostic links.
@@ -99,7 +107,7 @@ Only one rung may be authoritative at a time:
 1. `legacy`: Build 173 behavior remains the game.
 2. `shadow`: the candidate engine receives copied launch/contact inputs and logs its predicted result, but cannot move the live ball.
 3. `suite-opt-in`: the Set Piece Suite can choose legacy or candidate physics for controlled comparison. This is active only through the explicit Quick Play selector.
-4. `offline-opt-in`: selected offline modes may opt in after suite gates pass. This is active only for Single Player Quick Play.
+4. `offline-opt-in`: selected offline modes may opt in after suite gates pass. This is active only for Single Player and CPU versus CPU Quick Play.
 5. `migration candidate`: every protected workflow passes a recorded compatibility matrix.
 6. `authoritative`: requires Joshua's explicit approval after blind/holdout playtesting.
 
@@ -199,13 +207,15 @@ Exit gate: neutral contracts pass before team-specific philosophy tuning.
 
 ### F9 — Controlled migration
 
-- Suite opt-in and Single Player offline opt-in are now wired behind the exact
-  Quick Play engine-selection contract. Build 173 remains selected by default.
+- Suite opt-in plus Single Player and CPU versus CPU offline opt-ins are now
+  wired behind the exact Quick Play engine-selection contract. Build 173
+  remains selected by default.
 - Never use online play as the first integration environment.
 - Compare legacy/candidate traces and human ratings.
 - Run protected-workflow, performance, determinism, save-data, controller, replay, restart, set-piece, clock, and mode-link gates.
-- Keep same-tick visible failback plus a one-switch rollback to `legacy` until
-  the candidate has passed the complete matrix.
+- Keep same-tick transaction rollback, but enforce a strict V2 stop after any
+  authority fault. Build 173 may be chosen before kickoff; it is not a hidden
+  mid-match continuation path for an opted-in V2 playtest.
 
 ## Safe parallel-work boundary
 

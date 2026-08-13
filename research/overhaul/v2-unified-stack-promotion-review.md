@@ -132,3 +132,19 @@ Test distribution: Ball 27; Ball Bridge 14; CPU 17; Movement 21; Formation 20; M
 dbb2999b245ed49d39fb5efffb67913f08883f6a8bd5278445a294cb773a3733  match-engine/overhaul-shadow-orchestrator-v2.js
 a82c52af32c5cfaba4401f5228efb751821aea17464f1de6109d5a9155488935  tests/overhaul-v2-unified-promotion-adversarial.mjs
 ```
+
+## 2026-08-12 performance reseal
+
+The read-only orchestrator now retains one private detached trace copy but does not repeat full 22-player public-result clones that are neither retained nor projected. The current nine-suite matrix is **197/197 green** when run with test-file concurrency set to one. The timing-sensitive promotion suite is also **19/19 green** in isolation at a measured **2.700 ms mean per representative 22-player tick**, below its unchanged 5 ms budget. An actively rendering 3D browser match materially contends for the same laptop CPU, so it is not used as the benchmark environment.
+
+```text
+4084ff8968859af2a4149703ce02eb37e0691fa20a542dbc97d793c33342c504  match-engine/ball-engine-v2.js
+29381595bf08a3cc3494825e4039bcb88c9d1d6a37f203831658e95714a8527f  match-engine/ball-shadow-bridge-v2.js
+a9e2924e7edb1881d19aa8d9ad8a04a4e549778c794f5b65d9f3cb05d0a84488  match-engine/cpu-intelligence-v2.js
+af10e98822e2c1d93aa5b8bb9ce2e31ebad61def47174cf3ad25510eb106811d  match-engine/movement-engine-v2.js
+c7d6a88ff13e065235e5b4096e78d9b35e2f4fdf8654633c7b5e05eb1621abc1  match-engine/formation-behaviour-v2.js
+281be0604de488a870376cf73c7a3718f8555f868bf0ef423742c1272c03d408  match-engine/match-clock-v2.js
+54bf086bef9e0f149f9ed2445454da510fca5908e79aa77d95ba5f70d5e8b1ba  match-engine/aerial-contact-v2.js
+3a5f0295c621d111e0ecfb5049ef89ab143bd6e1d845bec6b53ee89fd1bba149  match-engine/overhaul-shadow-orchestrator-v2.js
+4d6147ba2c97dfe7426c8b7e6d568cf6497eb01d7c0a92d41c4ca6ac7dce8d02  tests/overhaul-v2-unified-promotion-adversarial.mjs
+```

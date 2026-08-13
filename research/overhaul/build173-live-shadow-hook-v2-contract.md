@@ -3,10 +3,16 @@
 ## Authority and enablement
 
 `match-engine/build173-live-shadow-hook-v2.js` is a telemetry-only wrapper
-around the existing Build 173 `update()` function. Build 173 remains the sole
-gameplay authority. The hook cannot return state, candidate commands, forces,
-projections or an application surface, and no shadow output is assigned to
-the live match.
+around the existing Build 173 `update()` function. Whenever this shadow route
+is selected, Build 173 remains the sole gameplay authority. The hook cannot
+return state, candidate commands, forces, projections or an application
+surface, and no shadow output is assigned to the live match.
+
+Build 174 also contains a separate conditional offline FL V2 live-authority
+preflight. It is outside this hook and is mutually exclusive with the shadow:
+the shadow preflight rejects any live-engine query marker, while the live
+preflight rejects any `v2Shadow` marker. Thus adding the playable opt-in does
+not turn this diagnostic surface into a projection or write path.
 
 The loader gate is exact:
 
@@ -61,7 +67,10 @@ legacy error path and is never swallowed.
 - FAST mode wraps every legacy simulation update separately and records its
   render-frame sequence and simulation-step index.
 - Capture finishes before `fulltime-presentation`; walk-in and post-match
-  presentation are never observed.
+  presentation are never observed. Both mutually exclusive clock-authority
+  branches (default Build 173 and conditional offline live V2) invoke one
+  shared finish helper, whose only shadow operation is the single reviewed
+  `finishBeforeFullTimePresentation()` call.
 
 A finished attachment may reset only for a true fresh match. An online-frozen
 or self-frozen attachment is unavailable for the remainder of that page.
@@ -85,6 +94,7 @@ decoded-online freeze, the six offline ownership workflows, fresh-epoch and
 set-piece arming, wrong-method workflow isolation, skipped transition tick,
 exactly one legacy update, FAST
 sequencing, finish-before-presentation, no half-time reset, fault containment,
-bounded telemetry-only output and absence of a live projection path. The
+bounded telemetry-only output, mutual exclusion from the separate offline-live
+preflight, and absence of a live projection path. The
 foundation suite pins the match-page delta and preserves all protected
 workflow and online hashes.

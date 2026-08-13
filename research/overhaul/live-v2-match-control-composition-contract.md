@@ -1,28 +1,37 @@
 # FL V2 live match-control composition contract
 
-Status: **reviewed integration candidate; not yet loaded by `match.html`**.
+Status: **reviewed and conditionally integrated behind exact offline FL V2
+preflight**.
 `match-engine/live-v2-match-control-composition.js` composes the frozen
 MatchClock V2, Restart Presentation V2, Set-Piece Suite V2 and Set-Piece
-Coordinate Contract V2. It changes no existing route or Build 173 behaviour by
-being present on disk.
+Coordinate Contract V2. Build 173 remains the default, every unsupported route
+remains Build 173-owned, and any rejected or failed V2 transaction returns to
+Build 173 in the same tick.
 
 ## Activation boundary
 
 Activation requires an unforgeable, process-local capability created with the
 exact acknowledgement
-`EXPLICIT_FL_V2_OFFLINE_SINGLE_PLAYER_MATCH_CONTROL`, effective/requested
+`EXPLICIT_FL_V2_OFFLINE_MATCH_CONTROL`, effective/requested
 engine `fl-v2`, fallback `build-173`, live engine version
 `1.0.0-offline-live-authority-playtest`, and `online:false`.
 
 The only accepted workflows are:
 
-- `single-player`; and
+- `single-player`;
+- `cpu-v-cpu`; and
 - `set-piece-suite` (the existing Quick Play free-kick-suite route may retain
   its old alias while selecting this effective workflow).
 
-Online Versus, Local Versus, Home Co-op and CPU-v-CPU cannot mint a capability.
-Build 173 remains the default and the permanent same-session fallback. The
-Set-Piece Suite workflow cannot start normal-match offside presentation.
+Online Versus, Local Versus and Home Co-op cannot mint a capability. CPU-v-CPU
+can reach this composition only through the host's exact offline spectator
+preflight: no human controller owner, both teams assigned to CPU, an exact
+`autoplay=1` marker, and matching FL V2 engine/version/seed query and payload.
+The composition preserves the external `cpu-v-cpu` identity while translating
+only its private Restart Presentation dependency to that dependency's existing
+CPU-v-CPU workflow contract. Build 173 remains the default and the permanent
+same-session fallback. The Set-Piece Suite workflow cannot start normal-match
+offside presentation.
 
 Every runtime must also declare one axis-aligned metric live pitch. Unsupported,
 non-metric or malformed geometry fails closed before a match-control runtime is
@@ -34,7 +43,9 @@ created.
 2. `createRuntime({ sessionId, pitch, realMatchDurationSeconds }, capability)`
    creates private Clock/Restart/Suite state.
 3. `prepareTick(runtime, input, capability)` validates exactly the next 1/60 s
-   tick and returns an immutable plan. Preparation changes no committed state.
+   tick and returns an immutable plan carrying the unchanged external workflow
+   identity. Preparation changes no committed state; fallback plans retain that
+   same identity as well.
 4. The outer live-authority transaction applies all gameplay/contact and
    match-control commands.
 5. `commit(runtime, plan, receipt, capability)` promotes the private candidate
@@ -44,14 +55,16 @@ created.
    apply and restores the exact pre-tick state while allowing a deterministic
    retry.
 7. `rollback(runtime, plan, reason, capability)` is for a possibly partial host
-   apply; it discards the candidate and permanently selects Build 173.
-8. `disable(...)` is the explicit one-switch fallback.
+   apply; it discards the candidate and returns a fail-closed Build 173 sentinel
+   to the outer host.
+8. `disable(...)` permanently freezes the component. The strict Quick Play host
+   treats either signal as a blocking V2 stop and must not execute legacy gameplay.
 9. `snapshot(...)` exposes finite JSON-safe authority, clock, restart, suite and
    exact-once ledger evidence.
 
 Malformed tick input never throws through the match loop after a valid runtime
-exists. It self-freezes the composition and returns a bounded Build 173 fallback
-plan at the last committed tick.
+exists. It self-freezes the composition and returns a bounded Build 173 sentinel
+plan at the last committed tick; the outer strict host freezes the match.
 
 ## Authoritative phase projection
 
@@ -127,12 +140,14 @@ live camera.
 - 1,024 exact-once IDs remain durable; the 1,025th unique event and a 1,026th
   replay preserve the complete committed Clock/Restart/Suite snapshot and fail
   safely to Build 173;
-- no DOM, Three.js, input listener, network or live page authority;
-- `match.html` remains untouched until the outer gameplay/contact transaction
-  owner performs the reviewed merge.
+- the composition module itself has no DOM, Three.js, input listener or network
+  authority; and
+- `match.html` may call it only through the exact reviewed offline preflight and
+  the outer gameplay/contact transaction boundary described above.
 
 Focused evidence lives in
-`tests/live-v2-match-control-composition.mjs`. The gate covers both supported
+`tests/live-v2-match-control-composition.mjs` and
+`tests/live-v2-match-control-independent-adversarial.mjs`. The gates cover all three supported
 workflows, phase/clock semantics, second-half transition, offside sequence,
 camera matrix, exact-once ledgers, coordinate mapping in both directions,
 unsupported geometry, malformed input containment, outer abort, dual-clock

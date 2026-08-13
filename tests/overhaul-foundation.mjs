@@ -31,9 +31,11 @@ test('F0 keeps Build 173 as the default and promotes only the explicit offline o
   assert.equal(manifest.authority.defaultAuthority, 'build-173-legacy');
   assert.equal(manifest.authority.liveGameplayOwner, 'match-engine/match.html');
   assert.equal(manifest.authority.candidateMayControlLiveGameplay, true);
-  assert.deepEqual(manifest.authority.candidateAuthorityScope, ['single-player-quick-play', 'set-piece-suite']);
+  assert.deepEqual(manifest.authority.candidateAuthorityScope, [
+    'single-player-quick-play', 'cpu-versus-cpu', 'set-piece-suite'
+  ]);
   assert.equal(manifest.authority.candidateAuthorityRequiresExplicitSelection, true);
-  assert.equal(manifest.authority.sameTickVisibleFailback, 'build-173-legacy');
+  assert.equal(manifest.authority.runtimeFailurePolicy, 'rollback-then-freeze-fl-v2-with-blocking-diagnostic');
   assert.equal(manifest.authority.scopedLegacyMaintenanceAllowed, true);
   assert.equal(manifest.authority.onlineChangesAllowed, false);
   assert.equal(manifest.authority.offlineOptInApprovedByJoshua, true);
@@ -60,7 +62,7 @@ test('every pinned protected file exists and matches its candidate SHA-256', () 
 });
 
 test('every pinned promoted runtime file is new to the baseline, scoped and hash-sealed', () => {
-  assert.equal(manifest.promotedFiles.length, 20);
+  assert.equal(manifest.promotedFiles.length, 23);
   const paths = manifest.promotedFiles.map(entry => entry.path);
   assert.equal(new Set(paths).size, paths.length, 'promoted file paths must be unique');
   for (const entry of manifest.promotedFiles) {
@@ -79,6 +81,13 @@ test('every pinned promoted runtime file is new to the baseline, scoped and hash
     manifest.promotedFiles.filter(entry => entry.pinState === 'pending-final-freeze').map(entry => entry.path),
     []
   );
+  assert.ok(paths.includes('match-engine/dribbling-state-v2.js'));
+  assert.ok(paths.includes('match-engine/instant-replay-review-v2.js'));
+  assert.ok(paths.includes('match-engine/playtest-full-state-replay-v1.js'));
+  assert.deepEqual(
+    manifest.promotedFiles.find(entry => entry.path === 'match-engine/playtest-full-state-replay-v1.js').authorityScope,
+    ['diagnostics-and-playtest-exports']
+  );
 });
 
 test('release freeze has no unresolved candidate hash pins', () => {
@@ -88,25 +97,40 @@ test('release freeze has no unresolved candidate hash pins', () => {
   assert.deepEqual(pending, [], `final release pins still pending: ${pending.join(', ')}`);
 });
 
-test('Quick Play defaults to Build 173 and emits exact FL V2 payload/query agreement only for two modes', () => {
+test('Quick Play defaults to Build 173 and emits exact FL V2 payload/query agreement only for three modes', () => {
   const authority = manifest.allowedCandidateDelta.offlineOptInAuthority;
   assert.equal(authority.defaultEngine, 'build-173');
   assert.equal(authority.selectorDefault, 'build-173');
   assert.equal(authority.selectorOptIn, 'fl-v2');
   assert.equal(authority.onlinePolicy, 'frozen-to-build-173');
-  assert.equal(authority.unsupportedWorkflowPolicy, 'visible-build-173-fallback');
-  assert.equal(authority.sameTickFailurePolicy, 'rollback-candidate-transaction-and-continue-build-173-with-visible-badge');
-  assert.deepEqual(authority.workflows.map(item => item.protectedWorkflow), ['single-player-quick-play', 'set-piece-suite']);
-  assert.deepEqual(authority.workflows.map(item => item.quickPlayMatchType), ['single-player', 'free-kick-suite']);
-  assert.deepEqual(authority.workflows.map(item => item.runtimeWorkflow), ['single-player', 'set-piece-suite']);
-  assert.match(quickPlayHtml, /<select id="gameplayEngine">[\s\S]*?<option value="build-173" selected>Build 173 · Stable<\/option>[\s\S]*?<option value="fl-v2">FL V2 · Experimental Offline<\/option>/);
+  assert.equal(authority.unsupportedWorkflowPolicy, 'visible-prelaunch-build-173-selection');
+  assert.equal(authority.runtimeFailurePolicy, 'rollback-candidate-transaction-and-freeze-fl-v2-with-blocking-diagnostic');
+  assert.deepEqual(authority.workflows.map(item => item.protectedWorkflow), [
+    'single-player-quick-play', 'cpu-versus-cpu', 'set-piece-suite'
+  ]);
+  assert.deepEqual(authority.workflows.map(item => item.quickPlayMatchType), [
+    'single-player', 'spectator', 'free-kick-suite'
+  ]);
+  assert.deepEqual(authority.workflows.map(item => item.runtimeWorkflow), [
+    'single-player', 'cpu-v-cpu', 'set-piece-suite'
+  ]);
+  const cpuWorkflow = authority.workflows.find(item => item.protectedWorkflow === 'cpu-versus-cpu');
+  assert.deepEqual(cpuWorkflow.authority, ['gameplay', 'match-control']);
+  assert.deepEqual(cpuWorkflow.controlOwnership, { humanPlayerIds: [], cpuTeamIds: ['you', 'opp'] });
+  assert.deepEqual(cpuWorkflow.queryRequirement, { autoplay: '1' });
+  assert.equal(authority.queryContract.autoplay, 'exactly-one-value-1-for-cpu-versus-cpu-only');
+  assert.deepEqual(authority.payloadContract['controllers.cpu-versus-cpu'], {
+    player1Team: null, player2Team: null, aiTeam: 'both', online: 'not-true', cooperative: 'not-true'
+  });
+  assert.match(quickPlayHtml, /<select id="gameplayEngine">[\s\S]*?<option value="build-173" selected>Build 173 · Stable<\/option>[\s\S]*?<option value="fl-v2">FL V2 · Strict Offline Playtest<\/option>/);
   assert.match(quickPlayApp, /const QUICK_PLAY_ENGINE_VERSION='1\.0\.0-offline-live-authority-playtest'/);
   assert.match(quickPlayApp, /if\(online\|\|mode==='online'\)return\{requested:FL_V2_ENGINE,effective:BUILD_173_ENGINE/);
-  assert.match(quickPlayApp, /if\(!\['single-player','free-kick-suite'\]\.includes\(mode\)\)return\{requested:FL_V2_ENGINE,effective:BUILD_173_ENGINE/);
+  assert.match(quickPlayApp, /if\(!\['single-player','free-kick-suite','spectator'\]\.includes\(mode\)\)return\{requested:FL_V2_ENGINE,effective:BUILD_173_ENGINE/);
   assert.match(quickPlayApp, /return\{requested:FL_V2_ENGINE,effective:FL_V2_ENGINE,version:QUICK_PLAY_ENGINE_VERSION,fallbackReason:null\}/);
   assert.match(quickPlayApp, /function finalizeMatchPayload\(payload,requested,online=false\)[\s\S]*?result\.simulationSeed=deterministicSimulationSeed\(result\)/);
   assert.match(quickPlayApp, /params\.set\('simulationSeed',String\(simulationSeed\)\)/);
   assert.match(quickPlayApp, /if\(engine\?\.effective===FL_V2_ENGINE\)params\.set\('engine',FL_V2_ENGINE\);else params\.delete\('engine'\)/);
+  assert.match(quickPlayApp, /if\(data\.matchType==='spectator'\)params\.set\('autoplay','1'\)/);
 });
 
 test('the match page conditionally loads the exact FL V2 runtime only after fail-closed preflight', () => {
@@ -125,7 +149,9 @@ test('the match page conditionally loads the exact FL V2 runtime only after fail
   assert.match(preflight, /if\(payloadEngine\.effective!=='fl-v2'\)markers\.push\('payload-engine-effective-mismatch'\)/);
   assert.match(preflight, /if\(payloadEngine\.version!=='1\.0\.0-offline-live-authority-playtest'\)/);
   assert.match(preflight, /else if\(querySeed!==String\(payloadSeed>>>0\)\)markers\.push\('simulation-seed-mismatch'\)/);
-  assert.match(preflight, /const liveWorkflow=matchType==='single-player'\?'single-player':matchType==='free-kick-suite'\?'set-piece-suite':null/);
+  assert.match(preflight, /const liveWorkflow=matchType==='single-player'\?'single-player':matchType==='spectator'\?'cpu-v-cpu':matchType==='free-kick-suite'\?'set-piece-suite':null/);
+  assert.match(preflight, /if\(liveWorkflow==='cpu-v-cpu'\)\{[\s\S]*?controllers\.player1Team===null&&controllers\.player2Team===null&&controllers\.aiTeam==='both'&&controllers\.online!==true&&controllers\.cooperative!==true/);
+  assert.match(preflight, /if\(autoplayValues\.length!==1\|\|autoplayValues\[0\]!=='1'\)markers\.push\(autoplayValues\.length>1\?'duplicate-autoplay-marker':'cpu-v-cpu-autoplay-marker-invalid'\)/);
   assert.match(preflight, /eligible=requested&&queryRequested&&payloadRequested&&!!decoded&&!!liveWorkflow&&unique\.length===0/);
   assert.match(preflight, /if\(!eligible\)return/);
   assert.match(preflight, /window\.__FL_V2_LIVE_PREFLIGHT=Object\.freeze/);
@@ -138,19 +164,26 @@ test('the match page conditionally loads the exact FL V2 runtime only after fail
     priorIndex = index;
     assert.doesNotMatch(matchHtml, new RegExp(`<script\\s+src=["'][^"']*${filename.replace(/\./g, '\\.')}`, 'i'), `${filename} must not load unconditionally`);
   }
-  assert.match(preflight, /pieces\.forEach\(src=>document\.write\('<script src="'\+src\+'\?v=174-fl-v2-1/);
+  assert.equal(authority.scriptCacheVersion, '174-fl-v2-final-candidate-2');
+  assert.match(preflight, /pieces\.forEach\(src=>document\.write\('<script src="'\+src\+'\?v=174-fl-v2-final-candidate-2/);
+  assert.match(matchHtml, /trueFeelPhysicalTouchAuthority:false,cpuPassRaceFilter:true/);
 });
 
-test('the live host composes candidate transactions with same-tick state restore and visible Build 173 failback', () => {
-  assert.match(matchHtml, /function liveV2Fallback\(reason\)[\s\S]*?liveV2Badge\('FL V2 fallback · Build 173 active',true,liveV2AttachFailure\)/);
+test('the live host composes candidate transactions with rollback and a blocking strict V2 stop', () => {
+  assert.match(matchHtml, /function liveV2Stop\(reason\)[\s\S]*?liveV2StrictStopped=true;paused=true;clockRunning=false[\s\S]*?liveV2Badge\('FL V2 stopped · Match halted',true,liveV2AttachFailure\)/);
   assert.match(matchHtml, /prepared=liveV2Authority\.prepareCommit\(frame\)/);
   assert.match(matchHtml, /liveV2Authority\.applyPrepared\(prepared\)/);
   assert.match(matchHtml, /liveV2Authority\.finalizePrepared\(prepared\)/);
   assert.match(matchHtml, /catch\(error\)\{liveV2RestoreTransactionState\(saved\);if\(prepared\)liveV2Authority\.rollbackPrepared\(prepared,error\)/);
   assert.match(matchHtml, /liveV2ControlApi\.rollback\(liveV2ControlRuntime,controlPlan,'outer-host-rollback'/);
-  assert.match(matchHtml, /window\.FLLiveV2=Object\.freeze\(\{status:[\s\S]*?disable:\(\)=>liveV2Fallback\('manual one-switch rollback'\)/);
+  assert.match(matchHtml, /window\.FLLiveV2=Object\.freeze\(\{status:[\s\S]*?stop:\(\)=>liveV2Stop\('manual FL V2 strict stop'\)/);
+  assert.match(matchHtml, /const liveV2LiveTick=liveV2RunTick\(\);if\(liveV2StrictStopped\|\|liveV2PeriodTransitionApplied\)return/);
+  assert.match(matchHtml, /id="v2StrictFailurePage"[\s\S]*?Export diagnostic log[\s\S]*?Restart FL V2[\s\S]*?Exit to match setup/);
+  assert.doesNotMatch(matchHtml, /FL V2 fallback · Build 173 active|build-173-fallback/);
   assert.match(matchHtml, /LIVE_V2_PREFLIGHT\.workflow==='single-player'/);
+  assert.match(matchHtml, /LIVE_V2_PREFLIGHT\.workflow==='cpu-v-cpu'/);
   assert.match(matchHtml, /LIVE_V2_PREFLIGHT\.workflow==='set-piece-suite'/);
+  assert.match(matchHtml, /controlOwnership:\{humanPlayerIds:\[\],cpuTeamIds:\['you','opp'\]\}/);
 });
 
 test('the exact-flag v2Shadow path remains offline, read-only and independently pinned', () => {
@@ -215,7 +248,7 @@ test('an optional external Build 173 reference can be verified without recording
   }
 });
 
-test('the workflow matrix preserves all 14 workflows, with exactly two explicit opt-ins and 12 legacy paths', () => {
+test('the workflow matrix preserves all 14 workflows, with exactly three explicit opt-ins and 11 legacy paths', () => {
   assert.equal(matrix.schema, 'football-legacy-protected-workflow-matrix-v1');
   assert.equal(matrix.schemaVersion, '2.0.0');
   assert.equal(matrix.build, 173);
@@ -227,7 +260,7 @@ test('the workflow matrix preserves all 14 workflows, with exactly two explicit 
   assert.equal(matrix.policy.removalAllowed, false);
   assert.equal(matrix.policy.silentRerouteAllowed, false);
   assert.equal(matrix.policy.onlineFoundationPolicy, 'frozen');
-  assert.equal(matrix.policy.rollback, 'same-tick-visible-one-switch-to-legacy');
+  assert.equal(matrix.policy.runtimeFailurePolicy, 'same-tick-rollback-then-strict-v2-stop');
   assert.deepEqual(matrix.policy.promotionOrder, [
     'legacy', 'shadow', 'suite-opt-in', 'offline-opt-in', 'migration-candidate', 'authoritative'
   ]);
@@ -240,8 +273,8 @@ test('the workflow matrix preserves all 14 workflows, with exactly two explicit 
   assert.deepEqual(matrix.workflows.map(item => item.id).sort(), required.sort());
   const optIns = matrix.workflows.filter(item => item.authority === 'conditional-offline-opt-in');
   const legacy = matrix.workflows.filter(item => item.authority === 'legacy');
-  assert.deepEqual(optIns.map(item => item.id), ['single-player-quick-play', 'set-piece-suite']);
-  assert.equal(legacy.length, 12);
+  assert.deepEqual(optIns.map(item => item.id), ['single-player-quick-play', 'cpu-versus-cpu', 'set-piece-suite']);
+  assert.equal(legacy.length, 11);
   assert.deepEqual(matrix.policy.explicitOfflineOptInWorkflows, optIns.map(item => item.id));
   for (const workflow of optIns) {
     assert.equal(workflow.defaultAuthority, 'legacy');
@@ -250,6 +283,18 @@ test('the workflow matrix preserves all 14 workflows, with exactly two explicit 
     assert.equal(workflow.activation.requestedEngine, 'fl-v2');
     assert.equal(workflow.activation.requiresExactQueryAndPayloadAgreement, true);
   }
+  const cpuWorkflow = matrix.workflows.find(item => item.id === 'cpu-versus-cpu');
+  assert.equal(cpuWorkflow.activation.quickPlayMatchType, 'spectator');
+  assert.equal(cpuWorkflow.activation.runtimeWorkflow, 'cpu-v-cpu');
+  assert.equal(cpuWorkflow.activation.requiresExactAllCpuOwnership, true);
+  assert.equal(cpuWorkflow.activation.requiresAutoplayQueryValue, '1');
+  assert.deepEqual(cpuWorkflow.activation.controlOwnership, {
+    humanPlayerIds: [], cpuTeamIds: ['you', 'opp']
+  });
+  for (const gate of [
+    'engine-selector', 'payload-query-agreement', 'deterministic-seed', 'exact-all-cpu-ownership',
+    'autoplay', 'ai-assignment', 'gameplay-authority', 'match-control', 'strict-v2-stop-no-legacy-continuation'
+  ]) assert.ok(cpuWorkflow.requiredGates.includes(gate), `CPU v CPU requires ${gate}`);
   for (const workflow of matrix.workflows) {
     assert.ok(['protected', 'frozen'].includes(workflow.status));
     assert.ok(workflow.entryPoints.length > 0);
@@ -258,12 +303,22 @@ test('the workflow matrix preserves all 14 workflows, with exactly two explicit 
   }
 });
 
-test('online files and online authority remain frozen byte-for-byte at Build 173', () => {
+test('online gameplay authority remains frozen to Build 173 through exact controller-only maintenance', () => {
   const online = manifest.protectedFiles.filter(entry => entry.path.startsWith('online/'));
   assert.deepEqual(online.map(entry => entry.path).sort(), ['online/app.js', 'online/index.html']);
-  for (const entry of online) {
-    assert.equal(entry.expectedRelation, 'byte-identical-frozen');
-    assert.equal(entry.candidateSha256, entry.baselineSha256);
+  assert.deepEqual(online.map(entry => entry.expectedRelation).sort(), [
+    'build-173-gameplay-authority-frozen-plus-controller-cache-bust',
+    'build-173-gameplay-authority-frozen-plus-dualsense-reconnect-input-transport-maintenance'
+  ]);
+  const maintenance = manifest.allowedCandidateDelta.controllerReconnectMaintenance;
+  assert.equal(maintenance.authority, 'input-transport-maintenance-only');
+  assert.equal(maintenance.onlineGameplayAuthority, 'build-173-frozen');
+  assert.equal(maintenance.onlineGameplayAuthorityChanged, false);
+  for (const [relative, expected] of Object.entries(maintenance.files)) {
+    assert.equal(sha256(read(relative)), expected, `${relative} reconnect maintenance hash`);
+  }
+  for (const [relative, expected] of Object.entries(maintenance.regressionGates)) {
+    assert.equal(sha256(read(relative)), expected, `${relative} reconnect gate hash`);
   }
   assert.equal(matrix.workflows.find(item => item.id === 'online-versus').authority, 'legacy');
   assert.equal(manifest.allowedCandidateDelta.offlineOptInAuthority.onlinePolicy, 'frozen-to-build-173');

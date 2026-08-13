@@ -16,7 +16,7 @@ const HASHES = Object.freeze({
   'restart-presentation-v2.js': '1d6e6c17c240152f2279a96f69431b9cf4ff38954b35a50a87e063704ebbf54c',
   'set-piece-suite-v2.js': 'ac49f9edce6120bfccf0c4f4f1462a0db57bdbe23a54711c7582ee38a632fcb0',
   'set-piece-coordinate-contract-v2.js': '7f5226aba8a58a4132501c3519820a536b921a6344bca99e65d2e49ec87247e0',
-  'live-v2-match-control-composition.js': 'e75e2d63fb57a884c829b705732714c2418fe4d3f5f4060ef58de2128e07bcc0'
+  'live-v2-match-control-composition.js': 'b71bb462f8b788f9e16d1d8342f8c97bb87a605e0f2fd99e19e633c7acaeda29'
 });
 
 function sha(file) {
@@ -103,13 +103,14 @@ function incident(eventId = 'offside-1') {
 
 test('review pins the exact composition and all four lower contracts', () => {
   for (const [file, expected] of Object.entries(HASHES)) assert.equal(sha(file), expected, file);
-  assert.deepEqual(Control.WORKFLOWS, ['single-player', 'set-piece-suite']);
+  assert.equal(Control.ACKNOWLEDGEMENT, 'EXPLICIT_FL_V2_OFFLINE_MATCH_CONTROL');
+  assert.deepEqual(Control.WORKFLOWS, ['single-player', 'cpu-v-cpu', 'set-piece-suite']);
   assert.equal(Control.FIXED_TICK_SECONDS, 1 / 60);
   assert.equal(Control.MAX_LEDGER, 1024);
 });
 
 test('factory provenance and approved offline workflows fail closed', () => {
-  for (const workflow of ['online-versus', 'home-co-op', 'cpu-v-cpu', 'local-co-op']) {
+  for (const workflow of ['online-versus', 'home-co-op', 'local-co-op']) {
     assert.throws(() => capability(workflow), /approved offline/);
   }
   const cap = capability();
@@ -118,6 +119,13 @@ test('factory provenance and approved offline workflows fail closed', () => {
   const runtime = Control.createRuntime(options('single'), cap);
   const otherCap = capability('set-piece-suite');
   assert.throws(() => Control.snapshot(runtime, otherCap), /matching issued/);
+  const cpuCap = capability('cpu-v-cpu');
+  const cpuRuntime = Control.createRuntime(options('cpu-v-cpu'), cpuCap);
+  const cpuPlan = Control.prepareTick(cpuRuntime, input(1, 'live', 'cpu-v-cpu'), cpuCap);
+  assert.equal(cpuPlan.effectiveEngine, 'fl-v2');
+  assert.equal(cpuPlan.workflow, 'cpu-v-cpu');
+  assert.equal(commit(cpuRuntime, cpuCap, cpuPlan).workflow, 'cpu-v-cpu');
+  assert.equal(Control.snapshot(cpuRuntime, cpuCap).restart.workflow, 'cpu-v-cpu');
 });
 
 test('clock phases and one transaction exclude every legacy clock advance', () => {

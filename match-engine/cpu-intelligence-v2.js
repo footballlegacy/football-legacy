@@ -21,6 +21,7 @@
   const DECISION_SCHEMA = 'football-legacy-cpu-decision-v2';
 
   const CANONICAL_PITCH = Object.freeze({ xMin: 84, xMax: 3260, yMin: 6, yMax: 2136 });
+  const GOAL_THIRD_OFFSET_CANONICAL = (CANONICAL_PITCH.yMax - CANONICAL_PITCH.yMin) * 2.44 / 68;
   const COORDINATE_CONTRACT = Object.freeze({
     schema: 'football-legacy-cpu-coordinate-contract-v2',
     snapshotPoints: 'supplied-pitch-units',
@@ -66,6 +67,10 @@
     minimumShotLaneClearance: 30,
     minimumCarryLaneClearance: 54,
     carryDistance: 230,
+    routineProgressiveRunMinimumProgress: 210,
+    routineProgressiveRunMinimumDistance: 260,
+    routineProgressiveRunClearanceBonus: 18,
+    routineProgressiveRunScoreAdvantage: 10,
     pitchInset: 18
   });
 
@@ -1347,6 +1352,45 @@
     return laneClearance(start, end, opponents, pitchSpace(snapshot.pitch));
   }
 
+  function shortSupportOptions(snapshot, carrier, config) {
+    const space = pitchSpace(snapshot.pitch);
+    const opponents = snapshot.players.filter(player => player.teamId !== snapshot.teamId &&
+      !player.sentOff && player.available);
+    const xInset = space.xFromCanonical(config.pitchInset);
+    const yInset = space.yFromCanonical(config.pitchInset);
+    const minimumDistance = 105;
+    const maximumDistance = 620;
+    const maximumBackwardProgress = -245;
+    const maximumForwardProgress = 330;
+    const leadSeconds = .16;
+    return snapshot.players.filter(player => player.teamId === snapshot.teamId && player.id !== carrier.id &&
+      !player.isGK && !player.sentOff && player.available).map(player => {
+        const target = {
+          x: clamp(player.x + player.vx * leadSeconds,
+            snapshot.pitch.xMin + xInset, snapshot.pitch.xMax - xInset),
+          y: clamp(player.y + player.vy * leadSeconds,
+            snapshot.pitch.yMin + yInset, snapshot.pitch.yMax - yInset)
+        };
+        const passDistance = distance(carrier, target, space);
+        const progress = space.xToCanonical(snapshot.attackingDirection * (target.x - carrier.x));
+        const lane = laneClearance(carrier, target, opponents, space);
+        const receiverSpace = laneClearance(player, player, opponents, space);
+        const beyondOffsideLine = snapshot.attackingDirection * (target.x - snapshot.offsideLine) >
+          -space.xFromCanonical(config.offsideBuffer * .25);
+        const centralLink = ['defensive-midfielder', 'midfielder', 'attacking-midfielder'].includes(familyOf(player)) ? 18 : 0;
+        const quality = (player.awareness + player.passing + player.control) / 3;
+        const distanceShape = -Math.abs(passDistance - 315) * .18;
+        const score = Math.min(210, lane) * .58 + Math.min(300, receiverSpace) * .42 +
+          progress * .055 + quality * .42 + distanceShape + centralLink;
+        return { player, target, passDistance, progress, lane, receiverSpace, beyondOffsideLine, score };
+      }).filter(option => !option.beyondOffsideLine && option.passDistance >= minimumDistance &&
+        option.passDistance <= maximumDistance && option.progress >= maximumBackwardProgress &&
+        option.progress <= maximumForwardProgress && option.lane >= config.minimumPassLaneClearance &&
+        option.receiverSpace >= config.minimumPassLaneClearance)
+      .sort((left, right) => right.score - left.score || left.passDistance - right.passDistance ||
+        left.player.id.localeCompare(right.player.id));
+  }
+
   function carrierIntent(snapshot, runs, memory, config) {
     const carrier = snapshot.players.find(player => player.id === snapshot.carrierId) || null;
     if (!carrier || snapshot.possessionTeamId !== snapshot.teamId) {
@@ -1359,10 +1403,25 @@
     };
     const space = pitchSpace(pitch);
     const goalDistance = distance(carrier, goal, space);
-    const shotClearance = nearestOpponentClearance(carrier, goal, snapshot);
-    if (goalDistance <= config.shotDistance && shotClearance >= config.minimumShotLaneClearance && carrier.shooting >= 62) {
+    // A footballer does not abandon a valid shot merely because the exact
+    // centre of the goal is screened. Test the centres of all three goal
+    // thirds while keeping the same physical lane-clearance rule. The keeper
+    // remains an opponent in this geometry, so placement can work around his
+    // position without bypassing the downstream save authority.
+    const goalThirdOffset = space.yFromCanonical(GOAL_THIRD_OFFSET_CANONICAL);
+    const farPostSign = carrier.y <= goal.y ? 1 : -1;
+    const shotLanes = [
+      { target: goal, tiePriority: 0 },
+      { target: { x: goal.x, y: goal.y + farPostSign * goalThirdOffset }, tiePriority: 1 },
+      { target: { x: goal.x, y: goal.y - farPostSign * goalThirdOffset }, tiePriority: 2 }
+    ].map(lane => ({ ...lane, clearance: nearestOpponentClearance(carrier, lane.target, snapshot) }))
+      .sort((left, right) => right.clearance - left.clearance || left.tiePriority - right.tiePriority);
+    const bestShotLane = shotLanes[0];
+    const shotClearance = bestShotLane.clearance;
+    const ratedShotDistance = config.shotDistance + clamp(carrier.shooting - 62, 0, 37) * 4;
+    if (goalDistance <= ratedShotDistance && shotClearance >= config.minimumShotLaneClearance && carrier.shooting >= 62) {
       return {
-        type: 'shot', targetPlayerId: null, target: goal,
+        type: 'shot', targetPlayerId: null, target: { ...bestShotLane.target },
         confidence: rounded(clamp(0.45 + carrier.shooting / 180 + shotClearance / 900, 0, 0.99)),
         reason: 'goal-range-and-shot-lane-open'
       };
@@ -1372,19 +1431,45 @@
       const releaseTarget = run.continuationTarget || run.target;
       const clearance = nearestOpponentClearance(carrier, releaseTarget, snapshot);
       const progress = space.xToCanonical(snapshot.attackingDirection * (releaseTarget.x - carrier.x));
-      return { run, runner, clearance, progress, score: progress * 0.12 + clearance * 0.42 + run.score * 0.75 };
-    }).filter(option => option.runner && option.clearance >= config.minimumPassLaneClearance && option.progress > 45)
+      const passDistance = distance(carrier, releaseTarget, space);
+      return { run, runner, clearance, progress, passDistance,
+        score: progress * 0.12 + clearance * 0.42 + run.score * 0.75 };
+    // A two-metre nudge is not a release into a coordinated run. Treat it as
+    // continued possession and let the carrier/receiver create separation.
+    // The previous 45-unit progress floor produced full-strength passes to a
+    // teammate almost standing on the ball, which MR correctly carried far
+    // beyond the nominal rendezvous.
+    }).filter(option => option.runner && option.clearance >= config.minimumPassLaneClearance &&
+      option.progress > 75 && option.passDistance >= 105)
       .sort((a, b) => b.score - a.score || a.run.playerId.localeCompare(b.run.playerId));
-    if (passOptions.length) {
-      const best = passOptions[0];
-      return {
-        type: 'pass', targetPlayerId: best.run.playerId,
-        target: { ...(best.run.continuationTarget || best.run.target) },
-        offsideTiming: cloneObject(best.run.offsideTiming || null),
-        confidence: rounded(clamp(0.42 + carrier.passing / 200 + best.clearance / 1000, 0, 0.98)),
-        reason: best.run.observedOpening ? 'release-newly-opened-run' : 'release-coordinated-run'
-      };
-    }
+    const releaseRun = best => ({
+      type: 'pass', targetPlayerId: best.run.playerId,
+      target: { ...(best.run.continuationTarget || best.run.target) },
+      offsideTiming: cloneObject(best.run.offsideTiming || null),
+      confidence: rounded(clamp(0.42 + carrier.passing / 200 + best.clearance / 1000, 0, 0.98)),
+      reason: best.run.observedOpening ? 'release-newly-opened-run' : 'release-coordinated-run'
+    });
+    const openedRun = passOptions.find(option => option.run.observedOpening);
+    if (openedRun) return releaseRun(openedRun);
+    const supportOptions = shortSupportOptions(snapshot, carrier, config);
+    // Circulation remains the default, but it must not erase an independently
+    // authored penetrating run whose live geometry is materially better. This
+    // comparison is deliberately systemic: progress, distance, lane clearance
+    // and the same run/support scores used by the planner all have to agree.
+    // The downstream live pass-race gate still owns whether the ball is safe
+    // to release; this layer only keeps a real forward option in contention.
+    const bestSupport = supportOptions[0] || null;
+    const progressiveRoutineRun = passOptions.find(option =>
+      !option.run.observedOpening && PENETRATING_RUNS.has(option.run.runType) &&
+      option.progress >= config.routineProgressiveRunMinimumProgress &&
+      option.passDistance >= config.routineProgressiveRunMinimumDistance &&
+      option.clearance >= config.minimumPassLaneClearance + config.routineProgressiveRunClearanceBonus &&
+      (!bestSupport || option.score >= bestSupport.score + config.routineProgressiveRunScoreAdvantage));
+    if (progressiveRoutineRun) return releaseRun(progressiveRoutineRun);
+    const carrierPressure = nearestOpponentClearance(carrier, carrier, snapshot);
+    const carrierFamily = familyOf(carrier);
+    const circulationRole = ['centre-back', 'full-back', 'wing-back', 'defensive-midfielder', 'midfielder']
+      .includes(carrierFamily);
     const xInset = space.xFromCanonical(config.pitchInset);
     const carryTarget = {
       x: clamp(carrier.x + snapshot.attackingDirection * space.xFromCanonical(config.carryDistance),
@@ -1392,6 +1477,34 @@
       y: carrier.y + ((pitch.yMin + pitch.yMax) / 2 - carrier.y) * 0.08
     };
     const carryClearance = nearestOpponentClearance(carrier, carryTarget, snapshot);
+    const assertiveCarrier = ['attacking-midfielder', 'winger', 'striker'].includes(carrierFamily);
+    // An unpressured attacking carrier should use the space in front of him.
+    // Previously every available support pass won first, producing lateral
+    // striker ping-pong and preventing the team from ever entering shot range.
+    if (assertiveCarrier && carrierPressure >= 110 && carryClearance >= config.minimumCarryLaneClearance) {
+      return {
+        type: 'carry', targetPlayerId: null, target: carryTarget,
+        confidence: rounded(clamp(0.45 + carrier.control / 185 + carryClearance / 1200, 0, 0.97)),
+        reason: 'attacking-carrier-space-open'
+      };
+    }
+    if (supportOptions.length && (circulationRole || carrierPressure < 180 || supportOptions[0].progress > 75)) {
+      const best = supportOptions[0];
+      return {
+        type: 'pass', targetPlayerId: best.player.id, target: { ...best.target }, offsideTiming: null,
+        confidence: rounded(clamp(.36 + carrier.passing / 300 + best.lane / 2200 + best.receiverSpace / 3000,
+          .58, .94)),
+        reason: 'short-support-circulation',
+        supportKind: best.progress < -45 ? 'recycle' : 'support',
+        supportMetrics: {
+          distance: rounded(best.passDistance),
+          progress: rounded(best.progress),
+          laneClearance: rounded(best.lane),
+          receiverSpace: rounded(best.receiverSpace)
+        }
+      };
+    }
+    if (passOptions.length) return releaseRun(passOptions[0]);
     if (carryClearance >= config.minimumCarryLaneClearance) {
       return {
         type: 'carry', targetPlayerId: null, target: carryTarget,

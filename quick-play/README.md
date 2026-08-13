@@ -5,7 +5,7 @@ This directory contains the five-stage Quick Play setup flow and its validated h
 ## Modes
 
 - Single Player: Player 1 controls the home team against the CPU.
-- Free Kick Practice: unlimited set-piece attempts from the main setup route.
+- Set-Piece Suite: free kicks, corners and penalties from the main setup route.
 - Co-op / Local 2P: Controller 1 takes Home and Controller 2 takes Away.
 - Same-Team Co-op: Controllers 1 and 2 share Home against the CPU.
 - CPU vs CPU: both teams are autonomous.
@@ -14,14 +14,19 @@ This directory contains the five-stage Quick Play setup flow and its validated h
 ## Gameplay engines
 
 - **Build 173 · Stable** is the default for every mode.
-- **FL V2 · Experimental Offline** can be selected for Single Player and Free Kick Practice.
-- Unsupported modes and Online resolve visibly and safely to Build 173.
+- **FL V2 · Strict Offline Playtest** can be selected for Single Player, all-CPU CPU vs CPU, and the Set-Piece Suite.
+- Once an FL V2 match launches, a V2 authority fault freezes the simulation behind an exportable diagnostic screen. It never silently continues as Build 173.
+- Local 2P, same-team co-op and Online select Build 173 visibly before kickoff because those workflows do not support V2 authority.
 
-The match package records the requested and effective engine, the engine version, any fallback reason and a deterministic simulation seed. The URL uses `engine=fl-v2` only when FL V2 is genuinely effective.
+Inside the Set-Piece Suite, free kicks, corners and goal kicks share directional service controls: left stick selects the line, Square supplies the normal loft, R1 + Square the lower/faster ball, and L1 + R1 + Square the driven ball. Circle remains the separate direct-free-kick shot route.
+
+The match package records the requested and effective engine, the engine version, any pre-launch selection reason (stored in the compatibility field `fallbackReason`) and a deterministic simulation seed. The URL uses `engine=fl-v2` only when FL V2 is genuinely effective; that field is never used to continue a launched V2 match as Build 173.
+
+Quick Play now treats match launch as a single transaction: the Start action immediately shows loading feedback and ignores a second activation. Shared controller discovery also clears stale held input across disconnect/reconnect, and text-entry fields are isolated from gameplay navigation.
 
 ## Team snapshot
 
-The four English divisions use the 2026/27 club memberships available when this prototype was built. Created clubs stored under `footballLegacyCreatedClubsV1` appear in a fifth Created Clubs category.
+The four English divisions use the 2026/27 club memberships available when this prototype was built. Created clubs stored under `footballLegacyCreatedClubsV1` appear in a fifth Created Clubs category. The historic-team set includes the Invincibles, Conte Chelsea and Ancelotti's representative 2013/14 Real Madrid BBC squad.
 
 ## Flow
 

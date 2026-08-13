@@ -95,7 +95,7 @@ test('Aerial Contact V2 exposes a browser/CommonJS API only through the exact of
   const browser = { window: {} };
   vm.runInNewContext(source, browser);
   assert.equal(browser.window.FootballLegacyAerialContactV2.VERSION, Aerial.VERSION);
-  assert.match(matchHtml, /const liveWorkflow=matchType==='single-player'\?'single-player':matchType==='free-kick-suite'\?'set-piece-suite':null/);
+  assert.match(matchHtml, /const liveWorkflow=matchType==='single-player'\?'single-player':matchType==='spectator'\?'cpu-v-cpu':matchType==='free-kick-suite'\?'set-piece-suite':null/);
   assert.match(matchHtml, /if\(!eligible\)return;[\s\S]*'aerial-contact-v2\.js'/);
   assert.match(matchHtml, /shadow-marker-conflict|frozen-or-unsupported/);
   assert.doesNotMatch(matchHtml, /<script[^>]+src=["']aerial-contact-v2\.js/);

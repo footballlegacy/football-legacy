@@ -42,10 +42,26 @@ const state = (overrides = {}) => Ball.createBallState({
   ...overrides
 });
 
-test('aerodynamics refinement has no unconditional load or live call and preserves untuned profile defaults', () => {
+test('MR aerodynamics loads only behind exact V2 preflight and preserves untuned profile defaults', () => {
   assert.doesNotMatch(matchHtml, /<script\s+src=["']ball-engine-v2\.js/i);
   assert.match(matchHtml, /id="build173V2ShadowPreflight"/);
-  assert.doesNotMatch(matchHtml, /FootballLegacyBallEngineV2/);
+  const shadowStart = matchHtml.indexOf('<script id="build173V2ShadowPreflight">');
+  const shadowEnd = matchHtml.indexOf('</script>', shadowStart);
+  const shadowPreflight = matchHtml.slice(shadowStart, shadowEnd);
+  assert.ok(shadowPreflight.indexOf('if(!eligible)return;') < shadowPreflight.indexOf("['ball-engine-v2.js'"),
+    'shadow Ball V2 bytes must load only after exact shadow eligibility');
+  const liveStart = matchHtml.indexOf('<script id="offlineLiveV2Preflight">');
+  const liveEnd = matchHtml.indexOf('</script>', liveStart);
+  const livePreflight = matchHtml.slice(liveStart, liveEnd);
+  assert.ok(livePreflight.indexOf('if(!eligible)return;') < livePreflight.indexOf("const pieces=['ball-engine-v2.js'"),
+    'live MR bytes must load only after exact offline workflow eligibility');
+  assert.match(livePreflight, /'live-v2-authority-adapter\.js'/);
+  const presentationLine = matchHtml.split('\n').find(line => line.includes('config.systems='));
+  assert.ok(presentationLine, 'the named-engine presentation config must exist');
+  assert.equal((presentationLine.match(/FootballLegacyBallEngineV2/g) || []).length, 2);
+  assert.doesNotMatch(matchHtml.replace(presentationLine, ''), /FootballLegacyBallEngineV2/,
+    'the host may expose the reviewed engine name for presentation but not call Ball V2 directly');
+  assert.match(presentationLine, /ballPhysics:window\.FootballLegacyBallEngineV2&&window\.FootballLegacyBallEngineV2\.ENGINE_NAME/);
   assert.deepEqual(Ball.DEFAULT_CONFIG.dragSurface, [
     { speed: 0, coefficient: 0.20 },
     { speed: 12, coefficient: 0.22 },

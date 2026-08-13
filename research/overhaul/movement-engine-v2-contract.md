@@ -1,6 +1,6 @@
-# Movement/contact engine v2 dormant contract
+# Movement/contact engine v2 contract
 
-Status: additive candidate only. `match-engine/match.html` neither loads nor calls this module; Build 173 remains the sole live locomotion, tackle and player-contact authority.
+Status: promoted only behind the explicit offline FL V2 opt-in for Single Player and CPU-v-CPU Quick Play. Build 173 remains the deliberate default and continues to own every unsupported/online workflow, rendering, rules, restarts and keepers. The V2 host adapter applies this engine transactionally; any failed candidate tick rolls back and the strict playtest host freezes before any Build 173 gameplay tick can advance.
 
 ## Boundary
 
@@ -36,6 +36,10 @@ Calling once for `N` ticks and calling in arbitrary chunks totalling `N` must pr
 
 Ordinary locomotion is explicit: `idle`, `walk`, `run`, `sprint`, `jockey` or `shield`. Speed, acceleration, turn response and mass derive from role family and physical attributes. Sprint drains stamina; low stamina scales speed and acceleration; non-running states recover stamina.
 
+Possession affects movement explicitly. A ball carrier receives a small, control-scaled speed reduction: roughly 0.4–2.5% while running and 0.8–3.5% while sprinting, with elite control at the low end. Off-ball players are unchanged. This is deliberately a minor footballing constraint, not a blanket pace nerf.
+
+The live First Touch handoff may author a serialized two-tick `touchBurstUntilTick` acceleration multiplier. It can improve only early acceleration after a directional touch; it never raises the terminal speed cap. Shielding uses the explicit `shield` context with a 1.9–3.1 m/s control band and 0.84 turn multiplier. The live host preserves L2 input, chooses the visible shielding side from the nearest challenger, and advances a persistent shield animation rather than freezing a single pose.
+
 Every accepted `stand-tackle` or `shoulder-challenge` command must immediately:
 
 - emit `command-acknowledged`;
@@ -62,12 +66,12 @@ The action then advances through `windup`, `contact` and `recovery`. The contact
 - `sharp-turn inertia`: proves a 180-degree request cannot snap velocity/facing on one tick, but completes under sustained input.
 - `sprint fatigue and recovery`: proves stamina drain, fatigue speed loss, stop and deterministic recovery.
 
-## Promotion gates
+## Live opt-in and regression gates
 
-Before any shadow adapter or live opt-in is considered, preserve:
+The following remain mandatory:
 
 1. CommonJS and plain-browser UMD API parity;
-2. dormant-authority assertion against `match.html`;
+2. no unconditional load: only the exact offline FL V2 preflight may load it;
 3. no random, wall-clock, presentation-clock or scheduler dependency;
 4. identical input/memory purity and JSON-safe output;
 5. explicit fixed tick and command tick validation;
@@ -76,6 +80,9 @@ Before any shadow adapter or live opt-in is considered, preserve:
 8. swept contact and deterministic mass-weighted separation fixtures;
 9. tackle acknowledgement/visibility plus win/loss/miss telemetry coverage;
 10. finite-state and maximum-speed safety gates;
-11. coexistence with the dormant ball, CPU intelligence and Build 173 foundation suites.
+11. carrier-versus-off-ball and low-versus-elite control-speed gates;
+12. two-tick acceleration-only burst with identical terminal maximum speed;
+13. shield input-to-engine-to-visible-host persistence and mirrored side choice;
+14. coexistence with Ball V2, CPU intelligence, Formation V2 and the protected Build 173 workflows.
 
-No constants in this candidate are live tuning values, and this component authorizes no removal, rerouting or reduction of an existing workflow.
+The opt-in authorizes no workflow removal. Unsupported modes and any online marker fail closed to Build 173.

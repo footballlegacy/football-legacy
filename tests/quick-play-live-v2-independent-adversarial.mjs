@@ -16,11 +16,13 @@ const Movement = require(path.join(engine, 'movement-engine-v2.js'));
 const CPU = require(path.join(engine, 'cpu-intelligence-v2.js'));
 const Formation = require(path.join(engine, 'formation-behaviour-v2.js'));
 const Contact = require(path.join(engine, 'live-v2-contact-authority-composer.js'));
+const Dribbling = require(path.join(engine, 'dribbling-state-v2.js'));
 const matchSource = readFileSync(path.join(engine, 'match.html'), 'utf8');
 const adapterSource = readFileSync(path.join(engine, 'live-v2-authority-adapter.js'), 'utf8');
+const contactSource = readFileSync(path.join(engine, 'live-v2-contact-authority-composer.js'), 'utf8');
 const historicSource = readFileSync(path.join(root, 'quick-play', 'historic-playtest-squads.js'), 'utf8');
 const hash = value => createHash('sha256').update(value).digest('hex');
-const dependencies = { ball: Ball, movement: Movement, cpu: CPU, formation: Formation, contact: Contact };
+const dependencies = { ball: Ball, movement: Movement, cpu: CPU, formation: Formation, contact: Contact, dribbling: Dribbling };
 
 function capability(extra = {}) {
   return Adapter.createCapability({
@@ -110,16 +112,41 @@ function validPayload(seed = 173173) {
   };
 }
 
+function cpuPayload(seed = 173173) {
+  return {
+    ...validPayload(seed),
+    matchType: 'spectator',
+    controllers: { player1Team: null, player2Team: null, aiTeam: 'both' }
+  };
+}
+
 test('frozen promotion bytes and lower-engine contracts are exact', () => {
-  assert.equal(hash(adapterSource), '4567ed9c55d9072e544e36c7572b5e7f07bcf0b3d0b5bcb275ff987c26faa326');
-  assert.equal(hash(matchSource), '0d0bc4ea63368722d7220526b717bf04769aa6ce074a90a4bf174a6105e0df82');
+  assert.equal(hash(adapterSource), '65e510d65fd27079758d4bd93137774810a735a8b4406cb9d6770fc30a2fdce4');
+  assert.equal(hash(matchSource), '22aa09cca9c2e4124f5b3594b44e44296ce015ad9148d588efbe158b7548a8fa');
   assert.equal(Adapter.VERSION, '1.0.0-offline-live-authority-playtest');
-  assert.deepEqual([...Adapter.SUPPORTED_WORKFLOWS], ['single-player']);
+  assert.deepEqual([...Adapter.SUPPORTED_WORKFLOWS], ['single-player', 'cpu-v-cpu']);
   assert.equal(Ball.VERSION, Adapter.DEPENDENCY_CONTRACTS.ball.version);
   assert.equal(Movement.VERSION, Adapter.DEPENDENCY_CONTRACTS.movement.version);
   assert.equal(CPU.VERSION, Adapter.DEPENDENCY_CONTRACTS.cpu.version);
   assert.equal(Formation.VERSION, Adapter.DEPENDENCY_CONTRACTS.formation.version);
   assert.equal(Contact.VERSION, Adapter.DEPENDENCY_CONTRACTS.contact.version);
+  assert.equal(Dribbling.VERSION, Adapter.DEPENDENCY_CONTRACTS.dribbling.version);
+  assert.match(adapterSource,
+    /const deliberatePass = Boolean\(intendedReceiverId\) && !\/\(shot\|penalty\|direct-free-kick\)\/\.test\(releaseDescriptor\)/,
+    'only a deliberate receiver-authored pass may create the reaction stimulus');
+  assert.match(adapterSource, /reactionStimulus: deliberatePass \? \{/);
+  assert.match(adapterSource, /stimulus: 'deliberate-pass-release'/);
+  assert.match(adapterSource, /snapshot\.tick <= stimulus\.releaseTick \+ dependencies\.contact\.MAX_REACTION_DELAY_TICKS/);
+  assert.match(adapterSource, /lastKickerTeamId && lastKickerTeamId !== domain\.possession\.teamId/,
+    'an external opposing touch must terminate the authored flight');
+  assert.match(adapterSource, /contactActor\.teamId !== possession\.teamId/,
+    'a same-tick retained opposition contact must neutralise the old flight contract');
+  assert.match(contactSource,
+    /if \(!request\.reactionContext \|\| !candidate\.roster\.bodyContactEligible\) return null/,
+    'MR passive player-body probing must be impossible outside a deliberate-pass reaction context');
+  assert.match(contactSource, /Ball\.resolvePassiveBodyDeflection\(request\.ballState/);
+  assert.match(contactSource, /contactType: 'involuntary-deflection', ownerCandidateId: null/);
+  assert.match(contactSource, /outfieldBallBlock: true/);
 });
 
 test('capabilities fail closed against forgery, online markers and unsupported workflows', () => {
@@ -201,7 +228,7 @@ test('a launch owns released-ball flight while retaining team, receiver and offs
   const target = snapshot(1).players.find(player => player.id === 'you-ST');
   const launch = {
     sequence: 'independent-pass-1', sourcePlayerId: source.id, targetPlayerId: target.id,
-    origin: { x: source.x, y: source.y, z: 0 }, direction: { x: 1, y: 0 },
+    origin: { x: source.x, y: source.y, z: 0 }, target: { x: target.x, y: target.y }, direction: { x: 1, y: 0 },
     speedMetresPerSecond: 20, liftAngleDeg: 5, sideSpinRpm: 0, topSpinRpm: 0,
     source: 'ground-pass', offsideCandidate: { playerId: target.id, mistimedEarly: true }
   };
@@ -211,10 +238,24 @@ test('a launch owns released-ball flight while retaining team, receiver and offs
   }));
   assert.ok(frame, JSON.stringify(live.status()));
   assert.ok(frame.hostProjection.ball, 'Ball V2 must integrate the released ball');
-  assert.deepEqual(frame.hostProjection.possession, {
-    teamId: 'you', ownerId: null, inFlight: true, intendedReceiverId: target.id,
-    releaseTick: 1, offsideCandidate: launch.offsideCandidate
+  assert.ok(frame.hostProjection.ball.x > source.x, 'a positive-x launch must advance toward its intended target');
+  const possession = frame.hostProjection.possession;
+  assert.equal(possession.teamId, 'you');
+  assert.equal(possession.ownerId, null);
+  assert.equal(possession.inFlight, true);
+  assert.equal(possession.intendedReceiverId, target.id);
+  assert.deepEqual(possession.intendedTarget, launch.target);
+  assert.ok(Number.isFinite(possession.intendedTargetWindowMetres) &&
+    possession.intendedTargetWindowMetres >= 1.5 && possession.intendedTargetWindowMetres <= 3.25);
+  assert.equal(possession.arrivalWindowEntered, false);
+  assert.equal(possession.releaseTick, 1);
+  assert.equal(possession.deliberatePass, true);
+  assert.deepEqual(possession.reactionStimulus, {
+    releaseTick: 1,
+    sourcePlayerId: source.id,
+    sourceTeamId: source.teamId
   });
+  assert.deepEqual(possession.offsideCandidate, launch.offsideCandidate);
   assert.equal(live.commitTick(frame), true);
   assert.ok(applied.ball);
   assert.equal(live.status().committedBallTicks, 1);
@@ -245,7 +286,10 @@ test('late Build 173 release resynchronises Ball V2 chronology to the current co
     flightType: 'ground-pass', launchIntent: launch, humanPlayerIds: [source.id]
   }));
   assert.ok(frame98, JSON.stringify(live.status()));
-  assert.equal(frame98.hostProjection.contact?.tick, 98);
+  assert.ok(frame98.hostProjection.ball, 'the late release must be projected by Ball V2');
+  assert.equal(frame98.ballTrace.start.outerTick, 97);
+  assert.equal(frame98.ballTrace.end.outerTick, 98,
+    'Ball V2 chronology must align to the host release tick even before a receiver contact exists');
   assert.equal(live.commitTick(frame98), true);
   assert.equal(live.status().enabled, true);
   assert.equal(live.status().lastCommittedTick, 98);
@@ -269,11 +313,29 @@ test('deterministic replay, bounded finite telemetry and reset epoch re-arm at t
   assert.deepEqual(traces[0], traces[1]);
 });
 
-test('preflight loads V2 only for one exact offline Single Player query/payload pair', () => {
+test('preflight loads V2 only for exact offline Single Player or all-CPU spectator query/payload pairs', () => {
   const good = preflight('?engine=fl-v2&simulationSeed=173173', validPayload());
   assert.equal(good.value.eligible, true);
   assert.equal(good.value.workflow, 'single-player');
-  assert.equal(good.writes.length, 14);
+  assert.equal(good.writes.length, 15);
+  const cpuGood = preflight('?engine=fl-v2&simulationSeed=173173&autoplay=1', cpuPayload());
+  assert.equal(cpuGood.value.eligible, true);
+  assert.equal(cpuGood.value.workflow, 'cpu-v-cpu');
+  assert.equal(cpuGood.writes.length, 15);
+  for (const [query, payload] of [
+    ['?engine=fl-v2&simulationSeed=173173', cpuPayload()],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=0', cpuPayload()],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=1&autoplay=1', cpuPayload()],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=1', { ...cpuPayload(), controllers: { player1Team: 'home', player2Team: null, aiTeam: 'away' } }],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=1', { ...cpuPayload(), controllers: { player1Team: null, player2Team: 'away', aiTeam: 'you' } }],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=1', { ...cpuPayload(), controllers: { player1Team: null, player2Team: null, aiTeam: 'both', cooperative: true } }],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=1', { ...cpuPayload(), controllers: { player1Team: null, player2Team: null, aiTeam: 'both', online: true } }],
+    ['?engine=fl-v2&simulationSeed=173173&autoplay=1', { ...cpuPayload(), online: { protocol: 'football-legacy-online-v1' } }]
+  ]) {
+    const result = preflight(query, payload);
+    assert.equal(result.value.eligible, false);
+    assert.equal(result.writes.length, 0);
+  }
   for (const [query, mutate] of [
     ['', null],
     ['?engine=fl-v2&engine=fl-v2&simulationSeed=173173', null],
@@ -290,7 +352,7 @@ test('preflight loads V2 only for one exact offline Single Player query/payload 
   }
 });
 
-test('live hook is exact-one and successful V2 ticks suppress every overlapping legacy authority', () => {
+test('live hook is exact-one while MR suppression leaves protected Build 173 wall, keeper and non-pass authority intact', () => {
   const callCount = (matchSource.match(/const liveV2LiveTick=liveV2RunTick\(\)/g) || []).length;
   assert.equal(callCount, 1);
   for (const gate of [
@@ -305,10 +367,16 @@ test('live hook is exact-one and successful V2 ticks suppress every overlapping 
   ]) assert.ok(matchSource.includes(gate), gate);
   const intelligenceBlock = matchSource.slice(matchSource.indexOf('function liveV2ApplyIntelligence'), matchSource.indexOf('function liveV2ApplyBall'));
   assert.doesNotMatch(intelligenceBlock, /\baiPass\s*\(|\baiShoot\s*\(/);
-  assert.match(matchSource, /resolveSetPieceWallBlock\(\);resolveBallBlock\(\);if\(!liveV2SuppressLegacyAerialDuel\)resolveAerialDuel\(false\)/);
+  assert.match(matchSource,
+    /resolveSetPieceWallBlock\(\);if\(!liveV2TickApplied\|\|!liveV2SuppressLegacyBallBlock\)resolveBallBlock\(\);if\(!liveV2SuppressLegacyAerialDuel\)resolveAerialDuel\(false\)/,
+    'legacy outfield blocking is suppressed only on an MR-authored V2 contact tick');
+  assert.match(matchSource,
+    /const boxKeeper=[^;]+;if\(!resolveKeeperBoxShotContest\(boxKeeper\)\)resolveSlowReachableKeeperSaveBeforeGoal\(\)/,
+    'keeper contact remains in the protected Build 173 lane');
   assert.match(adapterSource, /firstTouchReception: 'football-legacy-live-v2-contact-authority-composer'/);
   assert.match(adapterSource, /aerialVolleyAttempt: 'football-legacy-live-v2-contact-authority-composer'/);
-  assert.match(adapterSource, /wallKeeperAndUnownedOutfieldBallContact: 'build-173-explicit-contact-handoff'/);
+  assert.match(adapterSource, /looseBallRecoverySelection: 'football-legacy-live-v2-authority-adapter'/);
+  assert.match(adapterSource, /wallKeeperAndOutfieldBodyBlock: 'build-173-explicit-contact-handoff'/);
 });
 
 test('composed live bridge applies restart and Suite commands honestly and exactly once', () => {
@@ -323,7 +391,9 @@ test('composed live bridge applies restart and Suite commands honestly and exact
   ]) assert.ok(apply.includes(`command.type==='${command}'`), command);
   assert.match(apply, /throw new Error\('unrecognized FL V2 match-control command:/);
   assert.match(matchSource, /appliedCommandIds\.push\(command\.id\)/);
-  assert.match(matchSource, /appliedCommandIds\.length!==plan\.requiredCommandIds\.length/);
+  assert.match(matchSource, /function liveV2ControlReceiptMatches\(appliedCommandIds,requiredCommandIds\)/);
+  assert.match(matchSource, /applied\.length===required\.length&&applied\.every\(\(id,index\)=>id===required\[index\]\)/);
+  assert.match(matchSource, /if\(!liveV2ControlReceiptMatches\(appliedCommandIds,plan\.requiredCommandIds\)\)/);
   assert.doesNotMatch(matchSource, /appliedCommandIds:plan\.requiredCommandIds/);
 });
 
@@ -336,12 +406,15 @@ test('offside entry, Suite lifecycle, live aim and menu are wired to real host b
   assert.equal((offside.match(/whistle\(\)/g) || []).length, 1);
 
   assert.match(matchSource, /liveV2QueueSuiteEvent\('arm',\{launch:\{target:canonicalTarget,/);
-  assert.match(matchSource, /metadata:\{technique,shotLabel,power:\+p\.toFixed\(3\),liveAim:true\}/);
+  assert.match(matchSource, /metadata:\{technique,shotLabel,power:\+p\.toFixed\(3\),paceMps:Number\(paceMps\)\|\|null,arrivalMs:Number\(arrivalMs\)\|\|null,liveAim:true\}/);
   assert.match(matchSource, /liveV2QueueSuiteEvent\('contact',\{contact:\{kind:'keeper-contact'/);
   assert.match(matchSource, /resolveResult:'saved'/);
   assert.match(matchSource, /consumedSuiteEvent\.action==='arm'.*liveV2QueueSuiteEvent\('launch'\)/);
   assert.match(matchSource, /consumedSuiteEvent\.action==='contact'.*liveV2QueueSuiteEvent\('resolve'/);
-  assert.match(matchSource, /consumedSuiteEvent\.action==='resolve'.*liveV2QueueSuiteEvent\('reset'/);
+  assert.match(matchSource, /consumedSuiteEvent\.action==='resolve'\)\{liveV2SuiteShotActive=false;\}/,
+    'a resolved attempt must clear the active-shot guard without silently starting another trial');
+  assert.match(matchSource, /function liveV2RequestSuiteRepeat\(device='controller'\).*liveV2SuiteRepeatBlocker\(\).*liveV2QueueSuiteEvent\('repeat'/,
+    'repeat remains an explicit controller or keyboard workflow after resolution');
 
   assert.match(matchSource, /panel\.id='flV2SuiteMenu'/);
   assert.match(matchSource, /liveV2SuiteMenuOpen=!liveV2SuiteMenuOpen;liveV2RenderSuiteMenu\(\)/);
@@ -360,8 +433,12 @@ test('controller, keyboard, restart, replay, camera and red-card containment rem
   assert.match(matchSource, /liveV2Authority\.reset\('build-173-dead-ball-presentation-or-special-action-handoff'\)/);
 });
 
-test('Madrid BBC identity remains byte-exact and no workflow was removed', () => {
-  assert.equal(hash(historicSource), 'd73acc66679cc40f4db9d7f5584b48d2b5237b5ac276e4f3d950f5d7c9bb8a94');
+test('Madrid BBC identity, historic reaction defaults and every workflow remain intact', () => {
+  assert.equal(hash(historicSource), '4aacd4a33083eee996beace57ba038caf6e5b5a580f1896a9b1d765240b879d5');
+  assert.equal((historicSource.match(/reactions:overall/g) || []).length, 4,
+    'every historic positional default must now expose reactions');
+  assert.match(historicSource,
+    /Object\.entries\(\{\.\.\.roleDefaults\(role,overall\),\.\.\.specific\}\)/);
   for (const identity of ['madrid-real-2013-14', 'Ancelotti Real Madrid BBC', 'rm-bale', 'rm-benzema', 'rm-ronaldo']) {
     assert.ok(historicSource.includes(identity), identity);
   }

@@ -159,6 +159,27 @@ test('moving-away geometry miss produces no contact or possession handoff', () =
   assert.equal(result.handoff, null);
 });
 
+test('airborne nonidentity orientation stays a semantic no-contact miss after Ball cloning', () => {
+  const request = Adapter.createMovingAwayMissFixture();
+  const length = Math.hypot(0.21, -0.34, 0.18, 0.89);
+  request.ball.position.z = 1.4;
+  request.ball.grounded = false;
+  request.ball.regime = Ball.REGIMES.FLIGHT;
+  request.ball.orientation = {
+    x: 0.21 / length,
+    y: -0.34 / length,
+    z: 0.18 / length,
+    w: 0.89 / length
+  };
+  const before = Adapter.stableJson(request);
+  const result = Adapter.resolve(request, capability());
+  assert.equal(result.outcome, 'missed');
+  assert.equal(result.status, 'no-contact');
+  assert.equal(result.ownerCandidateId, null);
+  assert.equal(result.handoff, null);
+  assert.equal(Adapter.stableJson(request), before);
+});
+
 test('custom Ball inertia survives handoff and passive true energy cannot rise', () => {
   const request = Adapter.createCustomInertiaFixture();
   const result = Adapter.resolve(request, capability());
@@ -300,14 +321,27 @@ test('identity, team, pressure and loose-possession preconditions fail closed', 
   assert.throws(() => Adapter.resolve(owned, capability()), /loose ball/);
 });
 
-test('coordinate, SI range and receiver speed contracts fail before a handoff is built', () => {
+test('coordinate and SI range contracts fail while valid Movement slide speed remains contact-safe', () => {
   const coordinate = Adapter.createCleanReceptionFixture();
   coordinate.coordinateSystem = 'pixels';
   assert.throws(() => Adapter.resolve(coordinate, capability()), /coordinate system/);
 
-  const tooFast = Adapter.createCleanReceptionFixture();
-  tooFast.movementWorld.players.find(player => player.id === 'receiver').velocity.x = 15;
-  assert.throws(() => Adapter.resolve(tooFast, capability()), /First Touch output envelope/);
+  const fastReceiver = Adapter.createCleanReceptionFixture();
+  fastReceiver.movementWorld.players.find(player => player.id === 'receiver').velocity.x = 15;
+  const fastResult = Adapter.resolve(fastReceiver, capability());
+  assert.equal(fastResult.status, 'pending');
+  assert.equal(fastResult.ownerCandidateId, null,
+    'a receiver moving faster than the controlled-ball ceiling may touch but cannot attach the ball');
+  assert.ok(Math.hypot(
+    fastResult.handoff.contact.ballState.velocity.x,
+    fastResult.handoff.contact.ballState.velocity.y,
+    fastResult.handoff.contact.ballState.velocity.z
+  ) <= FirstTouch.DEFAULT_CONFIG.maximumOutputSpeed + 1e-9,
+  'receiver locomotion speed must not raise First Touch ball output above its separate ceiling');
+
+  const unsafeReceiver = Adapter.createCleanReceptionFixture();
+  unsafeReceiver.movementWorld.players.find(player => player.id === 'receiver').velocity.x = 20.01;
+  assert.throws(() => Adapter.resolve(unsafeReceiver, capability()), /Movement velocity.*input envelope|SI safety envelope/);
 
   const belowGround = Adapter.createCleanReceptionFixture();
   belowGround.ball.position.z = 0;

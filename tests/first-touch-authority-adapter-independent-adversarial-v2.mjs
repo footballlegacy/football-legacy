@@ -42,10 +42,14 @@ function finiteTree(value) {
 }
 
 test('freeze and dependency bytes match the independently reviewed versions', () => {
-  assert.equal(sha256(bytes.adapter), 'fbbea7ff774015fff32806c32eeb012e23ff2197f86470d4441a9aec27ea4c3e');
-  assert.equal(sha256(bytes.movement), '72df57ceaf2eab4d7eae46360a21cd6f1c1d9187d5efeefe2c033ad3d9fa864f');
-  assert.equal(sha256(bytes.ball), '4084ff8968859af2a4149703ce02eb37e0691fa20a542dbc97d793c33342c504');
-  assert.equal(sha256(bytes.touch), 'da75f9cc3ab3458df67c08f7868e45ae2c8d4ad1ef50ff07c78c3c100370b77d');
+  assert.equal(sha256(bytes.adapter), '2c6bf8b63e327c653556d73ec4c820b742038e63fb1f46217ef912eccec432f2');
+  assert.equal(sha256(bytes.movement), '0c64f95736de7658352bd76f1ebcb2b506cc881c2569ffc80cd1f86f6af2aa18');
+  assert.equal(sha256(bytes.ball), 'e5491486a7ccae8c8c2b748f42dba97160dffd8d9f52667927c56f3c6c6ecc70');
+  assert.equal(sha256(bytes.touch), 'f548c5c33c0d82ce044ebb083ec6deac0deb212f8287608f77e490794894152c');
+  assert.equal(Ball.ENGINE_NAME, 'Magnus Reynolds (MR) Engine');
+  assert.equal(Ball.VERSION, '2.0.0-shadow');
+  assert.equal(Ball.STATE_SCHEMA, 'football-legacy-ball-v2-state');
+  assert.equal(typeof Ball.resolvePassiveBodyDeflection, 'function');
   assert.match(source.adapter, /Movement\.VERSION !== '2\.0\.0-dormant'/);
   assert.match(source.adapter, /Ball\.VERSION !== '2\.0\.0-shadow'/);
   assert.match(source.adapter, /FirstTouch\.VERSION !== '2\.0\.0-dormant'/);
@@ -61,9 +65,11 @@ test('missing or wrong-version browser dependencies fail before capability or re
   })`, context), /Movement Engine V2 is required/);
 });
 
-test('module is conditionally composed by exact offline FL V2 while exposing no direct apply/commit/consume/live authority output', () => {
-  assert.match(source.match, /if\(!eligible\)return;[\s\S]*'first-touch-authority-adapter-v2\.js'/);
-  assert.doesNotMatch(source.match, /<script[^>]+src=["']first-touch-authority-adapter-v2\.js/);
+test('MR and First Touch are conditionally composed by exact offline FL V2 without static live-authority loading', () => {
+  const livePreflight = source.match.match(/<script id="offlineLiveV2Preflight">([\s\S]*?)<\/script>/)?.[1] || '';
+  assert.match(livePreflight, /if\(!eligible\)return;[\s\S]*'ball-engine-v2\.js'/);
+  assert.match(livePreflight, /if\(!eligible\)return;[\s\S]*'first-touch-authority-adapter-v2\.js'/);
+  assert.doesNotMatch(source.match, /<script[^>]+src=["'](?:ball-engine-v2|first-touch-authority-adapter-v2)\.js/);
   assert.equal(Object.keys(Adapter).some(key => /apply|commit|consume|mutate|live/i.test(key)), false);
   const result = Adapter.resolve(Adapter.createCleanReceptionFixture(), capability());
   assert.equal(result.liveApplied, false);

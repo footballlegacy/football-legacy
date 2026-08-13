@@ -443,6 +443,190 @@ test('carrier planner exposes deterministic shot, pass, carry and wait intents',
   assert.equal(wait.carrierIntent.reason, 'no-safe-progressive-action');
 });
 
+test('carrier planner retains short support circulation when no penetrating run is committed', () => {
+  const players = [
+    player('carrier', 'home', 1500, 1070, {
+      role: 'central-midfielder', position: 'CM', passing: 92, awareness: 92, control: 90
+    }),
+    player('support', 'home', 1280, 1240, {
+      role: 'defensive-midfielder', position: 'CDM', passing: 90, awareness: 91, control: 89,
+      vx: 0, vy: 0
+    }),
+    player('wide-support', 'home', 1540, 680, {
+      role: 'winger', position: 'LW', passing: 84, awareness: 86, control: 88,
+      vx: 0, vy: 0
+    }),
+    player('away-pressure', 'away', 1570, 1070, {
+      role: 'midfielder', position: 'CM', awareness: 88
+    }),
+    player('away-lane', 'away', 1740, 1070, {
+      role: 'defensive-midfielder', position: 'CDM', awareness: 90
+    }),
+    player('away-cover', 'away', 2450, 1550, {
+      role: 'centre-back', position: 'CB', awareness: 88
+    })
+  ];
+  const decision = Intelligence.decide(snapshot({
+    tick: 83,
+    players,
+    ball: { x: 1500, y: 1070 },
+    offsideLine: 2600
+  }), null, { maximumCommittedRuns: 0 });
+  assert.equal(decision.runs.some(run => run.playerId === 'support'), false);
+  assert.equal(decision.carrierIntent.type, 'pass', JSON.stringify(decision.carrierIntent));
+  assert.equal(decision.carrierIntent.targetPlayerId, 'support');
+  assert.equal(decision.carrierIntent.reason, 'short-support-circulation');
+  assert.ok(decision.carrierIntent.target.x <= 1280 + 1e-9);
+  assert.ok(decision.carrierIntent.confidence >= .6);
+});
+
+test('a clearly superior progressive coordinated run beats routine short circulation', () => {
+  const players = [
+    player('carrier', 'home', 1500, 1070, {
+      role: 'central-midfielder', position: 'CM', passing: 92, awareness: 92, control: 90
+    }),
+    player('support', 'home', 1280, 1240, {
+      role: 'defensive-midfielder', position: 'CDM', passing: 90, awareness: 91, control: 89,
+      vx: 0, vy: 0
+    }),
+    player('runner', 'home', 1750, 680, {
+      role: 'winger', position: 'LW', pace: 92, acceleration: 94, vx: 0, vy: 0
+    }),
+    player('away-pressure', 'away', 1570, 1070),
+    player('away-cover', 'away', 2450, 1550)
+  ];
+  const decision = Intelligence.decide(snapshot({
+    tick: 84,
+    players,
+    ball: { x: 1500, y: 1070 },
+    offsideLine: 2800
+  }));
+  const routineRun = decision.runs.find(run => run.playerId === 'runner');
+  assert.ok(routineRun, 'the off-ball run should still be authored');
+  assert.equal(routineRun.observedOpening, false);
+  assert.equal(decision.carrierIntent.type, 'pass');
+  assert.equal(decision.carrierIntent.targetPlayerId, 'runner');
+  assert.equal(decision.carrierIntent.reason, 'release-coordinated-run');
+});
+
+test('routine run does not override safer circulation without the required lane advantage', () => {
+  const players = [
+    player('carrier', 'home', 1500, 1070, {
+      role: 'central-midfielder', position: 'CM', passing: 92, awareness: 92, control: 90
+    }),
+    player('support', 'home', 1280, 1240, {
+      role: 'defensive-midfielder', position: 'CDM', passing: 90, awareness: 91, control: 89,
+      vx: 0, vy: 0
+    }),
+    player('runner', 'home', 1750, 680, {
+      role: 'winger', position: 'LW', pace: 92, acceleration: 94, vx: 0, vy: 0
+    }),
+    player('away-pressure', 'away', 1560, 1070),
+    player('away-cover', 'away', 2450, 1550)
+  ];
+  const decision = Intelligence.decide(snapshot({
+    tick: 84,
+    players,
+    ball: { x: 1500, y: 1070 },
+    offsideLine: 2800
+  }));
+  const routineRun = decision.runs.find(run => run.playerId === 'runner');
+  assert.ok(routineRun, 'the off-ball run remains independently authored');
+  assert.ok(routineRun.passClearance < Intelligence.DEFAULT_CONFIG.minimumPassLaneClearance +
+    Intelligence.DEFAULT_CONFIG.routineProgressiveRunClearanceBonus);
+  assert.equal(decision.carrierIntent.type, 'pass');
+  assert.equal(decision.carrierIntent.targetPlayerId, 'support');
+  assert.equal(decision.carrierIntent.reason, 'short-support-circulation');
+});
+
+test('an unpressured attacker carries into space before recycling a routine support pass', () => {
+  const players = [
+    player('carrier', 'home', 1500, 1070, {
+      role: 'striker', position: 'ST', passing: 88, awareness: 92, control: 94
+    }),
+    player('support', 'home', 1510, 1420, {
+      role: 'winger', position: 'RW', passing: 88, awareness: 90, control: 91
+    }),
+    player('away-left', 'away', 2460, 420),
+    player('away-right', 'away', 2460, 1740)
+  ];
+  const decision = Intelligence.decide(snapshot({
+    tick: 85,
+    players,
+    ball: { x: 1500, y: 1070 },
+    offsideLine: 2900
+  }), null, { maximumCommittedRuns: 0 });
+  assert.equal(decision.carrierIntent.type, 'carry', JSON.stringify(decision.carrierIntent));
+  assert.equal(decision.carrierIntent.reason, 'attacking-carrier-space-open');
+  assert.ok(decision.carrierIntent.target.x > 1500);
+});
+
+test('elite shooting extends a clear shot decision into a realistic edge-of-box range', () => {
+  const players = [
+    player('carrier', 'home', 2560, 1070, {
+      role: 'striker', position: 'ST', shooting: 95, control: 92
+    }),
+    player('away-left', 'away', 2700, 420),
+    player('away-right', 'away', 2700, 1740)
+  ];
+  const decision = Intelligence.decide(snapshot({
+    tick: 86,
+    players,
+    ball: { x: 2560, y: 1070 },
+    offsideLine: 3100
+  }));
+  assert.equal(decision.carrierIntent.type, 'shot', JSON.stringify(decision.carrierIntent));
+  assert.equal(decision.carrierIntent.reason, 'goal-range-and-shot-lane-open');
+});
+
+test('a screened centre lane selects an open goal third without bypassing defenders', () => {
+  const goalCentreY = (6 + 2136) / 2;
+  const players = [
+    player('carrier', 'home', 2560, goalCentreY, {
+      role: 'striker', position: 'ST', shooting: 95, control: 92
+    }),
+    player('centre-screen', 'away', 2900, goalCentreY, {
+      role: 'goalkeeper', position: 'GK', isGK: true, awareness: 95
+    })
+  ];
+  const first = Intelligence.decide(snapshot({
+    tick: 87,
+    players,
+    ball: { x: 2560, y: goalCentreY },
+    offsideLine: 3100
+  }), null, { maximumCommittedRuns: 0 });
+  const repeated = Intelligence.decide(snapshot({
+    tick: 87,
+    players,
+    ball: { x: 2560, y: goalCentreY },
+    offsideLine: 3100
+  }), null, { maximumCommittedRuns: 0 });
+  assert.equal(first.carrierIntent.type, 'shot', JSON.stringify(first.carrierIntent));
+  assert.notEqual(first.carrierIntent.target.y, goalCentreY);
+  assert.ok(Math.abs(first.carrierIntent.target.y - goalCentreY) < 115);
+  assert.deepEqual(repeated.carrierIntent.target, first.carrierIntent.target);
+});
+
+test('carrier refuses the shot when centre and both goal thirds are genuinely screened', () => {
+  const goalCentreY = (6 + 2136) / 2;
+  const thirdOffsetAtScreen = 2.44 / 68 * (2136 - 6) * ((3100 - 2560) / (3260 - 2560));
+  const players = [
+    player('carrier', 'home', 2560, goalCentreY, {
+      role: 'striker', position: 'ST', shooting: 95, control: 92
+    }),
+    player('centre-screen', 'away', 3100, goalCentreY),
+    player('upper-third-screen', 'away', 3100, goalCentreY - thirdOffsetAtScreen),
+    player('lower-third-screen', 'away', 3100, goalCentreY + thirdOffsetAtScreen)
+  ];
+  const decision = Intelligence.decide(snapshot({
+    tick: 88,
+    players,
+    ball: { x: 2560, y: goalCentreY },
+    offsideLine: 3150
+  }), null, { maximumCommittedRuns: 0 });
+  assert.notEqual(decision.carrierIntent.type, 'shot', JSON.stringify(decision.carrierIntent));
+});
+
 test('telemetry contains auditable perception, bid, transition, constraint and carrier records', () => {
   const fixture = Intelligence.createBaleStyleOpenSpaceBeelineFixture();
   let decision = Intelligence.decide(fixture.snapshots.closed);

@@ -101,10 +101,59 @@ test('ball, shadow bridge and movement candidate coexist in CommonJS and one bro
   assert.equal(browser.window.FootballLegacyMovementEngineV2.VERSION, Movement.VERSION);
 });
 
-test('LIVE AUTHORITY GATE: reviewed candidates have no unconditional load or live projection call', () => {
+test('LIVE AUTHORITY GATE: candidates remain default-off and frozen online', () => {
   assert.doesNotMatch(matchHtml, /<script\s+src=["'](?:ball-engine-v2|ball-shadow-bridge-v2|movement-engine-v2)\.js/i);
   assert.match(matchHtml, /id="build173V2ShadowPreflight"/);
-  assert.doesNotMatch(matchHtml, /FootballLegacyBallEngineV2|FootballLegacyBallShadowBridgeV2|FootballLegacyMovementEngineV2/);
+  const match = matchHtml.match(/<script id="offlineLiveV2Preflight">([\s\S]*?)<\/script>/);
+  assert.ok(match, 'conditional offline-live preflight must exist');
+
+  const run = (search = '', payload = null) => {
+    const writes = [];
+    const window = {};
+    const hash = payload === null
+      ? ''
+      : `#flMatch=${Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url')}`;
+    vm.runInNewContext(match[1], {
+      window,
+      location: { search, hash },
+      document: { write: value => writes.push(String(value)) },
+      URLSearchParams,
+      TextDecoder,
+      Uint8Array,
+      atob
+    });
+    return {
+      diagnostic: JSON.parse(JSON.stringify(window.__FL_V2_LIVE_PREFLIGHT)),
+      writes
+    };
+  };
+
+  const defaultRoute = run();
+  assert.equal(defaultRoute.diagnostic.requested, false);
+  assert.equal(defaultRoute.diagnostic.eligible, false);
+  assert.equal(defaultRoute.diagnostic.reason, 'not-requested');
+  assert.deepEqual(defaultRoute.writes, []);
+
+  const onlineRoute = run(
+    '?engine=fl-v2&simulationSeed=173&online=true',
+    {
+      matchType: 'single-player',
+      simulationSeed: 173,
+      engine: {
+        requested: 'fl-v2',
+        effective: 'fl-v2',
+        version: '1.0.0-offline-live-authority-playtest',
+        fallbackReason: null
+      },
+      online: true
+    }
+  );
+  assert.equal(onlineRoute.diagnostic.requested, true);
+  assert.equal(onlineRoute.diagnostic.eligible, false);
+  assert.equal(onlineRoute.diagnostic.reason, 'frozen-or-unsupported');
+  assert.ok(onlineRoute.diagnostic.urlMarkers.includes('online'));
+  assert.ok(onlineRoute.diagnostic.urlMarkers.includes('decoded-online'));
+  assert.deepEqual(onlineRoute.writes, []);
 });
 
 test('online freezes legacy authority even with an otherwise valid offline capability', () => {

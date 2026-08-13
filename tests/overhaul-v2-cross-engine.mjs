@@ -70,7 +70,7 @@ function snapshot(data = {}) {
   };
 }
 
-test('both candidates coexist in CommonJS and one browser global without joining live authority', () => {
+test('both candidates coexist and browser loading stays behind exact offline preflight gates', () => {
   assert.equal(Ball.VERSION, '2.0.0-shadow');
   assert.equal(CPU.VERSION, '2.0.0-dormant');
   assert.notEqual(Ball, CPU);
@@ -83,8 +83,13 @@ test('both candidates coexist in CommonJS and one browser global without joining
   assert.notEqual(browser.window.FootballLegacyBallEngineV2, browser.window.FootballLegacyCPUIntelligenceV2);
 
   assert.doesNotMatch(matchHtml, /<script\s+src=["'](?:ball-engine-v2|cpu-intelligence-v2)\.js/i);
-  assert.match(matchHtml, /id="build173V2ShadowPreflight"/);
-  assert.doesNotMatch(matchHtml, /FootballLegacyBallEngineV2|FootballLegacyCPUIntelligenceV2/);
+  const shadowPreflight = matchHtml.match(/<script id="build173V2ShadowPreflight">([\s\S]*?)<\/script>/)?.[1] || '';
+  const livePreflight = matchHtml.match(/<script id="offlineLiveV2Preflight">([\s\S]*?)<\/script>/)?.[1] || '';
+  assert.match(shadowPreflight, /if\(!eligible\)return;[\s\S]*'ball-engine-v2\.js'[\s\S]*'cpu-intelligence-v2\.js'/);
+  assert.match(livePreflight, /if\(!eligible\)return;[\s\S]*'ball-engine-v2\.js'[\s\S]*'cpu-intelligence-v2\.js'/);
+  assert.match(matchHtml,
+    /window\.FootballLegacyBallEngineV2&&window\.FootballLegacyBallEngineV2\.ENGINE_NAME/,
+    'the match may consume MR only after a gated preflight has installed its browser global');
 });
 
 test('combined deterministic calls remain byte-identical and input-order invariant', () => {
