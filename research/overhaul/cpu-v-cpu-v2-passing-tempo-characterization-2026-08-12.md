@@ -87,10 +87,10 @@ Green/red counts:
 - Characterization file: four green / zero red (eight-seed sample, isolated cadence, replay/chunk determinism, bad chronology).
 - Current contact composer: fourteen green / zero red.
 
-Run with bundled ChatGPT Node:
+Run with Node.js:
 
 ```text
-/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node --test --test-reporter=spec tests/cpu-v-cpu-v2-tempo-characterization.mjs
+node --test --test-reporter=spec tests/cpu-v-cpu-v2-tempo-characterization.mjs
 ```
 
 No production file was edited by this lane.
