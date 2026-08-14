@@ -29,7 +29,7 @@ test('no public entry point selects or launches the prior engine', () => {
 
 test('only the three approved V2 workflows expose playable controls', () => {
   for (const mode of ['single-player', 'spectator', 'free-kick-suite']) {
-    assert.match(root, new RegExp(`mode=${mode}(?:&amp;|&)engine=fl-v2(?:&amp;|&)candidate=4`));
+    assert.match(root, new RegExp(`mode=${mode}(?:&amp;|&)engine=fl-v2(?:&amp;|&)candidate=5`));
     assert.match(quick, new RegExp(`<option value="${mode}">`));
   }
   assert.match(quick, /<option value="co-op" disabled>/);
@@ -48,19 +48,19 @@ test('Online is a static unavailable notice with no playable transport', () => {
 });
 
 test('old setup pages and launchers route through V2 Quick Play', () => {
-  assert.match(retiredSetup, /http-equiv="refresh"[^>]+quick-play\/index\.html\?mode=single-player&amp;engine=fl-v2&amp;candidate=4/);
+  assert.match(retiredSetup, /http-equiv="refresh"[^>]+quick-play\/index\.html\?mode=single-player&amp;engine=fl-v2&amp;candidate=5/);
   assert.doesNotMatch(retiredSetup, /<form|instantResultBtn|match\.html\?/);
   for (const source of [singleLauncher, macMatchLauncher, windowsMatchLauncher]) {
-    assert.match(source, /quick-play[\\/]index\.html\?mode=single-player(?:&|&)engine=fl-v2(?:&|&)candidate=4/);
+    assert.match(source, /quick-play[\\/]index\.html\?mode=single-player(?:&|&)engine=fl-v2(?:&|&)candidate=5/);
   }
   assert.match(twoPlayerLauncher, /unavailable while its match authority is migrated to FL V2/);
-  assert.match(twoPlayerLauncher, /quick-play\/index\.html\?mode=co-op&engine=fl-v2&candidate=4/);
+  assert.match(twoPlayerLauncher, /quick-play\/index\.html\?mode=co-op&engine=fl-v2&candidate=5/);
 });
 
 test('raw, stale and rejected match routes enter strict V2 stop instead of gameplay', () => {
   assert.match(match, /if\(!LIVE_V2_PREFLIGHT\.requested\)\{liveV2Stop\('FL V2 is required:/);
   assert.match(match, /if\(LIVE_V2_PREFLIGHT\.eligible!==true\)\{liveV2Stop\('FL V2 preflight rejected:/);
-  assert.match(match, /candidateValues\[0\]!=='4'/);
+  assert.match(match, /candidateValues\[0\]!=='5'/);
   assert.match(match, /payloadValues\.length!==1/);
   assert.match(match, /decoded\.mode!=='quickPlay'/);
   assert.match(match, /exactControllerKeys/);

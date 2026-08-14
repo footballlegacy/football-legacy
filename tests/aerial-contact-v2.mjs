@@ -98,15 +98,15 @@ test('Aerial Contact V2 exposes a browser/CommonJS API only through the exact of
   const preflight = matchHtml.match(/<script id="offlineLiveV2Preflight">([\s\S]*?)<\/script>/)?.[1];
   assert.ok(preflight, 'exact offline FL V2 preflight must remain extractable');
   assert.match(preflight, /matchType=String\(decoded&&decoded\.matchType\|\|''\),liveWorkflow=matchType==='single-player'\?'single-player':matchType==='spectator'\?'cpu-v-cpu':matchType==='free-kick-suite'\?'set-piece-suite':null/);
-  assert.match(preflight, /candidateValues\[0\]!=='4'/);
+  assert.match(preflight, /candidateValues\[0\]!=='5'/);
   assert.match(preflight, /quickPlayValues\[0\]!=='1'/);
   assert.match(preflight, /eligible=requested&&queryRequested&&payloadRequested&&!!decoded&&!!liveWorkflow&&unique\.length===0/);
   const gate = preflight.indexOf('if(!eligible)return;');
   const aerialLoader = preflight.indexOf("'aerial-contact-v2.js'");
   const liveAdapterLoader = preflight.indexOf("'live-v2-authority-adapter.js'");
   assert.ok(gate >= 0 && aerialLoader > gate && liveAdapterLoader > aerialLoader,
-    'Aerial Contact V2 must load after Candidate 4 eligibility and before the live adapter');
-  assert.match(preflight, /174-fl-v2-final-candidate-4/);
+    'Aerial Contact V2 must load after Candidate 5 eligibility and before the live adapter');
+  assert.match(preflight, /174-fl-v2-final-candidate-5/);
   assert.match(preflight, /shadow-marker-conflict|frozen-or-unsupported/);
   assert.doesNotMatch(matchHtml, /<script[^>]+src=["']aerial-contact-v2\.js/);
 });

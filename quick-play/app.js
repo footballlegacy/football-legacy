@@ -18,7 +18,7 @@ const preferences=readSettings();
 const QUICK_PLAY_ENGINE_VERSION='1.0.0-offline-live-authority-playtest';
 const FL_V2_ENGINE='fl-v2';
 const UNAVAILABLE_ENGINE='unavailable';
-const FL_V2_CANDIDATE='4';
+const FL_V2_CANDIDATE='5';
 const FL_V2_PLAYABLE_MODES=Object.freeze(['single-player','free-kick-suite','spectator']);
 function normalizeEngineRequest(){return FL_V2_ENGINE}
 function resolveEngineSelection(requested,matchType,online=false){

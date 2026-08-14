@@ -43,7 +43,7 @@ function fixture(tick, state, ballState, sourceKind = 'human') {
 }
 
 test('independent source audit finds an explicit finite machine, no ambient randomness, and no difficulty branch', () => {
-  assert.equal(createHash('sha256').update(source).digest('hex'), 'fa1e9e2d4acb64f8f7028e2a21df2ab9e49bcf9c7f11eefaf6e3dfa402150eab');
+  assert.equal(createHash('sha256').update(source).digest('hex'), '84ae72d02125b2bdf273dc838258ce6b26d9dfe59d52e568e262d1550ab72a42');
   assert.equal(Dribbling.ENGINE_NAME, 'True Feel');
   assert.equal(Dribbling.CONFIG.minimumTouchCadenceTicks, 20);
   assert.equal(Dribbling.CONFIG.maximumTouchCadenceTicks, 34);

@@ -1,6 +1,6 @@
-# FL V2-only playable authority — 13 August 2026
+# FL V2-only playable authority — approved 13 August, Candidate 5 refresh 14 August 2026
 
-Status: approved release contract for Build 174 Candidate 4.
+Status: approved release contract for Build 174 Candidate 5; the playable-authority scope is unchanged from the Candidate 4 cutover.
 
 This contract supersedes the earlier Build 173-default and FL V2 opt-in release policy. It changes which match engine may be played; it does not erase the earlier baselines, evidence, tests or archived versions that made the migration auditable.
 
@@ -44,17 +44,17 @@ Some source identifiers, adapters, baseline hashes, fixtures, tests and comments
 
 Those names do not confer playable authority. Dormant module headers written during the shadow/opt-in stages are superseded by this contract wherever they imply that Build 173 remains selectable, default or playable.
 
-The separate FL V1.5 forensic archive remains untouched. It is an independently preserved historical game file set, not a fallback bundled into Candidate 4.
+The separate FL V1.5 forensic archive remains untouched. It is an independently preserved historical game file set, not a fallback bundled into Candidate 5.
 
 ## Release gates
 
-Candidate 4 may be published only when all of the following are true:
+Candidate 5 may be published only when all of the following are true:
 
 - Quick Play exposes FL V2 as a fixed, non-selectable authority.
 - Only Single Player, CPU versus CPU and Set-Piece Suite can launch a match.
 - Local two-player, Home Co-op and Online are visibly unavailable and cannot launch.
 - Old setup pages, launchers, direct URLs and malformed/cached payloads cannot enter previous-build gameplay.
-- The protected workflow matrix, manifest hashes and cache markers describe Candidate 4.
+- The protected workflow matrix, manifest hashes and cache markers describe Candidate 5.
 - Focused authority, deterministic, controller, restart, replay, set-piece and browser gates pass on the frozen bytes.
 - The reviewed commit is pushed and merged, then the hosted GitHub Pages assets are verified rather than inferred from the merge.
 

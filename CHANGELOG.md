@@ -1,6 +1,6 @@
 # Football Legacy — Changelog
 
-Last reviewed: 13 August 2026 — Build 174 Candidate 4 V2-only release closure
+Last reviewed: 14 August 2026 — Build 174 Candidate 5 passing, locomotion and directional-touch release
 
 This file records the two source lines and the combined build produced from them:
 
@@ -8,7 +8,16 @@ This file records the two source lines and the combined build produced from them
 - **Career and data build v0.30.1** — the current Player Career/original-names copy with the Create-a-Club career fixes below.
 - **Match Engine v0.96** — Josh's GitHub pull request #1, included unchanged except for the intentional Quick Play integration described below.
 
-## Build 174 Candidate 4 — FL V2-only playable authority
+## Build 174 Candidate 5 — accepted passing, locomotion and directional-touch baseline
+
+- Freezes the human-accepted normal-X ground pass and ordinary ground-Triangle profiles after iterative live playtests: shorter tap access, faster charge response, stronger opening impulse, progressive grass drag and materially larger power-dependent end roll.
+- Restores direct, agility-rated 45, 90 and 180 degree turning without velocity snaps, hidden terminal-speed bonuses or the rejected truck-turn philosophy.
+- Splits sprint-forward L1/LB + right-stick touches across the full 150-degree forward sector into light, strong and physical double-flick tiers while preserving the accepted jogging and off-angle touch behaviour.
+- Gives every sprint-forward tier an opt-in Magnus-Reynolds progressive turf curve. The light tier extends slightly; strong and double preserve their accepted physical gaps; all settle naturally before the emergency containment distance instead of stopping dead while still moving quickly.
+- Preserves physical interception, First Touch ownership, independent receiver reading, player-authored direction and the separate FL V1.5 forensic archive. Nothing scripts the lost Golden Sequence.
+- Uses the cache-only `candidate=5` marker and `174-fl-v2-final-candidate-5` module token.
+
+## Build 174 Candidate 4 — V2-only playable-authority cutover
 
 - Makes FL V2 the fixed and sole playable match authority. Quick Play no longer offers a previous-build selector, default or fallback.
 - Keeps Single Player, all-CPU CPU vs CPU and Set-Piece Suite as the released playable modes.

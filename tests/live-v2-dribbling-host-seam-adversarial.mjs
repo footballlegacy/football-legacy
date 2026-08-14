@@ -107,7 +107,7 @@ function payload(matchType = 'single-player', overrides = {}) {
 }
 
 function exactQuery(extra = '') {
-  return `?quickPlay=1&engine=fl-v2&candidate=4&simulationSeed=733173${extra}`;
+  return `?quickPlay=1&engine=fl-v2&candidate=5&simulationSeed=733173${extra}`;
 }
 
 function createActionHarness() {

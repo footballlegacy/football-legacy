@@ -22,7 +22,7 @@ function inlineScript(id) {
   return match[1];
 }
 
-test('F0 records FL V2 Candidate 4 as the sole playable authority', () => {
+test('F0 records FL V2 Candidate 5 as the sole playable authority', () => {
   assert.equal(manifest.schema, 'football-legacy-overhaul-baseline-v1');
   assert.equal(manifest.schemaVersion, '2.0.0');
   assert.equal(manifest.build, 173);
@@ -122,7 +122,7 @@ test('Quick Play fixes FL V2 as the sole authority for exactly three playable mo
   assert.deepEqual(cpuWorkflow.controlOwnership, { humanPlayerIds: [], cpuTeamIds: ['you', 'opp'] });
   assert.deepEqual(cpuWorkflow.queryRequirement, { autoplay: '1' });
   assert.equal(authority.queryContract.autoplay, 'exactly-one-value-1-for-cpu-versus-cpu-only');
-  assert.equal(authority.queryContract.candidate, '4-cache-only');
+  assert.equal(authority.queryContract.candidate, '5-cache-only');
   assert.deepEqual(authority.payloadContract['controllers.cpu-versus-cpu'], {
     player1Team: null, player2Team: null, aiTeam: 'both', online: 'not-true', cooperative: 'not-true'
   });
@@ -159,7 +159,7 @@ test('the match page conditionally loads the exact FL V2 runtime only after fail
   assert.match(preflight, /if\(payloadEngine\.effective!=='fl-v2'\)markers\.push\('payload-engine-effective-mismatch'\)/);
   assert.match(preflight, /if\(payloadEngine\.version!=='1\.0\.0-offline-live-authority-playtest'\)/);
   assert.match(preflight, /else if\(querySeed!==String\(payloadSeed>>>0\)\)markers\.push\('simulation-seed-mismatch'\)/);
-  assert.match(preflight, /if\(candidateValues\.length!==1\)[\s\S]*?candidateValues\[0\]!=='4'/);
+  assert.match(preflight, /if\(candidateValues\.length!==1\)[\s\S]*?candidateValues\[0\]!=='5'/);
   assert.match(preflight, /if\(quickPlayValues\.length!==1\)[\s\S]*?quickPlayValues\[0\]!=='1'/);
   assert.match(preflight, /if\(!decoded\|\|decoded\.mode!=='quickPlay'\)markers\.push\('payload-mode-invalid'\)/);
   assert.match(preflight, /const matchType=String\(decoded&&decoded\.matchType\|\|''\),liveWorkflow=matchType==='single-player'\?'single-player':matchType==='spectator'\?'cpu-v-cpu':matchType==='free-kick-suite'\?'set-piece-suite':null/);
@@ -177,9 +177,9 @@ test('the match page conditionally loads the exact FL V2 runtime only after fail
     priorIndex = index;
     assert.doesNotMatch(matchHtml, new RegExp(`<script\\s+src=["'][^"']*${filename.replace(/\./g, '\\.')}`, 'i'), `${filename} must not load unconditionally`);
   }
-  assert.equal(authority.scriptCacheVersion, '174-fl-v2-final-candidate-4');
-  assert.match(preflight, /pieces\.forEach\(src=>document\.write\('<script src="'\+src\+'\?v=174-fl-v2-final-candidate-4/);
-  assert.match(matchHtml, /trueFeelPhysicalTouchAuthority:false,cpuPassRaceFilter:true/);
+  assert.equal(authority.scriptCacheVersion, '174-fl-v2-final-candidate-5');
+  assert.match(preflight, /pieces\.forEach\(src=>document\.write\('<script src="'\+src\+'\?v=174-fl-v2-final-candidate-5/);
+  assert.match(matchHtml, /trueFeelPhysicalTouchAuthority:true,cpuPassRaceFilter:true/);
 });
 
 test('the live host composes candidate transactions with rollback and a blocking strict V2 stop', () => {
@@ -266,7 +266,7 @@ test('the workflow matrix exposes exactly three V2 playable modes and blocks inc
   assert.equal(matrix.schemaVersion, '3.0.0');
   assert.equal(matrix.build, 174);
   assert.equal(matrix.candidateBuild, 174);
-  assert.equal(matrix.candidate, 4);
+  assert.equal(matrix.candidate, 5);
   assert.equal(matrix.policy.defaultAuthority, 'fl-v2');
   assert.equal(matrix.policy.replacementAllowedByThisMatrix, true);
   assert.equal(matrix.policy.explicitOfflineOptInAllowed, false);

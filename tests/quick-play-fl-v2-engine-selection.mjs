@@ -74,9 +74,9 @@ const samplePayload = (matchType = 'single-player', createdAt = '2026-08-12T12:0
   createdAt
 });
 
-test('FL V2 Candidate 4 is the fixed sole playable engine', () => {
+test('FL V2 Candidate 5 is the fixed sole playable engine', () => {
   assert.equal(Engine.version, '1.0.0-offline-live-authority-playtest');
-  assert.equal(Engine.candidate, '4');
+  assert.equal(Engine.candidate, '5');
   assert.deepEqual(plain(Engine.playableModes), ['single-player', 'free-kick-suite', 'spectator']);
   for (const incoming of [null, '', 'unknown-engine', 'build-173', 'fl-v2']) {
     assert.equal(Engine.normalizeEngineRequest(incoming), 'fl-v2');
@@ -101,7 +101,7 @@ test('Single Player, CPU vs CPU and Set-Piece Suite all launch exact FL V2 envel
         payload.simulationSeed
       );
       assert.deepEqual(markers.getAll('engine'), ['fl-v2']);
-      assert.deepEqual(markers.getAll('candidate'), ['4']);
+      assert.deepEqual(markers.getAll('candidate'), ['5']);
       assert.equal(markers.get('simulationSeed'), String(payload.simulationSeed));
     }
   }

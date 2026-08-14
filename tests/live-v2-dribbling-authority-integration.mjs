@@ -151,7 +151,7 @@ function groundThroughSnapshot(receiverControl) {
       predictedArrivalTicks: 92,
       predictedTerminalPaceMetresPerSecond: 6.4,
       authoredPower: 0.222,
-      meetingContract: 'mr-v2-ground-triangle-rendezvous-2026-08-13'
+      meetingContract: 'mr-v2-ground-triangle-power-authored-progressive-brake-2026-08-14'
     }
   });
   snapshot.contact.intendedReceiverId = receiver.id;
@@ -165,6 +165,84 @@ test('adapter pins Dribbling V2 dependency and capability provenance without ren
   const cap = capability('single-player');
   assert.equal(cap.authority.dribblingPhysicalTouchesAndActionLease, Dribbling.STATE_SCHEMA);
   assert.equal(Adapter.VERSION, '1.0.0-offline-live-authority-playtest');
+});
+
+test('normal-X progressive turf metadata survives the host-to-Ball-V2 handoff exactly', () => {
+  const snapshot = initialSnapshot('single-player');
+  snapshot.units.zPerMetre = 32;
+  const passer = snapshot.players.find(player => player.id === 'you-CAM');
+  for (const player of snapshot.players) {
+    player.control = null;
+    player.contactEligible = false;
+  }
+  snapshot.humanPlayerIds = [passer.id];
+  Object.assign(snapshot.ball, {
+    ownerId: null,
+    x: passer.x,
+    y: passer.y,
+    z: 1,
+    vx: 0,
+    vy: 0,
+    zv: 0,
+    launchIntent: {
+      sequence: 'normal-x-progressive-handoff-1',
+      sourcePlayerId: passer.id,
+      sourceTeamId: passer.teamId,
+      targetPlayerId: null,
+      origin: { x: passer.x, y: passer.y, z: 1 },
+      target: { x: passer.x + 12, y: passer.y },
+      direction: { x: 1, y: 0 },
+      speedMetresPerSecond: 21.2,
+      liftAngleDeg: 0,
+      sideSpinRpm: 0,
+      topSpinRpm: 0,
+      source: 'ground-pass',
+      groundDampingModel: 'progressive-ground-strike-v2',
+      groundDampingInitialPerSecond: .249,
+      groundDampingRampScale: .05038,
+      groundDampingRampExponent: 3.8,
+      groundDampingReferenceDistanceMetres: 15,
+      groundSkidFrictionScale: .655,
+      groundLinearDampingUntilSeconds: 8
+    }
+  });
+  const { live } = attachment('single-player');
+  let current = snapshot;
+  let frame = null;
+  for (let tick = 1; tick <= 86; tick += 1) {
+    frame = runTick(live, current);
+    if (tick < 86) current = advanceSnapshot(current, frame.hostProjection, tick + 1);
+  }
+  const launchMetadata = live.exportState().domain.ballState.metadata.launchMetadata;
+  assert.equal(launchMetadata.groundDampingModel, 'progressive-ground-strike-v2');
+  assert.equal(launchMetadata.groundDampingInitialPerSecond, .249);
+  assert.equal(launchMetadata.groundDampingRampScale, .05038);
+  assert.equal(launchMetadata.groundDampingRampExponent, 3.8);
+  assert.equal(launchMetadata.groundDampingReferenceDistanceMetres, 15);
+  assert.equal(launchMetadata.groundSkidFrictionScale, .655);
+  assert.equal(launchMetadata.groundDampingOriginX, passer.x);
+  assert.equal(launchMetadata.groundDampingOriginY, passer.y);
+  assert.equal(launchMetadata.groundLinearDampingUntilSeconds, 8);
+  const adapterState = live.exportState().domain.ballState;
+  const directLaunch = Ball.resolveLaunch({
+    id: 'normal-x-progressive-direct-1',
+    origin: { x: passer.x, y: passer.y, z: 1 / 32 + .11 },
+    direction: { x: 1, y: 0 },
+    speed: 21.2,
+    source: 'ground-pass',
+    metadata: launchMetadata
+  });
+  let directState = directLaunch.state;
+  let directContext = Ball.createSimulationContext({ seed: 337733 });
+  for (let tick = 1; tick <= 86; tick += 1) {
+    const stepped = Ball.step(directState, directContext, 1 / 60);
+    directState = stepped.state;
+    directContext = stepped.context;
+  }
+  assert.ok(Math.abs(adapterState.position.x - directState.position.x) < .02,
+    `adapter drifted from its progressive MR flight: ${JSON.stringify({ adapter: adapterState.position, direct: directState.position })}`);
+  assert.ok(Math.abs(adapterState.velocity.x - directState.velocity.x) < .02,
+    `adapter discarded the progressive MR speed state: ${JSON.stringify({ adapter: adapterState.velocity, direct: directState.velocity })}`);
 });
 
 test('CPU physical tackles respect one readable post-turnover protection window', () => {
@@ -278,7 +356,7 @@ test('human intended receiver shares the MR meeting contract while strong opposi
     row.authority === 'v2-human-reception-guidance' && row.playerId === neutralFixture.receiver.id);
   assert.ok(neutralGuidance, JSON.stringify(neutralFrame.hostProjection.recoveryAssignments));
   assert.deepEqual(neutralGuidance.target, neutralFixture.target);
-  assert.equal(neutralGuidance.meetingContract, 'mr-v2-ground-triangle-rendezvous-2026-08-13');
+  assert.equal(neutralGuidance.meetingContract, 'mr-v2-ground-triangle-power-authored-progressive-brake-2026-08-14');
   assert.equal(neutralGuidance.predictedArrivalTick, 93);
   assert.equal(neutralGuidance.predictedTerminalPaceMetresPerSecond, 6.4);
   assert.ok(neutralGuidance.guidanceWeight > 0);
@@ -306,6 +384,33 @@ test('human intended receiver shares the MR meeting contract while strong opposi
   assert.equal(Adapter.HUMAN_RECEPTION_GUIDANCE_STRONG_INPUT, 0.62);
 });
 
+test('neutral reception guidance brakes before an MR meeting instead of orbiting it', () => {
+  const fixture = groundThroughSnapshot({ x: 0, y: 0, strength: 0, sprint: false });
+  const receiver = fixture.snapshot.players.find(player => player.id === fixture.receiver.id);
+  receiver.x = fixture.target.x - 1.6;
+  receiver.y = fixture.target.y;
+  receiver.vx = 7;
+  receiver.vy = 0;
+  receiver.fx = 1;
+  receiver.fy = 0;
+  fixture.snapshot.ball.launchIntent.predictedArrivalTicks = 24;
+  const { live } = attachment('single-player');
+  const frame = runTick(live, fixture.snapshot);
+  const guidance = frame.hostProjection.recoveryAssignments.find(row =>
+    row.authority === 'v2-human-reception-guidance' && row.playerId === receiver.id);
+  const moved = frame.hostProjection.movement.find(row => row.id === receiver.id);
+  assert.ok(guidance, JSON.stringify(frame.hostProjection.recoveryAssignments));
+  assert.equal(guidance.neutralReceptionBrake, true, JSON.stringify(guidance));
+  assert.ok(guidance.stoppingDistanceMetres >= guidance.distanceMetres - .35,
+    JSON.stringify(guidance));
+  assert.ok(moved.vx > 0 && moved.vx < receiver.vx,
+    `receiver should decelerate on the existing line, not reverse or accelerate: ${JSON.stringify(moved)}`);
+  assert.ok(moved.fx > .99 && Math.abs(moved.fy) < .01,
+    `neutral braking must not start a circular turn: ${JSON.stringify(moved)}`);
+  assert.equal(frame.hostProjection.logicalBallOwnerId, null,
+    'braking guidance must not grant possession');
+});
+
 test('adapter buffers one action ID during a lease and suppresses duplicate CPU/host emission', () => {
   const { live } = attachment();
   let snapshot = initialSnapshot(), buffered = false, released = null;
@@ -326,6 +431,63 @@ test('adapter buffers one action ID during a lease and suppresses duplicate CPU/
   assert.ok(released, JSON.stringify(live.status().latestTelemetry?.dribbling));
   assert.equal(released.id, 'buffered-shot-1');
   assert.equal(released.type, 'shot');
+});
+
+test('physical True Feel remains playable through a run, cut, reversal and buffered pass', () => {
+  const { live } = attachment('single-player', {
+    trueFeelPhysicalTouchAuthority: true,
+    cpuPassRaceFilter: true
+  });
+  let snapshot = initialSnapshot('single-player'), queuedAt = null, releasedAt = null, reversedAt = null;
+  const phases = new Set(), separationLengths = [];
+  for (const player of snapshot.players) {
+    if (player.teamId === 'opp') {
+      player.contactEligible = false;
+      player.sentOff = true;
+    }
+  }
+  for (let tick = 1; tick <= 180; tick += 1) {
+    const carrier = snapshot.players.find(player => player.id === 'you-CAM');
+    const control = tick <= 55 ? { x: 1, y: 0 } : tick <= 95 ? { x: 0, y: 1 } : { x: -1, y: 0 };
+    carrier.control = { ...control, strength: .82, sprint: tick <= 45, shield: false };
+    const frame = runTick(live, snapshot), projection = frame.hostProjection;
+    phases.add(projection.dribbling.phase);
+    assert.equal(projection.logicalBallOwnerId, 'you-CAM',
+      `logical action authority broke before release at tick ${tick}`);
+    if (projection.physicalBallSeparated) {
+      const recovery = projection.recoveryAssignments.find(row =>
+        row.authority === 'true-feel-lease-recovery' && row.playerId === 'you-CAM');
+      if (recovery) separationLengths.push(recovery.distanceMetres);
+    }
+    const movement = projection.movement.find(row => row.id === 'you-CAM');
+    if (tick > 95 && reversedAt == null && movement.vx * 60 < -1) reversedAt = tick;
+    if (tick === 85) assert.ok(movement.vy > Math.abs(movement.vx),
+      `90-degree cut did not take control: ${JSON.stringify(movement)}`);
+    let action = null;
+    if (queuedAt == null && tick > 135 && projection.physicalBallSeparated) {
+      queuedAt = tick + 1;
+      action = { id: 'playable-pass-during-touch', type: 'pass', actorId: 'you-CAM',
+        targetPlayerId: 'you-RW', commandTick: queuedAt, power: .62 };
+    }
+    if (projection.dribbling.releasedAction?.id === 'playable-pass-during-touch') {
+      releasedAt = tick;
+      assert.equal(projection.physicalBallSeparated, false);
+      assert.equal(projection.dribbling.phase, Dribbling.PHASES.RESECURE);
+      break;
+    }
+    snapshot = advanceSnapshot(snapshot, projection, tick + 1, action);
+  }
+  assert.ok(phases.has(Dribbling.PHASES.SEPARATED_TOUCH));
+  assert.ok(phases.has(Dribbling.PHASES.CHASE_RECOVERY));
+  assert.ok(phases.has(Dribbling.PHASES.RESECURE));
+  assert.ok(reversedAt != null && reversedAt <= 135,
+    `hard reversal did not complete its rated plant promptly: ${String(reversedAt)}`);
+  assert.ok(separationLengths.length > 0 && Math.max(...separationLengths) <= Dribbling.CONFIG.heavySeparationMax,
+    JSON.stringify(separationLengths));
+  assert.ok(queuedAt != null && releasedAt != null && releasedAt - queuedAt <= Dribbling.CONFIG.maximumLeaseTicks + 1,
+    JSON.stringify({ queuedAt, releasedAt }));
+  assert.equal(live.status().enabled, true);
+  assert.equal(live.status().failure, null);
 });
 
 test('adapter export/restore resumes a physical lease with chunk-identical projections', () => {

@@ -71,7 +71,7 @@ test('the V2 requirement is applied before the animation loop can advance gamepl
   assert.ok(attachAt >= 0 && updateAt > attachAt && animationAt > updateAt);
   const update = sourceWindow('function update(){', 'function showFlash');
   assert.match(update, /if\(!started\)return;\s*if\(liveV2StrictStopped\)return;/);
-  assert.match(match, /\?v=174-fl-v2-final-candidate-4/);
+  assert.match(match, /\?v=174-fl-v2-final-candidate-5/);
 });
 
 test('the public practice route is consistently named Set-Piece Suite', () => {

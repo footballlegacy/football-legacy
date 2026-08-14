@@ -382,6 +382,8 @@ test('pass and shot inputs buffer only during the lease and release on resecure'
     actionIntent
   });
   assert.equal(chase.state.bufferedAction.id, actionIntent.id);
+  assert.ok(chase.state.bufferedAction.expiresTick >= chain.state.leaseUntilTick + 1,
+    'a valid action must survive the complete bounded physical lease');
   assert.equal(chase.releasedAction, null);
   const nearBall = Ball.createBallState({ ...chase.ballState, position: { x: 40.55, y: 0, z: 0.11 } });
   const gathered = resolve(9, chase.state, nearBall, {
@@ -396,6 +398,29 @@ test('pass and shot inputs buffer only during the lease and release on resecure'
   assert.equal(gathered.releasedAction.variant, actionIntent.variant,
     'the exact authored pass family must survive the physical touch lease');
   assert.deepEqual(gathered.state.consumedActionIds, [actionIntent.id]);
+});
+
+test('a physical lease preserves one CPU pass decision but allows a later shot upgrade', () => {
+  const chain = reachSeparated();
+  const firstPass = { id: 'cpu-pass-a', type: 'pass', source: 'cpu-v2', actorId: 'carrier',
+    targetPlayerId: 'winger-a', target: { x: 48, y: 2 }, commandTick: 5 };
+  const chase = resolve(5, chain.state, chain.ballState, {
+    capability: chain.cap, logicalOwnerId: null, actionIntent: firstPass
+  });
+  const secondPass = { ...firstPass, id: 'cpu-pass-b', targetPlayerId: 'winger-b',
+    target: { x: 47, y: -3 }, commandTick: 6 };
+  const held = resolve(6, chase.state, chase.ballState, {
+    capability: chain.cap, logicalOwnerId: null, actionIntent: secondPass
+  });
+  assert.equal(held.state.bufferedAction.id, firstPass.id,
+    'CPU target reevaluation replaced an already buffered pass during one touch');
+  const shot = { id: 'cpu-shot', type: 'shot', source: 'cpu-v2', actorId: 'carrier',
+    target: { x: 52.5, y: 0 }, power: .78, commandTick: 7 };
+  const upgraded = resolve(7, held.state, held.ballState, {
+    capability: chain.cap, logicalOwnerId: null, actionIntent: shot
+  });
+  assert.equal(upgraded.state.bufferedAction.id, shot.id);
+  assert.equal(upgraded.state.bufferedAction.type, 'shot');
 });
 
 test('bounded fail-closed action ledger preserves exact identity across long matches', () => {

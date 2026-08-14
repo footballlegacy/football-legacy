@@ -265,6 +265,131 @@ test('default grass resistance prevents missed ground passes floating away', () 
     `9 m/s loose ball still travelled at ${Math.hypot(firm.state.velocity.x, firm.state.velocity.y)}m/s`);
 });
 
+test('finite weighted-ground damping is passive, opt-in and leaves ordinary launches unchanged', () => {
+  const run = metadata => {
+    const launch = Ball.resolveLaunch({
+      id: 'weighted-ground-isolation',
+      origin: { x: 0, y: 0, z: .11 },
+      direction: { x: 1, y: 0, z: 0 },
+      speed: 14,
+      liftAngleDeg: 0,
+      source: 'ground-pass',
+      metadata
+    });
+    return Ball.advance(launch.state, Ball.createSimulationContext({ seed: 703 }), { duration: 1.5 });
+  };
+  const ordinary = run({ unrelated: true });
+  const untagged = run({
+    groundLinearDampingPerSecond: 1.2,
+    groundLinearDampingUntilSeconds: .65
+  });
+  almostVector(untagged.state.position, ordinary.state.position, 1e-10);
+  almostVector(untagged.state.velocity, ordinary.state.velocity, 1e-10);
+  almostVector(untagged.state.angularVelocity, ordinary.state.angularVelocity, 1e-10);
+
+  const weighted = run({
+    groundDampingModel: 'weighted-ground-strike-v1',
+    groundLinearDampingPerSecond: 1.2,
+    groundLinearDampingUntilSeconds: .65
+  });
+  assert.ok(weighted.state.position.x < ordinary.state.position.x,
+    'the opt-in turf-loss profile did not reduce rollout distance');
+  assert.ok(Math.hypot(weighted.state.velocity.x, weighted.state.velocity.y) <
+    Math.hypot(ordinary.state.velocity.x, ordinary.state.velocity.y),
+  'the opt-in turf-loss profile did not dissipate pace');
+  assert.equal(weighted.traces.flatMap(trace => trace.events)
+    .some(event => event.type === 'passive-energy-clamp'), false,
+  'the damping profile attempted to add energy');
+});
+
+test('progressive ground strike applies passive distance-ramped turf loss only when tagged', () => {
+  const metadata = {
+    groundDampingModel: 'progressive-ground-strike-v2',
+    groundDampingInitialPerSecond: .21,
+    groundDampingRampScale: .0532,
+    groundDampingRampExponent: 3.8,
+    groundDampingOriginX: 0,
+    groundDampingOriginY: 0,
+    groundDampingReferenceDistanceMetres: 16,
+    groundSkidFrictionScale: .55,
+    groundLinearDampingUntilSeconds: 8
+  };
+  const launch = Ball.resolveLaunch({
+    id: 'progressive-ground-distance-ramp',
+    origin: { x: 0, y: 0, z: .142 },
+    direction: { x: 1, y: 0, z: 0 },
+    speed: 23.12,
+    liftAngleDeg: 0,
+    source: 'ground-pass',
+    metadata
+  });
+  let state = launch.state;
+  let context = Ball.createSimulationContext({ seed: 704 });
+  const speeds = {};
+  for (let tick = 1; tick <= 240 && !state.settled; tick += 1) {
+    const output = Ball.step(state, context, 1 / 60);
+    state = output.state;
+    context = output.context;
+    for (const fraction of [.25, .5, .75, 1]) {
+      if (speeds[fraction] == null && state.position.x >= 16 * fraction) {
+        speeds[fraction] = Math.hypot(state.velocity.x, state.velocity.y);
+      }
+    }
+    assert.equal(output.trace.events.some(event => event.type === 'passive-energy-clamp'), false,
+      'progressive turf loss attempted to add energy');
+  }
+  assert.ok(Object.values(speeds).every(Number.isFinite), JSON.stringify(speeds));
+  assert.ok(speeds[.25] >= speeds[.5] && speeds[.5] >= speeds[.75] && speeds[.75] >= speeds[1],
+    `progressive turf profile accelerated: ${JSON.stringify(speeds)}`);
+  assert.ok(speeds[.75] - speeds[1] > (speeds[.5] - speeds[.75]) * 1.2,
+    `late grass drag did not exceed middle-route drag: ${JSON.stringify(speeds)}`);
+
+  const ordinary = Ball.resolveLaunch({
+    id: 'progressive-ground-untagged-control',
+    origin: { x: 0, y: 0, z: .142 },
+    direction: { x: 1, y: 0, z: 0 },
+    speed: 23.12,
+    source: 'ground-pass',
+    metadata: { ...metadata, groundDampingModel: null }
+  });
+  const ordinaryResult = Ball.advance(ordinary.state, Ball.createSimulationContext({ seed: 704 }), { duration: 2.5 });
+  assert.ok(ordinaryResult.state.position.x > state.position.x + 2,
+    'untagged ball unexpectedly inherited progressive strike drag');
+});
+
+test('default grass roll decelerates at its measured surface rate without passive acceleration', () => {
+  const initialSpeed = 5;
+  let state = Ball.createBallState({
+    position: { x: 0, y: 0, z: 0.11 },
+    velocity: { x: initialSpeed, y: 0, z: 0 },
+    // Exact no-slip roll: v = omega times radius. This isolates rolling
+    // resistance from the deliberately stronger skid-to-roll conversion.
+    angularVelocity: { x: 0, y: initialSpeed / 0.11, z: 0 },
+    grounded: true,
+    regime: Ball.REGIMES.ROLL
+  });
+  let context = Ball.createSimulationContext({ seed: 702 });
+  let previousSpeed = initialSpeed;
+  let maximumGain = 0;
+  for (let tick = 0; tick < 60; tick += 1) {
+    const result = Ball.step(state, context, 1 / 60, undefined, {
+      airDensity: 0,
+      angularDecayPerSecond: 0
+    });
+    state = result.state;
+    context = result.context;
+    const speed = Math.hypot(state.velocity.x, state.velocity.y);
+    maximumGain = Math.max(maximumGain, speed - previousSpeed);
+    previousSpeed = speed;
+  }
+  const measuredDeceleration = initialSpeed - previousSpeed;
+  assert.ok(measuredDeceleration >= 1.36 && measuredDeceleration <= 1.39,
+    `one-second rolling deceleration was ${measuredDeceleration}m/s^2`);
+  assert.ok(maximumGain <= 1e-10,
+    `passive roll accelerated by ${maximumGain}m/s in one tick`);
+  assert.equal(state.regime, Ball.REGIMES.ROLL);
+});
+
 test('passive ground projection cannot create combined linear and rotational energy', () => {
   for (const speed of [0.1, 0.5, 20]) {
     const state = Ball.createBallState({

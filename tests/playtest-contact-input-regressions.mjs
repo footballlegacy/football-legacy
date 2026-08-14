@@ -428,11 +428,15 @@ test('Triangle charges on press and tap versus hold produces monotonic through-b
   assert.match(down, /state\.throughCharging=true/);
   assert.match(down, /state\.throughChargeStartedAt=performance\.now\(\)/);
   assert.doesNotMatch(down, /doThroughPassFor\(/, 'press must arm, not launch');
-  assert.match(up, /doThroughPassFor\(src,isSecond,overTop,power,flair\)/);
+  assert.match(up, /doThroughPassFor\(src,isSecond,overTop,power,flair,null,null,null,null,null,driven\)/,
+    'Triangle release preserves ordinary power while forwarding the separately latched R1 technique flag');
 
-  const calibration = up.match(/power=clamp\(heldMs\/(\d+),(\.\d+),(\d+)\)/);
+  const calibration = up.match(/power=clamp\(heldMs\/TRIANGLE_CHARGE_DURATION_MS,(\.\d+),(\d+)\)/);
   assert.ok(calibration, 'through release must expose a bounded hold-duration calibration');
-  const [, divisorText, floorText, capText] = calibration;
+  const duration = matchSource.match(/const TRIANGLE_CHARGE_DURATION_MS=(\d+)/);
+  assert.ok(duration, 'the protected Triangle charge duration must remain explicit');
+  const [, floorText, capText] = calibration;
+  const divisorText = duration[1];
   const divisor = Number(divisorText), floor = Number(floorText), cap = Number(capText);
   const powerAt = heldMs => Math.max(floor, Math.min(cap, heldMs / divisor));
   assert.equal(powerAt(0), floor);
