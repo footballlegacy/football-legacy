@@ -43,6 +43,9 @@ const M = Math.round(80 * 1.045);
 const PITCH_UNITS_PER_METRE = (H - 12) / 68;
 const X_PER_METRE = (W - 2 * M) / 105;
 const Y_PER_METRE = H / 68;
+const triangleChargeDurationMatch = matchSource.match(/TRIANGLE_CHARGE_DURATION_MS=(\d+)/);
+assert.ok(triangleChargeDurationMatch, 'missing Triangle charge duration');
+const TRIANGLE_CHARGE_DURATION_MS = Number(triangleChargeDurationMatch[1]);
 
 function sourceBetween(source, start, end) {
   const from = source.indexOf(start);
@@ -88,6 +91,7 @@ function currentControllerThroughCharge(heldMs) {
     controllerSkill: () => {},
     performance: { now: () => now },
     clamp,
+    TRIANGLE_CHARGE_DURATION_MS,
     doThroughPassFor: (...args) => {
       releaseCall = args;
       return { captured: true };
@@ -349,6 +353,8 @@ function throughHarness({ source, teammates, direction, power }) {
     },
     liveV2PendingLaunch: null,
     clockFrames: 1000,
+    FootballLegacyBallEngineV2: Ball,
+    PITCH_UNITS_PER_METRE,
     restartMsg: '',
     SAME_TEAM_COOP: false,
     AUTO: false,
@@ -384,14 +390,40 @@ function throughHarness({ source, teammates, direction, power }) {
 function currentGroundThroughTrajectory(power, distanceMetres) {
   const trajectorySource = sourceBetween(
     matchSource,
-    'function humanGroundThroughTrajectory',
+    'function measureHumanGroundPassRendezvous',
     'function humanGroundPassMeetingWithinRange'
   );
-  const context = vm.createContext({ clamp });
+  const context = vm.createContext({ clamp, FootballLegacyBallEngineV2: Ball, PITCH_UNITS_PER_METRE });
   vm.runInContext(`${trajectorySource}\nthis.humanGroundThroughTrajectory=humanGroundThroughTrajectory;`, context, {
     filename: 'current-human-ground-through-trajectory.vm.js'
   });
   return JSON.parse(JSON.stringify(context.humanGroundThroughTrajectory(power, distanceMetres)));
+}
+
+function currentGroundThroughRange(power) {
+  const rangeSource = sourceBetween(
+    matchSource,
+    'function humanGroundThroughAuthoredRangeMetres',
+    'function humanGroundThroughTrajectory'
+  );
+  const context = vm.createContext({ clamp });
+  vm.runInContext(`${rangeSource}\nthis.humanGroundThroughAuthoredRangeMetres=humanGroundThroughAuthoredRangeMetres;`, context, {
+    filename: 'current-human-ground-through-range.vm.js'
+  });
+  return context.humanGroundThroughAuthoredRangeMetres(power);
+}
+
+function currentGroundPassTrajectory(power, distanceMetres) {
+  const trajectorySource = sourceBetween(
+    matchSource,
+    'function measureHumanGroundPassRendezvous',
+    'function humanGroundThroughTrajectory'
+  );
+  const context = vm.createContext({ clamp, FootballLegacyBallEngineV2: Ball, PITCH_UNITS_PER_METRE });
+  vm.runInContext(`${trajectorySource}\nthis.humanGroundPassTrajectory=humanGroundPassTrajectory;`, context, {
+    filename: 'current-human-ground-pass-trajectory.vm.js'
+  });
+  return JSON.parse(JSON.stringify(context.humanGroundPassTrajectory(power, distanceMetres)));
 }
 
 function runMetricGroundRendezvous(distanceMetres, trajectory) {
@@ -404,7 +436,19 @@ function runMetricGroundRendezvous(distanceMetres, trajectory) {
     sideSpinRpm: 0,
     topSpinRpm: 0,
     axialSpinRpm: 0,
-    source: 'ground-through-ball'
+    source: 'ground-through-ball',
+    metadata: trajectory.groundDampingModel ? {
+      groundDampingModel: trajectory.groundDampingModel,
+      groundDampingInitialPerSecond: trajectory.groundDampingInitialPerSecond,
+      groundDampingRampScale: trajectory.groundDampingRampScale,
+      groundDampingRampExponent: trajectory.groundDampingRampExponent,
+      groundDampingOriginX: 0,
+      groundDampingOriginY: 0,
+      groundDampingReferenceDistanceMetres: trajectory.groundDampingReferenceDistanceMetres,
+      groundDampingMaximumProgress: trajectory.groundDampingMaximumProgress,
+      groundSkidFrictionScale: trajectory.groundSkidFrictionScale,
+      groundLinearDampingUntilSeconds: trajectory.groundLinearDampingUntilSeconds
+    } : undefined
   });
   let state = launch.state;
   let context = Ball.createSimulationContext({ seed: 173 });
@@ -416,7 +460,56 @@ function runMetricGroundRendezvous(distanceMetres, trajectory) {
   return state;
 }
 
-function runMagnusReynoldsFlight(originHost, targetHost, speedWorld, loftWorld, ticks, config = undefined) {
+function runMetricGroundRollout(distanceMetres, trajectory) {
+  const launch = Ball.resolveLaunch({
+    id: 'ground-profile-rollout',
+    origin: { x: 0, y: 0, z: 0.11 + 1 / PITCH_UNITS_PER_METRE },
+    target: { x: distanceMetres, y: 0, z: 0.11 },
+    speed: trajectory.launchPaceMps,
+    liftAngleDeg: 0,
+    sideSpinRpm: 0,
+    topSpinRpm: 0,
+    axialSpinRpm: 0,
+    source: 'ground-through-ball',
+    metadata: {
+      groundDampingModel: trajectory.groundDampingModel,
+      groundDampingInitialPerSecond: trajectory.groundDampingInitialPerSecond,
+      groundDampingRampScale: trajectory.groundDampingRampScale,
+      groundDampingRampExponent: trajectory.groundDampingRampExponent,
+      groundDampingOriginX: 0,
+      groundDampingOriginY: 0,
+      groundDampingReferenceDistanceMetres: trajectory.groundDampingReferenceDistanceMetres,
+      groundDampingMaximumProgress: trajectory.groundDampingMaximumProgress,
+      groundSkidFrictionScale: trajectory.groundSkidFrictionScale,
+      groundLinearDampingUntilSeconds: trajectory.groundLinearDampingUntilSeconds
+    }
+  });
+  let state = launch.state;
+  let context = Ball.createSimulationContext({ seed: 173 });
+  const thresholdSpeeds = {};
+  let previousSpeed = Math.hypot(state.velocity.x, state.velocity.y);
+  let maximumPassiveSpeedGain = 0;
+  let settled = null;
+  for (let tick = 0; tick <= 600; tick += 1) {
+    const speed = Math.hypot(state.velocity.x, state.velocity.y);
+    const progress = state.position.x / distanceMetres;
+    for (const threshold of [.25, .5, .75, 1]) {
+      if (thresholdSpeeds[threshold] == null && progress >= threshold) thresholdSpeeds[threshold] = speed;
+    }
+    maximumPassiveSpeedGain = Math.max(maximumPassiveSpeedGain, speed - previousSpeed);
+    previousSpeed = speed;
+    if (speed <= .08) {
+      settled = { tick, distanceMetres: state.position.x };
+      break;
+    }
+    const output = Ball.step(state, context, 1 / 60);
+    state = output.state;
+    context = output.context;
+  }
+  return { thresholdSpeeds, settled, maximumPassiveSpeedGain };
+}
+
+function runMagnusReynoldsFlight(originHost, targetHost, speedWorld, loftWorld, ticks, strike = null, config = undefined) {
   const dx = targetHost.x - originHost.x;
   const dy = targetHost.y - originHost.y;
   const horizontalHost = Math.hypot(dx, dy) || 1;
@@ -447,7 +540,19 @@ function runMagnusReynoldsFlight(originHost, targetHost, speedWorld, loftWorld, 
     sideSpinRpm: 0,
     topSpinRpm: 0,
     axialSpinRpm: 0,
-    source: 'ground-through-ball'
+    source: 'ground-through-ball',
+    metadata: strike && strike.groundDampingModel ? {
+      groundDampingModel: strike.groundDampingModel,
+      groundDampingInitialPerSecond: strike.groundDampingInitialPerSecond,
+      groundDampingRampScale: strike.groundDampingRampScale,
+      groundDampingRampExponent: strike.groundDampingRampExponent,
+      groundDampingOriginX: origin.x,
+      groundDampingOriginY: origin.y,
+      groundDampingReferenceDistanceMetres: strike.groundDampingReferenceDistanceMetres,
+      groundDampingMaximumProgress: strike.groundDampingMaximumProgress,
+      groundSkidFrictionScale: strike.groundSkidFrictionScale,
+      groundLinearDampingUntilSeconds: strike.groundLinearDampingUntilSeconds
+    } : undefined
   }, config);
   let state = launch.state;
   let context = Ball.createSimulationContext({ seed: 173 });
@@ -569,7 +674,10 @@ test('golden-derived Bergkamp to Henry conditions preserve authored channel, run
   const charged = currentControllerThroughCharge(GOLDEN.pressToReleaseMs);
   assert.equal(GOLDEN.releaseFrame - GOLDEN.pressFrame, 8);
   assert.equal(GOLDEN.pressToReleaseMs / GOLDEN.chargeDivisorMs, 0.125);
-  assert.equal(charged.power, 0.125);
+  assert.equal(TRIANGLE_CHARGE_DURATION_MS, 777);
+  assert.equal(charged.power, GOLDEN.pressToReleaseMs / TRIANGLE_CHARGE_DURATION_MS);
+  assert.ok(charged.power < 0.125 && charged.power > 0.12,
+    `one-tick-slower live Triangle charge drifted too far from the historical input: ${charged.power}`);
   assert.equal(charged.overTop, false);
   assert.equal(charged.flair, false);
 
@@ -630,13 +738,30 @@ test('golden-derived Bergkamp to Henry conditions preserve authored channel, run
   });
   assert.equal(through.result.targetId, henry.id);
   assert.equal(through.controlled.id, henry.id, 'receiver control must switch to Henry at launch');
-  assert.equal(through.result.leadDistance, GOLDEN.leadHostUnits);
-  assert.equal(through.result.landing.x, GOLDEN.landing.x);
-  assert.equal(through.result.landing.y, GOLDEN.landing.y);
+  const authoredRangeMetres = currentGroundThroughRange(charged.power);
+  const authoredDistanceMetres = Math.hypot(
+    (through.result.intendedLanding.x - bergkamp.x) / X_PER_METRE,
+    (through.result.intendedLanding.y - bergkamp.y) / Y_PER_METRE
+  );
+  assert.ok(Math.abs(authoredDistanceMetres - authoredRangeMetres) <= .05,
+    `Triangle authored ${authoredDistanceMetres}m instead of held-power range ${authoredRangeMetres}m`);
+  const authoredDirection = unit({
+    x: through.result.intendedLanding.x - bergkamp.x,
+    y: through.result.intendedLanding.y - bergkamp.y
+  });
+  assert.ok(authoredDirection.x * heldDirection.x + authoredDirection.y * heldDirection.y >= .999,
+    'receiver reading redirected the held Triangle direction');
+  assert.deepEqual(through.result.landing, through.result.intendedLanding,
+    'zero-error fixture changed its authored physical meeting');
   assert.equal(through.result.loft, 0.1);
-  assert.equal(through.result.calibration, 'mr-v2-ground-triangle-rendezvous-2026-08-13');
+  assert.equal(through.result.calibration, 'mr-v2-ground-triangle-measured-power-punch-tail-v4-2026-08-14');
   assert.ok(through.result.paceMps > through.result.predictedTerminalPaceMps);
   assert.ok(through.result.predictedArrivalTicks > 0);
+  assert.equal(through.launch.details.groundDampingModel, 'progressive-ground-strike-v2');
+  assert.ok(through.launch.details.groundDampingInitialPerSecond > 0);
+  assert.ok(through.launch.details.groundDampingRampScale > 0);
+  assert.equal(through.launch.details.groundDampingRampExponent, 2.65);
+  assert.ok(through.launch.details.groundSkidFrictionScale < 1);
   assert.deepEqual(through.pendingLaunch.authoredMeeting, through.launch.point);
   assert.equal(through.pendingLaunch.predictedArrivalTicks, through.result.predictedArrivalTicks);
   assert.equal(through.pendingLaunch.meetingContract, through.result.meetingContract);
@@ -652,7 +777,8 @@ test('golden-derived Bergkamp to Henry conditions preserve authored channel, run
     through.launch.point,
     through.launch.details.v2SpeedWorld,
     through.launch.details.v2LoftWorld,
-    through.result.predictedArrivalTicks
+    through.result.predictedArrivalTicks,
+    through.launch.details
   );
   assert.ok(Math.abs(mr.host.x - through.launch.point.x) <= X_PER_METRE * 0.35, `MR x ${mr.host.x}`);
   assert.ok(Math.abs(mr.host.y - through.launch.point.y) <= Y_PER_METRE * 0.35, `MR y ${mr.host.y}`);
@@ -672,41 +798,227 @@ test('golden-derived Bergkamp to Henry conditions preserve authored channel, run
   assert.equal(shot.releasedAction.power, GOLDEN.shotPower);
 });
 
-test('RK9FS8 ground-Triangle matrix reaches each authored meeting under production Ball V2 with monotonic charge pace', () => {
-  // These are the six ground-Triangle releases recorded by the confirmed V2
-  // PC playtest. Distances are measured from its logged release-ball position
-  // to its authored landing in regulation pitch metres; no replay outcome is
-  // baked into production code.
-  const rk9fs8 = [
-    { frame: 657, power: 0.163, distanceMetres: 8.4102 },
-    { frame: 1503, power: 0.222, distanceMetres: 23.6324 },
-    { frame: 1825, power: 0.312, distanceMetres: 14.6506 },
-    { frame: 2148, power: 0.428, distanceMetres: 16.4824 },
-    { frame: 3211, power: 0.138, distanceMetres: 13.6029 },
-    { frame: 5484, power: 0.209, distanceMetres: 18.1659 }
-  ];
-  for (const sample of rk9fs8) {
+test('power-authored ground-Triangle matrix reaches every short-to-full MR meeting monotonically', () => {
+  // The old playtest matrix exposed the defect: assistance could turn one
+  // low-power input into radically different distances. The corrected matrix
+  // derives every physical meeting from held power first, then verifies MR.
+  const matrix = [.10, .125, .133, .18, .25, .35, .5, .75, 1]
+    .map(power => ({ power, distanceMetres: currentGroundThroughRange(power) }));
+  assert.equal(matrix[0].distanceMetres, 6.5, 'minimum Triangle tap must stay a distinct short through ball');
+  assert.equal(matrix.at(-1).distanceMetres, 45, 'full Triangle hold must retain its authored space-pass range');
+  for (const sample of matrix) {
     const trajectory = currentGroundThroughTrajectory(sample.power, sample.distanceMetres);
     const state = runMetricGroundRendezvous(sample.distanceMetres, trajectory);
-    assert.equal(trajectory.model, 'mr-v2-ground-triangle-rendezvous-2026-08-13');
-    assert.ok(Math.abs(state.position.x - sample.distanceMetres) <= 0.22,
-      `frame ${sample.frame}: expected ${sample.distanceMetres}m, got ${state.position.x}m`);
-    assert.ok(Math.abs(state.position.y) <= 0.02, `frame ${sample.frame}: lateral drift ${state.position.y}m`);
-    assert.ok(Math.abs(Math.hypot(state.velocity.x, state.velocity.y) - trajectory.terminalPaceMps) <= 0.35,
-      `frame ${sample.frame}: terminal pace ${Math.hypot(state.velocity.x, state.velocity.y)}m/s`);
+    assert.equal(trajectory.model, 'mr-v2-ground-triangle-measured-power-punch-tail-v4-2026-08-14');
+    assert.equal(trajectory.groundDampingModel, 'progressive-ground-strike-v2');
+    assert.equal(trajectory.arrivalModel, 'measured-ball-v2-rendezvous');
+    assert.equal(trajectory.reachesAuthoredMeeting, true);
+    assert.ok(trajectory.measuredMeetingErrorMetres <= .1,
+      `power ${sample.power}: measured MR error ${trajectory.measuredMeetingErrorMetres}m`);
+    assert.ok(Math.abs(state.position.x - sample.distanceMetres) <= 0.65,
+      `power ${sample.power}: expected ${sample.distanceMetres}m, got ${state.position.x}m`);
+    assert.ok(Math.abs(state.position.y) <= 0.02, `power ${sample.power}: lateral drift ${state.position.y}m`);
+    assert.ok(Math.abs(Math.hypot(state.velocity.x, state.velocity.y) - trajectory.terminalPaceMps) <= 0.65,
+      `power ${sample.power}: terminal pace ${Math.hypot(state.velocity.x, state.velocity.y)}m/s`);
   }
+  assert.ok(matrix.every((row, index) => index === 0 || row.distanceMetres > matrix[index - 1].distanceMetres),
+    `held power did not increase authored range: ${JSON.stringify(matrix)}`);
+  const paceSeries = matrix.map(row => currentGroundThroughTrajectory(row.power, row.distanceMetres).launchPaceMps);
+  assert.ok(paceSeries.every((pace, index) => index === 0 || pace >= paceSeries[index - 1]),
+    `held power did not increase launch pace: ${paceSeries.join(',')}`);
+});
 
-  for (const distanceMetres of [8.4102, 13.6029, 18.1659, 23.6324]) {
-    const low = currentGroundThroughTrajectory(0.138, distanceMetres);
-    const medium = currentGroundThroughTrajectory(0.428, distanceMetres);
-    const high = currentGroundThroughTrajectory(0.82, distanceMetres);
-    assert.ok(low.launchPaceMps < medium.launchPaceMps && medium.launchPaceMps < high.launchPaceMps,
-      `launch pace must increase with held power at ${distanceMetres}m`);
+test('MSSGKN8P correction adds opening punch only to the identified tap-to-medium Triangle band', () => {
+  const oldRange = power => {
+    const normalised = clamp((power - .10) / .90, 0, 1);
+    return clamp(6.5 + 38.5 * Math.pow(normalised, 1.23), 6.5, 45);
+  };
+  const samples = [.10, .133, .259, .308, .347, .437, .75, 1]
+    .map(power => {
+      const distanceMetres = currentGroundThroughRange(power);
+      const trajectory = currentGroundThroughTrajectory(power, distanceMetres);
+      return {
+        power,
+        distanceMetres,
+        previousDistanceMetres: oldRange(power),
+        rangeCorrectionMetres: distanceMetres - oldRange(power),
+        openingPunchCorrection: trajectory.openingPunchCorrection,
+        launchPaceMps: trajectory.launchPaceMps
+      };
+    });
+  const byPower = power => samples.find(sample => sample.power === power);
+
+  assert.ok(byPower(.133).rangeCorrectionMetres > 0 && byPower(.133).rangeCorrectionMetres < .08,
+    `accepted tap received more than a tiny correction: ${JSON.stringify(byPower(.133))}`);
+  assert.ok(byPower(.259).rangeCorrectionMetres >= .38 && byPower(.259).rangeCorrectionMetres <= .46,
+    `underweight 25.9% pass missed its bounded range correction: ${JSON.stringify(byPower(.259))}`);
+  assert.ok(byPower(.347).rangeCorrectionMetres >= .33 && byPower(.347).rangeCorrectionMetres <= .40,
+    `underweight 34.7% pass missed its bounded range correction: ${JSON.stringify(byPower(.347))}`);
+  assert.ok(byPower(.437).rangeCorrectionMetres < .08,
+    `already-powerful 43.7% pass received the low/medium correction: ${JSON.stringify(byPower(.437))}`);
+  assert.equal(byPower(.10).rangeCorrectionMetres, 0);
+  assert.equal(byPower(1).rangeCorrectionMetres, 0);
+  assert.ok(byPower(.259).openingPunchCorrection > byPower(.133).openingPunchCorrection);
+  assert.ok(byPower(.347).openingPunchCorrection > byPower(.437).openingPunchCorrection);
+  assert.ok(samples.every((sample, index) => index === 0 || sample.distanceMetres > samples[index - 1].distanceMetres),
+    `bounded correction broke power-to-distance ordering: ${JSON.stringify(samples)}`);
+  assert.ok(samples.every((sample, index) => index === 0 || sample.launchPaceMps >= samples[index - 1].launchPaceMps),
+    `bounded correction broke power-to-punch ordering: ${JSON.stringify(samples)}`);
+});
+
+test('MSSHO0P4 correction adds only a tiny strike and one-to-two-roll tail around larger Triangle charge', () => {
+  const powers = [.10, .35, .437, .553, .65, .80, 1];
+  const rows = powers.map(power => {
+    const distanceMetres = currentGroundThroughRange(power);
+    const current = currentGroundThroughTrajectory(power, distanceMetres);
+    const previous = {
+      ...current,
+      launchPaceMps: current.launchPaceMps - current.largePassPunchCorrection,
+      groundDampingMaximumProgress: current.groundDampingMaximumProgress + current.largePassTailCorrection
+    };
+    const currentRollout = runMetricGroundRollout(distanceMetres, current);
+    const previousRollout = runMetricGroundRollout(distanceMetres, previous);
+    assert.ok(currentRollout.settled && previousRollout.settled, `Triangle ${power} did not settle`);
+    return {
+      power,
+      shape: current.largePassFinishShape,
+      punchCorrection: current.largePassPunchCorrection,
+      tailCorrection: current.largePassTailCorrection,
+      addedRollMetres: currentRollout.settled.distanceMetres - previousRollout.settled.distanceMetres
+    };
+  });
+  const byPower = power => rows.find(row => row.power === power);
+  assert.equal(byPower(.10).shape, 0);
+  assert.equal(byPower(.35).shape, 0);
+  assert.equal(byPower(.437).shape, 0);
+  assert.equal(byPower(.80).shape, 0);
+  assert.equal(byPower(1).shape, 0);
+  assert.ok(byPower(.553).punchCorrection >= .52 && byPower(.553).punchCorrection <= .56,
+    `identified larger pass missed its tiny punch correction: ${JSON.stringify(byPower(.553))}`);
+  assert.ok(byPower(.553).addedRollMetres >= .65 && byPower(.553).addedRollMetres <= 1.45,
+    `identified larger pass did not gain roughly one-to-two ball rolls: ${JSON.stringify(byPower(.553))}`);
+  assert.ok(byPower(.65).addedRollMetres > 0,
+    `larger-pass tail band vanished too early: ${JSON.stringify(byPower(.65))}`);
+});
+
+test('MSS5XHV7 low tap stays short and lets nearby Lauren read it without Gilberto redirecting the ball', () => {
+  const source = {
+    id: 'ars-ljungberg', name: 'Freddie Ljungberg', team: 'you', role: 'mid', attackRole: 'carrier',
+    x: 938.13, y: 1985.02, vx: -1.302, vy: -.794, fx: -.5044, fy: -.8635,
+    attrs: { pass: 88 }, stats: { touches: 0 }, sentOff: false, isGK: false
+  };
+  const lauren = {
+    id: 'ars-lauren', name: 'Lauren', team: 'you', role: 'def', attackRole: 'overlap',
+    x: 858.69, y: 1828.38, vx: 1.383, vy: .331,
+    aiTarget: { x: 1349.68, y: 1499.4 },
+    attrs: { pass: 80, pace: 89 }, stats: { touches: 0 }, sentOff: false, isGK: false
+  };
+  const gilberto = {
+    id: 'ars-gilberto', name: 'Gilberto Silva', team: 'you', role: 'mid', attackRole: 'central-cover',
+    x: 1417.12, y: 1533.65, vx: 1.764, vy: -1.24,
+    aiTarget: { x: 1550.76, y: 1240.73 },
+    attrs: { pass: 86, pace: 74 }, stats: { touches: 0 }, sentOff: false, isGK: false
+  };
+  const direction = unit({ x: .564, y: -.826 });
+  const power = .133;
+  const baseline = throughHarness({
+    source: structuredClone(source), teammates: [], direction, power
+  });
+  const replayShape = throughHarness({ source, teammates: [lauren, gilberto], direction, power });
+  const rangeMetres = currentGroundThroughRange(power);
+  const endpointMetres = Math.hypot(
+    (replayShape.result.intendedLanding.x - source.x) / X_PER_METRE,
+    (replayShape.result.intendedLanding.y - source.y) / Y_PER_METRE
+  );
+  const endpointDirection = unit({
+    x: replayShape.result.intendedLanding.x - source.x,
+    y: replayShape.result.intendedLanding.y - source.y
+  });
+
+  assert.ok(rangeMetres >= 6.5 && rangeMetres <= 7.5,
+    `13.3% Triangle must be a genuinely short option, got ${rangeMetres}m`);
+  assert.ok(Math.abs(endpointMetres - rangeMetres) <= .05,
+    `teammate reading expanded ${rangeMetres}m power to ${endpointMetres}m`);
+  assert.ok(endpointDirection.x * direction.x + endpointDirection.y * direction.y >= .999,
+    'receiver selection rotated the held-stick direction');
+  assert.deepEqual(replayShape.launch.point, baseline.launch.point,
+    'nearby and distant candidates changed the physical Triangle endpoint');
+  assert.equal(replayShape.result.targetId, lauren.id,
+    'the nearby physically reachable reader was ignored for the distant target');
+  assert.equal(replayShape.result.receiverRegistration, 'local-receiver-reaches-authored-ground-meeting');
+  assert.equal(replayShape.launch.details.targetPlayer, lauren);
+  assert.ok(replayShape.result.authoredDistanceMetres <= 10,
+    `low-tap Ball V2 flight expanded to ${replayShape.result.authoredDistanceMetres}m`);
+});
+
+test('ground Triangle uses progressive turf loss with more glide than X but a bounded missed-pass tail', () => {
+  const scenarios = [
+    { power: .18, distanceMetres: 10 },
+    { power: .276, distanceMetres: 31.16 },
+    { power: .62, distanceMetres: 35 }
+  ];
+  for (const scenario of scenarios) {
+    const through = currentGroundThroughTrajectory(scenario.power, scenario.distanceMetres);
+    const normalX = currentGroundPassTrajectory(scenario.power, scenario.distanceMetres);
+    const throughRollout = runMetricGroundRollout(scenario.distanceMetres, through);
+    const xRollout = runMetricGroundRollout(scenario.distanceMetres, normalX);
+    const throughSpeeds = [.25, .5, .75, 1].map(point => throughRollout.thresholdSpeeds[point]);
+    assert.equal(through.groundDampingModel, 'progressive-ground-strike-v2');
+    assert.ok(through.groundDampingInitialPerSecond < normalX.groundDampingInitialPerSecond,
+      `Triangle lost its lower opening drag: ${JSON.stringify({ scenario, through, normalX })}`);
+    assert.ok(through.groundSkidFrictionScale < normalX.groundSkidFrictionScale,
+      `Triangle lost its cleaner opening skid: ${JSON.stringify({ scenario, through, normalX })}`);
+    assert.ok(throughSpeeds.every(Number.isFinite),
+      `Triangle did not traverse its authored path: ${JSON.stringify({ scenario, throughRollout })}`);
+    assert.ok(throughSpeeds.every((speed, index) => index === 0 || speed < throughSpeeds[index - 1]),
+      `Triangle did not progressively decelerate: ${JSON.stringify({ scenario, throughSpeeds })}`);
+    assert.ok(throughSpeeds[3] >= 5.5,
+      `Triangle died before its physical meeting: ${JSON.stringify({ scenario, throughSpeeds })}`);
+    assert.ok(throughRollout.settled, `missed Triangle did not settle: ${JSON.stringify({ scenario, throughRollout })}`);
+    assert.ok(xRollout.settled, `comparison X did not settle: ${JSON.stringify({ scenario, xRollout })}`);
+    const throughTail = throughRollout.settled.distanceMetres - scenario.distanceMetres;
+    const xTail = xRollout.settled.distanceMetres - scenario.distanceMetres;
+    assert.ok(throughTail >= xTail + .8,
+      `Triangle did not preserve extra space-pass glide: ${JSON.stringify({ scenario, throughTail, xTail })}`);
+    assert.ok(throughTail <= Math.max(8, scenario.distanceMetres * .42),
+      `missed Triangle retained an ice-like tail: ${JSON.stringify({ scenario, throughTail })}`);
+    assert.ok(throughRollout.maximumPassiveSpeedGain <= 1e-6,
+      `Triangle passively accelerated: ${JSON.stringify({ scenario, maximumPassiveSpeedGain: throughRollout.maximumPassiveSpeedGain })}`);
   }
-  const distanceSeries = [8.4102, 13.6029, 18.1659, 23.6324]
-    .map(distanceMetres => currentGroundThroughTrajectory(0.222, distanceMetres).launchPaceMps);
-  assert.ok(distanceSeries.every((pace, index) => index === 0 || pace > distanceSeries[index - 1]),
-    `authored distance must increase required launch pace: ${distanceSeries.join(',')}`);
+});
+
+test('higher Triangle charge produces materially more absolute post-meeting roll', () => {
+  const powers = [.10, .25, .50, .75, 1];
+  const rows = powers.map(power => {
+    const distanceMetres = currentGroundThroughRange(power);
+    const trajectory = currentGroundThroughTrajectory(power, distanceMetres);
+    const rollout = runMetricGroundRollout(distanceMetres, trajectory);
+    assert.ok(rollout.settled, `Triangle power ${power} did not settle`);
+    return { power, distanceMetres, tailMetres: rollout.settled.distanceMetres - distanceMetres };
+  });
+  assert.ok(rows.every((row, index) => index === 0 || row.tailMetres > rows[index - 1].tailMetres),
+    `more Triangle power reduced absolute roll: ${JSON.stringify(rows)}`);
+  assert.ok(rows.at(-1).tailMetres >= rows[0].tailMetres * 1.8,
+    `full-power Triangle did not roll materially farther than a tap: ${JSON.stringify(rows)}`);
+});
+
+test('at one fixed meeting, higher charge leaves more end roll for X and Triangle', () => {
+  const powers = [.15, .35, .55, .75, 1];
+  const distanceMetres = 20;
+  for (const [label, trajectoryFor] of [
+    ['X', currentGroundPassTrajectory],
+    ['Triangle', currentGroundThroughTrajectory]
+  ]) {
+    const rows = powers.map(power => {
+      const rollout = runMetricGroundRollout(distanceMetres, trajectoryFor(power, distanceMetres));
+      assert.ok(rollout.settled, `${label} power ${power} did not settle`);
+      return { power, tailMetres: rollout.settled.distanceMetres - distanceMetres };
+    });
+    assert.ok(rows.every((row, index) => index === 0 || row.tailMetres > rows[index - 1].tailMetres),
+      `more ${label} power reduced end-of-pass roll at the same meeting: ${JSON.stringify(rows)}`);
+    assert.ok(rows.at(-1).tailMetres >= rows[0].tailMetres + 2.5,
+      `full-power ${label} did not retain materially more end roll than a tap: ${JSON.stringify(rows)}`);
+  }
 });
 
 test('RED: through assistance cannot select a runner outside the full-stick authored channel', () => {
@@ -855,7 +1167,7 @@ test('stationary Ljungberg reads the exact MR meeting without redirecting the au
   assert.equal(registered.result.paceMps, baseline.result.paceMps, 'receiver nomination must not reweight Ball V2');
   assert.equal(registered.result.predictedArrivalTicks, baseline.result.predictedArrivalTicks);
   assert.equal(registered.result.leadDistance, baseline.result.leadDistance, 'held power must remain authoritative');
-  assert.equal(registered.result.meetingContract, 'mr-v2-ground-triangle-rendezvous-2026-08-13');
+  assert.equal(registered.result.meetingContract, 'mr-v2-ground-triangle-measured-power-punch-tail-v4-2026-08-14');
   assert.deepEqual(ljungberg, runnerBefore, 'registration must not invent or mutate an off-ball route');
 
   const activeReader = {
@@ -906,8 +1218,10 @@ test('human hold power and independent runner motion influence the rendezvous wi
     source: structuredClone(source), teammates: [makeRunner('runner-moving', 1.8)],
     direction, power: 0.32
   });
-  assert.notEqual(moving.result.landing.y, still.result.landing.y,
-    'meeting-point assistance may project a runner\'s existing motion');
+  assert.equal(moving.result.landing.x, still.result.landing.x,
+    'independent runner motion must not lengthen the physical Triangle');
+  assert.equal(moving.result.landing.y, still.result.landing.y,
+    'independent runner motion must not steer the physical Triangle');
   assert.equal(moving.result.targetId, 'runner-moving');
   assert.equal(still.result.targetId, 'runner-still');
 });

@@ -1,14 +1,14 @@
-# Build 174 Candidate 4 — FL V2 foundation and release workflow
+# Build 174 Candidate 5 — FL V2 foundation and release workflow
 
-Status: FL V2-only playable authority, approved 13 August 2026.
+Status: FL V2-only playable authority, approved 13 August and refreshed for Candidate 5 on 14 August 2026.
 
-The earlier shadow, suite-opt-in and offline-opt-in stages are complete historical migration stages. They are not engine choices in Candidate 4. FL V2 is fixed as the sole playable match authority.
+The earlier shadow, suite-opt-in and offline-opt-in stages are complete historical migration stages. They are not engine choices in Candidate 5. FL V2 is fixed as the sole playable match authority.
 
 The binding policy is `research/overhaul/fl-v2-only-playable-authority-2026-08-13.md`; the machine-readable scope is `research/overhaul/protected-workflows.json`.
 
 ## Current playable scope
 
-Candidate 4 can launch only:
+Candidate 5 can launch only:
 
 - Single Player.
 - CPU versus CPU with zero human owners, both teams assigned to the CPU and the exact autoplay contract.
@@ -26,9 +26,9 @@ Career Mode, Create-a-Club, Player Career and the creation/data tools remain ind
 - Single Player and CPU versus CPU compose movement, CPU, formation, ball, first-touch, aerial and protected-contact handling with the match-control transaction.
 - Set-Piece Suite composes match control, clock, restart, coordinate and suite contracts without widening authority to unsupported modes.
 - Candidate host changes are prepared, applied, finalized and receipted as one outer tick. A fault restores captured host state, rolls back candidate ledgers, disables further simulation and opens the blocking V2 diagnostic.
-- Candidate 4 keeps pass direction, power and timing player-authored while providing bounded meeting-point assistance. Aerial miscontrols can produce reaction-rated recontrol attempts without granting possession.
+- Candidate 5 keeps pass direction, power and timing player-authored while providing bounded meeting-point assistance. Aerial miscontrols can produce reaction-rated recontrol attempts without granting possession.
 - The normal Quick Play surface remains the shared setup for teams, lineups, tactics, kits, stadium, weather and supported match modes. The engine is fixed rather than selectable.
-- Candidate 4 cache isolation uses `candidate=4` and `174-fl-v2-final-candidate-4`; neither marker changes authority or deterministic seed.
+- Candidate 5 cache isolation uses `candidate=5` and `174-fl-v2-final-candidate-5`; neither marker changes authority or deterministic seed.
 - Publication still requires frozen-byte regression checks, reviewed commit/merge and direct verification of the hosted assets.
 
 ## Exact launch and failure boundary
@@ -40,7 +40,7 @@ The Quick Play package and URL must agree on:
 - offline ownership appropriate to that workflow;
 - a deterministic positive uint32 seed;
 - exact all-CPU ownership plus `autoplay=1` for CPU versus CPU;
-- the Candidate 4 cache marker where required for byte isolation.
+- the Candidate 5 cache marker where required for byte isolation.
 
 Missing, duplicate, contradictory, online, shadow-only, unsupported, malformed, stale or seed-mismatched input fails closed before simulation. A raw or bookmarked `match-engine/match.html` page is not a playable shortcut.
 
@@ -58,7 +58,7 @@ The migration does not require cosmetic renaming of every internal symbol. Build
 
 These internals do not create a playable engine. Any dormant module header that still describes Build 173 as selectable, default or authoritative is superseded by the current V2-only contract.
 
-The separate FL V1.5 forensic archive remains untouched. It is not a Candidate 4 fallback or a source of runtime authority.
+The separate FL V1.5 forensic archive remains untouched. It is not a Candidate 5 fallback or a source of runtime authority.
 
 ## Protected release behaviours
 
@@ -85,7 +85,7 @@ The authority ladder used to build V2 was:
 5. `migration-candidate`: protected gates were evaluated as a release set.
 6. `authoritative-v2-only-playable`: V2 became the fixed match authority.
 
-Candidate 4 occupies rung 6. Rungs 1-5 remain useful provenance, not user-facing runtime choices.
+Candidate 5 occupies rung 6. Rungs 1-5 remain useful provenance, not user-facing runtime choices.
 
 ## Foundation record
 
@@ -148,4 +148,4 @@ For Grassroots, the local pub and social media initially replace the conventiona
 
 ## Definition of done
 
-The overhaul is not complete because one free kick or one through-ball sequence looks impressive. It is complete only when the evidence is auditable, simulation is deterministic, holdout behaviour is credible, the protected workflow matrix passes, rollback and strict-stop behaviour are proven, unsupported modes cannot fall back, the reviewed release is merged and the hosted Candidate 4 bytes are verified.
+The overhaul is not complete because one free kick or one through-ball sequence looks impressive. It is complete only when the evidence is auditable, simulation is deterministic, holdout behaviour is credible, the protected workflow matrix passes, rollback and strict-stop behaviour are proven, unsupported modes cannot fall back, the reviewed release is merged and the hosted Candidate 5 bytes are verified.

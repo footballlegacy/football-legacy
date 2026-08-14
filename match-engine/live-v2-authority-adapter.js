@@ -79,6 +79,13 @@
   const CPU_PASS_MIN_DISTANCE_METRES = 5.5;
   const CPU_PASS_TARGET_BOUNDARY_MARGIN_METRES = 4.5;
   const CPU_REJECTED_PASS_COMMITMENT_TICKS = 6;
+  // The cheap support-pass path is a performance shortcut, not a second set
+  // of football contact rules. Only use it for clearly unpressured geometry;
+  // ordinary lanes must run the same physical receiver/opponent projection as
+  // every other pass. CPU Intelligence measures these two values in canonical
+  // pitch units (roughly 30.25 units per metre along the long axis).
+  const CPU_SHORT_SUPPORT_FAST_LANE_CLEARANCE = 60;
+  const CPU_SHORT_SUPPORT_FAST_RECEIVER_SPACE = 75;
   const TURNOVER_TACKLE_PROTECTION_TICKS = 30;
   const issuedCapabilities = new WeakSet();
 
@@ -755,11 +762,30 @@
             releaseTick: null, reactionStimulus: null, offsideCandidate: null };
         }
         const retained = clone(domain.possession);
-        if (!retained.arrivalWindowEntered && retained.intendedTarget && Number.isFinite(retained.intendedTargetWindowMetres)) {
-          retained.arrivalWindowEntered = Math.hypot(
+        let targetDistanceMetres = null;
+        if (retained.intendedTarget && Number.isFinite(retained.intendedTargetWindowMetres)) {
+          targetDistanceMetres = Math.hypot(
             (snapshot.ball.x - retained.intendedTarget.x) / snapshot.units.xPerMetre,
             (snapshot.ball.y - retained.intendedTarget.y) / snapshot.units.yPerMetre
-          ) <= retained.intendedTargetWindowMetres;
+          );
+          if (!retained.arrivalWindowEntered) {
+            retained.arrivalWindowEntered = targetDistanceMetres <= retained.intendedTargetWindowMetres;
+          }
+        }
+        const predictedArrivalOverdue = Number.isSafeInteger(retained.predictedArrivalTick) &&
+          snapshot.tick > retained.predictedArrivalTick + 90;
+        const leftArrivalWindow = retained.arrivalWindowEntered && targetDistanceMetres != null &&
+          targetDistanceMetres > retained.intendedTargetWindowMetres + .75;
+        const stalledAfterArrival = Number.isSafeInteger(retained.predictedArrivalTick) &&
+          snapshot.tick > retained.predictedArrivalTick + 18 && speed <= .35;
+        if (leftArrivalWindow || predictedArrivalOverdue || stalledAfterArrival) {
+          return { teamId: null, ownerId: null, inFlight: false,
+            intendedReceiverId: null, intendedTarget: null, intendedTargetWindowMetres: null,
+            arrivalWindowEntered: false, releaseTick: null, reactionStimulus: null,
+            offsideCandidate: clone(retained.offsideCandidate || null),
+            routeExpiredAtTick: snapshot.tick,
+            routeExpiredReason: leftArrivalWindow ? 'ball-left-arrival-window' :
+              stalledAfterArrival ? 'ball-stalled-after-arrival' : 'predicted-arrival-overdue' };
         }
         return retained;
       }
@@ -892,7 +918,12 @@
     function looseBallRecoveryAssignments(snapshot, world, possession) {
       const gate = snapshot.contact.gate || {};
       if (snapshot.ball.ownerId || !gate.livePlay || gate.restartActive || gate.replayActive ||
-          gate.keeperAuthority || gate.offsideInvolvementPending || gate.specialActionAuthority) return { byId: {}, rows: [] };
+          gate.keeperAuthority || gate.specialActionAuthority) return { byId: {}, rows: [] };
+      // Pending offside provenance must not make a physically live ball
+      // untouchable. Movement may send both teams toward the real loose ball;
+      // the host's existing offside phase remains the sole authority deciding
+      // whether the named attacker becomes involved or another player resets
+      // the phase. Recovery never grants possession here.
       const flightType = String(snapshot.ball.flightType || '').toLowerCase();
       if (/(shot|cross|corner|free-kick|penalty|clearance)/.test(flightType)) return { byId: {}, rows: [] };
       const ball = metricBall(snapshot.ball, snapshot), speed = Math.hypot(ball.velocity.x, ball.velocity.y);
@@ -1047,9 +1078,25 @@
             const strongOpposingInput = Boolean(rawDirection && control.strength >= HUMAN_RECEPTION_GUIDANCE_STRONG_INPUT &&
               inputDot < HUMAN_RECEPTION_GUIDANCE_OPPOSING_DOT);
             const insideGuidanceRange = distance <= HUMAN_RECEPTION_GUIDANCE_MAX_DISTANCE_METRES;
+            const agility = clamp(finite(livePlayer.attrs && livePlayer.attrs.agility, 70), 1, 99);
+            const balance = clamp(finite(livePlayer.attrs && livePlayer.attrs.balance, 70), 1, 99);
+            const brakingRating = (agility + balance) / 2;
+            const ratedDeceleration = 6.1 + (12.4 - 6.1) * (brakingRating - 1) / 98;
+            const closingSpeed = statePlayer.velocity.x * receptionDirection.x + statePlayer.velocity.y * receptionDirection.y;
+            const stoppingDistance = Math.max(0, closingSpeed) * Math.max(0, closingSpeed) /
+              Math.max(.1, 2 * ratedDeceleration);
+            const movingAwayFromMeeting = closingSpeed < -.45;
+            // Neutral assistance is allowed to read and approach the meeting,
+            // but it must not turn a missed braking point into a full-speed
+            // orbit. Brake on the existing line first; after the player has
+            // planted, Movement can turn cleanly and physical First Touch can
+            // still decide the ball. Any meaningful user direction remains
+            // authoritative and bypasses this automatic plant.
+            const neutralReceptionBrake = !rawDirection && insideGuidanceRange &&
+              (movingAwayFromMeeting || distance <= stoppingDistance + .35);
             const guidanceWeight = !insideGuidanceRange || strongOpposingInput ? 0 : rawDirection
               ? clamp(.52 - control.strength * .40, .10, .42) : .72;
-            if (distance <= .28) {
+            if (distance <= .28 || neutralReceptionBrake) {
               desired = rawDirection || statePlayer.facing;
               intensity = rawDirection ? control.strength : 0;
               mode = intensity <= .02 ? 'idle' : control.shield ? 'shield' : control.sprint ? 'sprint' : intensity > .38 ? 'run' : 'walk';
@@ -1082,6 +1129,9 @@
               authority: 'v2-human-reception-guidance',
               guidanceWeight: +guidanceWeight.toFixed(3),
               inputOverride: strongOpposingInput,
+              neutralReceptionBrake,
+              closingSpeedMetresPerSecond: +closingSpeed.toFixed(3),
+              stoppingDistanceMetres: +stoppingDistance.toFixed(3),
               predictedArrivalTick: Number.isSafeInteger(possession.predictedArrivalTick) ? possession.predictedArrivalTick : null,
               predictedTerminalPaceMetresPerSecond: Number.isFinite(possession.predictedTerminalPaceMetresPerSecond)
                 ? +possession.predictedTerminalPaceMetresPerSecond.toFixed(3) : null,
@@ -1112,14 +1162,51 @@
               // Arrive, plant and wait for the authored MR ball path. A normal
               // committed run keeps driving through its point; a reception is
               // a rendezvous and must not sprint past the ball before arrival.
-              if (distance <= .28) {
+              // Braking is evaluated on the current velocity before we turn
+              // back toward a missed point. This prevents the target/facing
+              // fight that previously made an overshooting CPU receiver orbit
+              // or spin while the ball stayed ownerless.
+              const receptionDirection = unit(toward, statePlayer.facing);
+              const agility = clamp(finite(livePlayer.attrs && livePlayer.attrs.agility, 70), 1, 99);
+              const balance = clamp(finite(livePlayer.attrs && livePlayer.attrs.balance, 70), 1, 99);
+              const brakingRating = (agility + balance) / 2;
+              const ratedDeceleration = 6.1 + (12.4 - 6.1) * (brakingRating - 1) / 98;
+              const closingSpeed = statePlayer.velocity.x * receptionDirection.x +
+                statePlayer.velocity.y * receptionDirection.y;
+              const stoppingDistance = Math.max(0, closingSpeed) * Math.max(0, closingSpeed) /
+                Math.max(.1, 2 * ratedDeceleration);
+              const movingAwayFromMeeting = closingSpeed < -.35;
+              const receptionBrake = movingAwayFromMeeting || distance <= stoppingDistance + .35;
+              if (distance <= .28 || receptionBrake) {
                 desired = statePlayer.facing;
                 intensity = 0;
                 mode = 'idle';
               } else {
-                intensity = clamp(distance / 3.8, .32, 1);
-                mode = distance > .55 ? 'sprint' : 'run';
+                const remainingTicks = Number.isSafeInteger(possession && possession.predictedArrivalTick)
+                  ? Math.max(0, possession.predictedArrivalTick - snapshot.tick) : null;
+                const remainingSeconds = remainingTicks == null ? null : remainingTicks * FIXED_TICK_SECONDS;
+                const paceRating = clamp(finite(livePlayer.attrs && livePlayer.attrs.pace, 70), 1, 99);
+                const runCapacity = 4.6 + (6.25 - 4.6) * (paceRating - 1) / 98;
+                const requiredPace = remainingSeconds == null ? null : distance / Math.max(.08, remainingSeconds);
+                intensity = requiredPace == null ? clamp(distance / 3.8, .32, 1) :
+                  clamp(requiredPace / Math.max(.1, runCapacity) * 1.12 + .08, .32, 1);
+                mode = distance > .55 && (requiredPace == null || requiredPace > runCapacity * .74) ? 'sprint' : 'run';
               }
+              receptionGuidanceRows.push({
+                playerId: livePlayer.id,
+                teamId: livePlayer.teamId,
+                target: { x: receptionTarget.x, y: receptionTarget.y },
+                distanceMetres: +distance.toFixed(3),
+                etaSeconds: Number.isSafeInteger(possession && possession.predictedArrivalTick)
+                  ? +(Math.max(0, possession.predictedArrivalTick - snapshot.tick) / 60).toFixed(3) : null,
+                intended: true,
+                human: false,
+                authority: 'v2-cpu-reception-guidance',
+                receptionBrake,
+                movingAwayFromMeeting,
+                closingSpeedMetresPerSecond: +closingSpeed.toFixed(3),
+                stoppingDistanceMetres: +stoppingDistance.toFixed(3)
+              });
             } else {
               intensity = clamp(distance / (runTarget ? 7 : 12), runTarget ? 0.74 : 0.12, runTarget ? 1 : 0.72);
               mode = runTarget || intensity > 0.74 ? 'sprint' : intensity > 0.2 ? 'run' : 'walk';
@@ -1461,8 +1548,11 @@
       const distanceMetres = Math.hypot(target.x - origin.x, target.y - origin.y);
       const receiverTargetOffsetMetres = Math.hypot(target.x - receiverPosition.x, target.y - receiverPosition.y);
       const metrics = intent.supportMetrics || {};
+      const laneClearance = finite(metrics.laneClearance, 0);
+      const receiverSpace = finite(metrics.receiverSpace, 0);
       if (distanceMetres < 6 || distanceMetres > 21 || receiverTargetOffsetMetres > 2.25 ||
-          finite(metrics.laneClearance, 0) < 34 || finite(metrics.receiverSpace, 0) < 34) return null;
+          laneClearance < CPU_SHORT_SUPPORT_FAST_LANE_CLEARANCE ||
+          receiverSpace < CPU_SHORT_SUPPORT_FAST_RECEIVER_SPACE) return null;
       return {
         schema: 'football-legacy-cpu-pass-receiver-race-v2',
         evaluatedTick: snapshot.tick,
@@ -1487,7 +1577,9 @@
         launchLiftAngleDeg: 0,
         receiverTargetOffsetMetres: Math.round(receiverTargetOffsetMetres * 1000) / 1000,
         boundaryRetarget: clone(intent.boundaryRetarget || null),
-        supportKind: String(intent.supportKind)
+        supportKind: String(intent.supportKind),
+        laneClearanceCanonical: Math.round(laneClearance * 1000) / 1000,
+        receiverSpaceCanonical: Math.round(receiverSpace * 1000) / 1000
       };
     }
     function progressiveRiskRace(snapshot, owner, intent, race) {
@@ -1653,21 +1745,20 @@
       const lateral = -contract.ny * dx + contract.nx * dy;
       const travelled = Math.hypot(dx, dy);
       const interrupted = Math.abs(lateral) > contract.distance * .60;
-      const bounded = !interrupted && (along >= contract.distance || travelled >= contract.maximumTravelDistance);
+      // The authored distance is a knock-on reference, not an endpoint. MR
+      // owns the complete free roll; only the distant containment ceiling may
+      // intervene, and it must never teleport the ball back to the reference.
+      const bounded = !interrupted && travelled >= contract.maximumTravelDistance;
       if (!bounded) return { state, projection, active: !interrupted, bounded: false, along, lateral, travelled };
       const boundedState = dependencies.ball.createBallState({
         ...state,
-        position: {
-          x: (contract.targetX - snapshot.pitch.xMin) / snapshot.units.xPerMetre,
-          y: (contract.targetY - (snapshot.pitch.yMin + snapshot.pitch.yMax) / 2) / snapshot.units.yPerMetre,
-          z: state.radius
-        },
+        position: { ...state.position, z: state.radius },
         velocity: { x: 0, y: 0, z: 0 },
         grounded: true,
         settled: false,
         settleTime: 0,
         regime: dependencies.ball.REGIMES.ROLL,
-        metadata: { ...state.metadata, directionalKnockOnBounded: true,
+        metadata: { ...state.metadata, directionalKnockOnSafetyBounded: true,
           directionalKnockOnLaunchSequence: contract.launchSequence }
       });
       return { state: boundedState, projection: liveBall(boundedState, snapshot), active: true,
@@ -1685,8 +1776,27 @@
         const resolved = dependencies.ball.resolveLaunch({ id: 'live-release-' + String(intent.sequence), origin: originMetric,
           direction: unit(intent.direction, { x: 1, y: 0 }), speed: clamp(finite(intent.speedMetresPerSecond, 0), .05, 48),
           liftAngleDeg: clamp(finite(intent.liftAngleDeg, 0), -8, 62), sideSpinRpm: clamp(finite(intent.sideSpinRpm, 0), -2200, 2200),
-          topSpinRpm: clamp(finite(intent.topSpinRpm, 0), -1800, 1800), source: String(intent.source || snapshot.ball.flightType || 'live-v2-launch'),
-          metadata: { adapterVersion: VERSION, deterministicSeed, sourcePlayerId: intent.sourcePlayerId || null, targetPlayerId: intent.targetPlayerId || null } });
+          topSpinRpm: clamp(finite(intent.topSpinRpm, 0), -1800, 1800), axialSpinRpm: clamp(finite(intent.axialSpinRpm, 0), -1800, 1800), source: String(intent.source || snapshot.ball.flightType || 'live-v2-launch'),
+          metadata: { adapterVersion: VERSION, deterministicSeed, sourcePlayerId: intent.sourcePlayerId || null, targetPlayerId: intent.targetPlayerId || null,
+            groundDampingModel: intent.groundDampingModel || null,
+            groundLinearDampingPerSecond: Number.isFinite(intent.groundLinearDampingPerSecond) ? intent.groundLinearDampingPerSecond : 0,
+            groundDampingInitialPerSecond: Number.isFinite(intent.groundDampingInitialPerSecond) ? intent.groundDampingInitialPerSecond : 0,
+            groundDampingRampScale: Number.isFinite(intent.groundDampingRampScale) ? intent.groundDampingRampScale : 0,
+            groundDampingRampExponent: Number.isFinite(intent.groundDampingRampExponent) ? intent.groundDampingRampExponent : 0,
+            groundDampingOriginX: originMetric.x,
+            groundDampingOriginY: originMetric.y,
+            groundDampingReferenceDistanceMetres: Number.isFinite(intent.groundDampingReferenceDistanceMetres)
+              ? intent.groundDampingReferenceDistanceMetres : 0,
+            groundDampingMaximumProgress: Number.isFinite(intent.groundDampingMaximumProgress)
+              ? intent.groundDampingMaximumProgress : 3,
+            groundSkidFrictionScale: Number.isFinite(intent.groundSkidFrictionScale) ? intent.groundSkidFrictionScale : 1,
+            groundLinearDampingUntilSeconds: Number.isFinite(intent.groundLinearDampingUntilSeconds) ? intent.groundLinearDampingUntilSeconds : 0,
+            knuckleEnabled: intent.knuckleEnabled === true,
+            knuckleAcceleration: Number.isFinite(intent.knuckleAcceleration) ? intent.knuckleAcceleration : 0,
+            knuckleMinimumSpeed: Number.isFinite(intent.knuckleMinimumSpeed) ? intent.knuckleMinimumSpeed : 18,
+            knuckleMaximumSpin: Number.isFinite(intent.knuckleMaximumSpin) ? intent.knuckleMaximumSpin : 6,
+            knuckleOscillationFrequencyHz: Number.isFinite(intent.knuckleOscillationFrequencyHz)
+              ? intent.knuckleOscillationFrequencyHz : 3.5 } });
         state = resolved.state; launchSequence = String(intent.sequence);
       } else if (!state || ballMismatch(snapshot.ball)) {
         state = dependencies.ball.createBallState({ id: snapshot.ball.id, position: metric.position, velocity: metric.velocity,
@@ -1760,7 +1870,7 @@
         roster: snapshot.players.filter(player => activeIds.has(player.id)).map(player => {
           const ownAuthoredFlight = Boolean(possession && possession.inFlight && possession.deliberatePass &&
             player.teamId === possession.teamId);
-          const intendedArrival = Boolean(ownAuthoredFlight && possession.arrivalWindowEntered &&
+          const intendedReceiver = Boolean(ownAuthoredFlight &&
             player.id === possession.intendedReceiverId);
           return {
             id: player.id,
@@ -1769,10 +1879,12 @@
             sentOff: player.sentOff,
             available: !player.sentOff,
             // A teammate may physically deflect an authored pass at any time,
-            // but only its intended receiver may deliberately acquire it, and
-            // only once the MR ball has entered the authored arrival window.
+            // but only its intended receiver may deliberately acquire it.
+            // The receiver's reaction rating and the swept physical geometry
+            // decide when that attempt exists; the authored endpoint is a
+            // rendezvous aid, not an invisible contact permission boundary.
             contactEligible: !player.sentOff && !player.isGK && player.contactEligible &&
-              (!ownAuthoredFlight || intendedArrival),
+              (!ownAuthoredFlight || intendedReceiver),
             bodyContactEligible: !player.sentOff && !player.isGK && player.bodyContactEligible,
             heightM: player.heightM,
             attributes: clone(player.attrs)

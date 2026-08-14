@@ -12,6 +12,7 @@ const Formation = require('../match-engine/formation-behaviour-v2.js');
 const Contact = require('../match-engine/live-v2-contact-authority-composer.js');
 const Dribbling = require('../match-engine/dribbling-state-v2.js');
 const ADAPTER_SOURCE = readFileSync(new URL('../match-engine/live-v2-authority-adapter.js', import.meta.url), 'utf8');
+const MATCH_SOURCE = readFileSync(new URL('../match-engine/match.html', import.meta.url), 'utf8');
 
 const PITCH = Object.freeze({ xMin: 84, xMax: 3260, yMin: 6, yMax: 2136 });
 const UNITS = Object.freeze({
@@ -66,7 +67,7 @@ function forcedProgressiveRiskCpu(target, confidence = .86) {
   };
 }
 
-function forcedShortSupportCpu(target) {
+function forcedShortSupportCpu(target, supportMetrics = null) {
   const base = forcedPassCpu(target);
   return {
     ...base,
@@ -80,7 +81,8 @@ function forcedShortSupportCpu(target) {
           confidence: .76,
           reason: 'short-support-circulation',
           supportKind: 'support',
-          supportMetrics: { distance: 242, progress: 120, laneClearance: 82, receiverSpace: 118 }
+          supportMetrics: supportMetrics ||
+            { distance: 242, progress: 120, laneClearance: 120, receiverSpace: 140 }
         }
       };
     }
@@ -234,12 +236,12 @@ function riskAttachment(target, confidence) {
   });
 }
 
-function shortSupportAttachment(target) {
+function shortSupportAttachment(target, supportMetrics = null) {
   return Adapter.createAttachment({
     enabled: true,
     capability: capability('cpu-v-cpu'),
     seed: 201022,
-    dependencies: { ball: Ball, movement: Movement, cpu: forcedShortSupportCpu(target),
+    dependencies: { ball: Ball, movement: Movement, cpu: forcedShortSupportCpu(target, supportMetrics),
       formation: Formation, contact: Contact, dribbling: Dribbling },
     host: { prepareTick() { return { commit() {}, rollback() {} }; } }
   });
@@ -592,9 +594,9 @@ test('receiver and interceptor races use rated movement to the MR path rather th
   assert.equal(interceptorIntent.passRace.reason, 'interception-margin-below-six-ticks');
 });
 
-test('an accepted 10-to-15-metre MR pass cannot candidate-acquire beside its source before arrival', () => {
+test('an intended receiver may cushion a physically intersecting MR pass before the authored endpoint', () => {
   const fixture = snapshotFixture({
-    receiver: { x: 37, y: 0 },
+    receiver: { x: 46.55, y: 0 },
     target: { x: 46.55, y: 0 }
   });
   const live = attachment('cpu-v-cpu', fixture.target);
@@ -605,32 +607,51 @@ test('an accepted 10-to-15-metre MR pass cannot candidate-acquire beside its sou
 
   assert.ok(authoredDistanceMetres >= 10 && authoredDistanceMetres <= 15);
   assert.ok(passRace, JSON.stringify(releaseIntent));
+  assert.deepEqual(releaseIntent.target, worldPoint(fixture.target), JSON.stringify(releaseIntent));
   assert.ok(passRace.ballArrivalTick >= Math.floor(authoredDistanceMetres /
     passRace.launchSpeedMetresPerSecond * 60), JSON.stringify(passRace));
   assert.ok(passRace.receiverContactTick == null || passRace.receiverContactTick >= passRace.ballArrivalTick,
     JSON.stringify(passRace));
   if (releaseIntent.type === 'pass' && releaseIntent.targetPlayerId === RECEIVER_ID) {
     let flightSnapshot = launchSnapshotFromAcceptedPass(fixture, releaseFrame);
+    // The race accepted a lead pass. Put the named receiver directly on the
+    // early physical path after release so this fixture distinguishes real
+    // contact authority from the later authored endpoint window.
+    const earlyReceiver = flightSnapshot.players.find(row => row.id === RECEIVER_ID);
+    Object.assign(earlyReceiver, { ...worldPoint({ x: 35.2, y: 0 }), vx: 0, vy: 0 });
     let preArrivalTicks = 0;
+    let physicalCushion = null;
     for (let step = 0; step < Math.min(120, passRace.ballArrivalTick + 6); step += 1) {
       const flightFrame = runTick(live, flightSnapshot);
       const contact = flightFrame.hostProjection.contact;
       const arrivalWindowEntered = flightFrame.hostProjection.possession.arrivalWindowEntered === true;
       if (!arrivalWindowEntered) {
         preArrivalTicks += 1;
-        assert.notEqual(contact?.ownerCandidateId, RECEIVER_ID,
-          `premature receiver acquisition at tick ${flightSnapshot.tick}: ${JSON.stringify(contact)}`);
-        if (contact) {
-          assert.equal(contact.contactType, 'involuntary-deflection', JSON.stringify(contact));
-          assert.equal(contact.ownerCandidateId, null);
+        if (contact?.contactType) {
+          physicalCushion = contact;
+          const authoredWorldTarget = worldPoint(fixture.target);
+          const contactBall = flightSnapshot.ball;
+          const endpointDistanceMetres = Math.hypot(
+            (contactBall.x - authoredWorldTarget.x) / UNITS.xPerMetre,
+            (contactBall.y - authoredWorldTarget.y) / UNITS.yPerMetre
+          );
+          assert.ok(endpointDistanceMetres > 3.25,
+            `fixture contacted only inside the old endpoint window: ${endpointDistanceMetres.toFixed(3)} m`);
+          assert.equal(contact.presentation?.playerId, RECEIVER_ID, JSON.stringify(contact));
+          assert.equal(contact.contactType, 'first-touch', JSON.stringify(contact));
+          assert.equal(contact.ownerCandidateId, RECEIVER_ID, JSON.stringify(contact));
           break;
         }
+        assert.notEqual(contact?.ownerCandidateId, RECEIVER_ID,
+          `receiver acquired without physical contact at tick ${flightSnapshot.tick}: ${JSON.stringify(contact)}`);
       } else {
         break;
       }
       flightSnapshot = advanceFlightSnapshot(flightSnapshot, flightFrame);
     }
     assert.ok(preArrivalTicks >= 3, `only observed ${preArrivalTicks} pre-arrival ticks`);
+    assert.ok(physicalCushion,
+      'the intended receiver physically intersected the ball but was forced to wait for the endpoint window');
   } else {
     assert.equal(releaseIntent.fallbackFrom, 'pass');
     assert.equal(passRace.accepted, false);
@@ -677,6 +698,20 @@ test('a short support pass uses the cheap lane release instead of a 150-tick MR 
   assert.equal(intent.passRace.reason, 'short-support-lane-release');
   assert.equal(intent.passRace.projectedFlightTicks, 0);
   assert.equal(intent.passRace.lightweight, true);
+  assert.equal(intent.passRace.laneClearanceCanonical, 120);
+  assert.equal(intent.passRace.receiverSpaceCanonical, 140);
+});
+
+test('an ordinary support lane earns release through the physical receiver race', () => {
+  const fixture = snapshotFixture({ receiver: { x: 42, y: 0 }, target: { x: 42, y: 0 } });
+  const frame = runTick(shortSupportAttachment(fixture.target,
+    { distance: 242, progress: 120, laneClearance: 52, receiverSpace: 70 }), fixture.snapshot);
+  const intent = frame.hostProjection.intelligence.find(row => row.playerId === OWNER_ID);
+  assert.equal(intent.type, 'pass', JSON.stringify(intent));
+  assert.equal(intent.targetPlayerId, RECEIVER_ID);
+  assert.equal(intent.passRace.accepted, true);
+  assert.equal(intent.passRace.lightweight, undefined);
+  assert.ok(intent.passRace.projectedFlightTicks > 0, JSON.stringify(intent.passRace));
 });
 
 test('overlapping CPU support stays under controlled carry instead of launching a micro-pass', () => {
@@ -713,8 +748,12 @@ test('the accepted receiver rendezvous persists after the one-frame carrier inte
   const flightFrame = runTick(live, flightSnapshot);
   assert.equal(flightFrame.hostProjection.intelligence.some(row => row.playerId === OWNER_ID), false,
     'carrier pass intent must be absent on the flight tick');
-  assert.equal(flightFrame.hostProjection.recoveryAssignments.some(row => row.playerId === RECEIVER_ID), false,
+  assert.equal(flightFrame.hostProjection.recoveryAssignments.some(row => row.playerId === RECEIVER_ID &&
+    row.authority === 'v2-loose-ball-recovery'), false,
     'own receiver route must not be replaced by generic loose-ball recovery');
+  assert.ok(flightFrame.hostProjection.recoveryAssignments.some(row => row.playerId === RECEIVER_ID &&
+    row.authority === 'v2-cpu-reception-guidance'),
+  'the persisted CPU rendezvous should expose its timed physical guidance');
   const after = flightFrame.hostProjection.movement.find(row => row.id === RECEIVER_ID);
   const afterDistance = Math.hypot(
     (after.x - intended.x) / UNITS.xPerMetre,
@@ -723,6 +762,97 @@ test('the accepted receiver rendezvous persists after the one-frame carrier inte
   assert.ok(afterDistance < beforeDistance,
     `receiver did not persist toward rendezvous: ${beforeDistance} -> ${afterDistance}`);
   assert.ok(['walk', 'run', 'sprint'].includes(after.locomotionState), JSON.stringify(after));
+});
+
+test('an overshooting CPU receiver brakes before turning back instead of orbiting the meeting', () => {
+  const fixture = snapshotFixture({ receiver: { x: 52, y: 0 }, target: { x: 55, y: 0 } });
+  const live = attachment('cpu-v-cpu', fixture.target);
+  const releaseFrame = runTick(live, fixture.snapshot);
+  const flightSnapshot = launchSnapshotFromAcceptedPass(fixture, releaseFrame);
+  const meeting = flightSnapshot.ball.launchIntent.target;
+  const receiver = flightSnapshot.players.find(row => row.id === RECEIVER_ID);
+  Object.assign(receiver, {
+    x: meeting.x + 1.1 * UNITS.xPerMetre,
+    y: meeting.y,
+    vx: 7 * UNITS.xPerMetre / 60,
+    vy: 0,
+    fx: 1,
+    fy: 0
+  });
+  flightSnapshot.ball.launchIntent.predictedArrivalTicks = 54;
+
+  const frame = runTick(live, flightSnapshot);
+  const guidance = frame.hostProjection.recoveryAssignments.find(row =>
+    row.authority === 'v2-cpu-reception-guidance' && row.playerId === RECEIVER_ID);
+  const movement = frame.hostProjection.movement.find(row => row.id === RECEIVER_ID);
+
+  assert.ok(guidance, JSON.stringify(frame.hostProjection.recoveryAssignments));
+  assert.equal(guidance.movingAwayFromMeeting, true, JSON.stringify(guidance));
+  assert.equal(guidance.receptionBrake, true, JSON.stringify(guidance));
+  assert.equal(movement.locomotionState, 'idle', JSON.stringify(movement));
+  assert.ok(movement.fx > .8, `receiver snapped its facing back toward the missed point: ${JSON.stringify(movement)}`);
+  assert.ok(movement.vx >= 0 && movement.vx < receiver.vx,
+    `receiver did not brake on its existing line: ${receiver.vx} -> ${movement.vx}`);
+});
+
+test('a missed offside-pending rendezvous becomes a physical loose-ball race instead of an authority deadlock', () => {
+  const fixture = snapshotFixture({ receiver: { x: 55, y: 0 }, target: { x: 55, y: 0 } });
+  const live = attachment('cpu-v-cpu', fixture.target);
+  const releaseFrame = runTick(live, fixture.snapshot);
+  let flightSnapshot = launchSnapshotFromAcceptedPass(fixture, releaseFrame);
+  const meeting = flightSnapshot.ball.launchIntent.target;
+  flightSnapshot.ball.launchIntent.predictedArrivalTicks = 24;
+  flightSnapshot.ball.launchIntent.offsideCandidate = {
+    playerId: RECEIVER_ID,
+    teamId: 'you',
+    passerId: OWNER_ID,
+    kickTick: flightSnapshot.tick
+  };
+  flightSnapshot.contact.gate.offsideInvolvementPending = true;
+  const launchFrame = runTick(live, flightSnapshot);
+
+  flightSnapshot = advanceFlightSnapshot(flightSnapshot, launchFrame);
+  Object.assign(flightSnapshot.ball, {
+    x: meeting.x,
+    y: meeting.y,
+    z: 0,
+    vx: 4 * UNITS.xPerMetre / 60,
+    vy: 0,
+    zv: 0,
+    targetId: RECEIVER_ID,
+    launchIntent: null
+  });
+  flightSnapshot.contact.gate.offsideInvolvementPending = true;
+  const arrivalFrame = runTick(live, flightSnapshot);
+  assert.equal(arrivalFrame.hostProjection.possession.inFlight, true);
+  assert.equal(arrivalFrame.hostProjection.possession.arrivalWindowEntered, true);
+
+  flightSnapshot = advanceFlightSnapshot(flightSnapshot, arrivalFrame);
+  Object.assign(flightSnapshot.ball, {
+    x: meeting.x + 4.5 * UNITS.xPerMetre,
+    y: meeting.y,
+    z: 0,
+    vx: 1.2 * UNITS.xPerMetre / 60,
+    vy: 0,
+    zv: 0,
+    targetId: RECEIVER_ID,
+    launchIntent: null
+  });
+  flightSnapshot.contact.gate.offsideInvolvementPending = true;
+  const missedFrame = runTick(live, flightSnapshot);
+
+  assert.equal(missedFrame.hostProjection.possession.inFlight, false,
+    JSON.stringify(missedFrame.hostProjection.possession));
+  assert.equal(missedFrame.hostProjection.possession.ownerId, null);
+  assert.equal(missedFrame.hostProjection.possession.routeExpiredReason, 'ball-left-arrival-window');
+  assert.ok(missedFrame.hostProjection.recoveryAssignments.some(row =>
+    row.authority === 'v2-loose-ball-recovery'),
+  JSON.stringify(missedFrame.hostProjection.recoveryAssignments));
+  assert.equal(missedFrame.hostProjection.contact?.ownerCandidateId ?? null, null,
+    'recovery movement must not grant possession while the host still adjudicates offside involvement');
+  assert.match(MATCH_SOURCE,
+    /routeExpiredAtTick===projection\.snapshotTick\)\{const expiredTarget=ball\.target;ball\.target=null;/,
+    'the committed host must clear the stale named target once the authored route ends');
 });
 
 test('pass-race output is replay-identical and remains chunk-identical after adapter export/restore', () => {

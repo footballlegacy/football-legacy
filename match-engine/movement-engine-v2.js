@@ -524,32 +524,71 @@
     const limits = limitsFor(player, contextualMode, config);
     const speed = magnitude(player.velocity);
     const response = control.responsivenessMultiplier;
+    const velocityDirection = speed > 1e-9 ? normalize(player.velocity, desiredDirection) : desiredDirection;
+    const directionAlignment = dot(velocityDirection, desiredDirection);
+    const facingAlignment = dot(player.facing, desiredDirection);
+    // Live human steering is input-led. The old path first rotated the body
+    // through speed inertia and then made velocity chase that rotating body,
+    // effectively applying turn delay twice. Keep the body turn readable,
+    // but resolve the requested velocity against the stick direction itself.
+    // CPU/default callers remain on the original facing-led path below.
+    const humanDirectionalSteering = !liveAction && inputMagnitude > 1e-9 && response > 1 &&
+      (directionAlignment < 0.995 || facingAlignment < 0.995);
+    const turnSeverity = clamp((1 - directionAlignment) / 2, 0, 1);
+    const ratedResponse = 1 + (response - 1) * clamp((1 - directionAlignment) / 0.3, 0, 1);
     // With no retained momentum there is nothing physical to preserve: a
     // human can plant and leave in the requested direction instead of taking
     // several frames of forward steps while the old facing slowly rotates.
     const maximumTurn = response > 1 && speed <= 0.25
       ? Math.PI
-      : limits.turnRate / (1 + speed * config.speedTurnInertia) * response * dt;
+      : limits.turnRate / (1 + speed * config.speedTurnInertia * (humanDirectionalSteering ? 0.25 : 1)) * response * dt;
     player.facing = rotateToward(player.facing, desiredDirection, maximumTurn);
     const targetSpeed = forcedSpeed == null ? limits.speed * inputMagnitude : forcedSpeed;
-    const targetVelocity = { x: player.facing.x * targetSpeed, y: player.facing.y * targetSpeed };
-    const delta = { x: targetVelocity.x - player.velocity.x, y: targetVelocity.y - player.velocity.y };
-    const deltaLength = magnitude(delta);
-    const velocityDirection = speed > 1e-9 ? normalize(player.velocity, desiredDirection) : desiredDirection;
-    const directionAlignment = dot(velocityDirection, desiredDirection);
-    const responsiveReorientation = !liveAction && inputMagnitude > 1e-9 && response > 1 && directionAlignment < 0.82;
-    const braking = targetSpeed < speed || inputMagnitude <= 1e-9 ||
-      responsiveReorientation || (liveAction && livePhase === 'recovery');
-    const touchBurst = !braking && player.touchBurstUntilTick >= tick ? player.touchBurstAccelerationMultiplier : 1;
-    const rate = forcedAcceleration == null
-      ? (braking ? limits.deceleration * (responsiveReorientation ? response : 1) : limits.acceleration * touchBurst)
-      : forcedAcceleration;
-    const maximumDelta = rate * dt;
-    if (deltaLength > maximumDelta && deltaLength > 1e-12) {
-      player.velocity.x += delta.x / deltaLength * maximumDelta;
-      player.velocity.y += delta.y / deltaLength * maximumDelta;
+    if (humanDirectionalSteering) {
+      // Resolve the obsolete sideways/old-direction momentum separately from
+      // acceleration along the new request. This produces a rated cut or
+      // brake-and-go rather than a semicircular run, without teleporting the
+      // player, raising their speed ceiling or snapping their facing.
+      const along = dot(player.velocity, desiredDirection);
+      const lateral = {
+        x: player.velocity.x - desiredDirection.x * along,
+        y: player.velocity.y - desiredDirection.y * along
+      };
+      const lateralLength = magnitude(lateral);
+      const lateralRate = limits.deceleration * ratedResponse * (1.15 + turnSeverity * 0.65);
+      const lateralScale = lateralLength <= 1e-12 ? 0 :
+        Math.max(0, lateralLength - lateralRate * dt) / lateralLength;
+      let nextAlong = along;
+      const alongDifference = targetSpeed - along;
+      if (Math.abs(alongDifference) > 1e-12) {
+        const replacingOpposedMomentum = along < 0;
+        const reducingAlong = alongDifference < 0;
+        const alongRate = forcedAcceleration == null
+          ? (replacingOpposedMomentum || reducingAlong
+            ? limits.deceleration * ratedResponse * (1 + turnSeverity * 0.55)
+            : limits.acceleration * ratedResponse)
+          : forcedAcceleration;
+        const maximumAlongDelta = alongRate * dt;
+        nextAlong += clamp(alongDifference, -maximumAlongDelta, maximumAlongDelta);
+      }
+      player.velocity = {
+        x: desiredDirection.x * nextAlong + lateral.x * lateralScale,
+        y: desiredDirection.y * nextAlong + lateral.y * lateralScale
+      };
     } else {
-      player.velocity = targetVelocity;
+      const targetVelocity = { x: player.facing.x * targetSpeed, y: player.facing.y * targetSpeed };
+      const delta = { x: targetVelocity.x - player.velocity.x, y: targetVelocity.y - player.velocity.y };
+      const deltaLength = magnitude(delta);
+      const braking = targetSpeed < speed || inputMagnitude <= 1e-9 || (liveAction && livePhase === 'recovery');
+      const touchBurst = !braking && player.touchBurstUntilTick >= tick ? player.touchBurstAccelerationMultiplier : 1;
+      const rate = forcedAcceleration == null ? (braking ? limits.deceleration : limits.acceleration * touchBurst) : forcedAcceleration;
+      const maximumDelta = rate * dt;
+      if (deltaLength > maximumDelta && deltaLength > 1e-12) {
+        player.velocity.x += delta.x / deltaLength * maximumDelta;
+        player.velocity.y += delta.y / deltaLength * maximumDelta;
+      } else {
+        player.velocity = targetVelocity;
+      }
     }
     const velocityLimit = forcedSpeed == null ? Math.max(limits.speed, speed) : Math.max(forcedSpeed, speed);
     const nextSpeed = magnitude(player.velocity);

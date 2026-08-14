@@ -317,6 +317,54 @@ test('SHARP-TURN FIXTURE: direction cannot reverse instantly but does complete',
   assert.ok(byId(turned, fixture.playerId).facing.x < -0.99);
 });
 
+test('human 45, 90 and 180 degree steering is direct, rated and never speed-snapped', () => {
+  const run = (angleDegrees, agility = 82, balance = 80) => {
+    const fixture = Movement.createSharpTurnFixture();
+    const radians = angleDegrees * Math.PI / 180;
+    const direction = { x: Math.cos(radians), y: Math.sin(radians) };
+    fixture.world.players[0].velocity = { x: 6, y: 0 };
+    fixture.world.players[0].attributes = {
+      ...fixture.world.players[0].attributes, agility, balance
+    };
+    fixture.commands[0] = {
+      ...fixture.commands[0], move: direction, durationTicks: 90, responsivenessMultiplier: 1.42
+    };
+    let state = Movement.createWorldState(fixture.world), alignedAt = null, targetPaceAt = null,
+      minimumSpeed = Infinity, maximumForward = 0, maximumCrossTrack = 0;
+    const normal = { x: -direction.y, y: direction.x };
+    for (let tick = 1; tick <= 90; tick += 1) {
+      state = Movement.advance(state, fixture.commands, 1).state;
+      const actor = byId(state, fixture.playerId);
+      const actorSpeed = speed(actor);
+      const headingDot = actorSpeed <= 1e-9 ? -1 :
+        (actor.velocity.x * direction.x + actor.velocity.y * direction.y) / actorSpeed;
+      minimumSpeed = Math.min(minimumSpeed, actorSpeed);
+      maximumForward = Math.max(maximumForward, actor.position.x);
+      maximumCrossTrack = Math.max(maximumCrossTrack,
+        Math.abs(actor.position.x * normal.x + actor.position.y * normal.y));
+      if (alignedAt == null && headingDot >= Math.cos(10 * Math.PI / 180)) alignedAt = tick;
+      if (targetPaceAt == null && actor.velocity.x * direction.x + actor.velocity.y * direction.y >= 1) targetPaceAt = tick;
+    }
+    return { actor: byId(state, fixture.playerId), alignedAt, targetPaceAt,
+      minimumSpeed, maximumForward, maximumCrossTrack };
+  };
+  const cut45 = run(45), cut90 = run(90), reverse = run(180);
+  assert.ok(cut45.alignedAt <= 14 && cut45.minimumSpeed > 5.5 && cut45.maximumCrossTrack <= .65,
+    JSON.stringify(cut45));
+  assert.ok(cut90.alignedAt <= 20 && cut90.minimumSpeed > 2.5 && cut90.maximumCrossTrack <= 1.1,
+    JSON.stringify(cut90));
+  assert.ok(reverse.alignedAt <= 18 && reverse.targetPaceAt <= 24 && reverse.minimumSpeed < .5,
+    JSON.stringify(reverse));
+  assert.ok(reverse.maximumForward <= .9 && reverse.maximumCrossTrack <= 1e-9, JSON.stringify(reverse));
+  assert.ok(reverse.actor.velocity.x < 0 && reverse.actor.facing.x < -.99);
+
+  const elite = run(180, 99, 99), lower = run(180, 50, 50);
+  assert.ok(elite.targetPaceAt < reverse.targetPaceAt && reverse.targetPaceAt < lower.targetPaceAt,
+    JSON.stringify({ elite, ordinary: reverse, lower }));
+  assert.ok(elite.maximumForward < reverse.maximumForward && reverse.maximumForward < lower.maximumForward,
+    JSON.stringify({ elite, ordinary: reverse, lower }));
+});
+
 test('FATIGUE FIXTURE: sustained sprint drains stamina, lowers speed and recovery restores it', () => {
   const fixture = Movement.createFatigueFixture();
   assert.equal(fixture.name, 'sprint fatigue and recovery');

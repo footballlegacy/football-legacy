@@ -3,7 +3,7 @@
   "schemaVersion": "3.0.0",
   "build": 174,
   "candidateBuild": 174,
-  "candidate": 4,
+  "candidate": 5,
   "policy": {
     "defaultAuthority": "fl-v2",
     "currentAuthorityRung": "authoritative-v2-only-playable",

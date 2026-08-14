@@ -479,7 +479,9 @@
       state.consumedActionIdsAtHighWater = [action.id];
     }
     state.consumedActionIds = [...state.consumedActionIds, action.id];
-    return { ...action, actorId: state.carrierId, commandTick, expiresTick: tick + ACTION_BUFFER_TICKS };
+    const leaseExpiry = Number.isInteger(state.leaseUntilTick) ? state.leaseUntilTick + 1 : tick;
+    return { ...action, actorId: state.carrierId, commandTick,
+      expiresTick: Math.max(tick + ACTION_BUFFER_TICKS, leaseExpiry) };
   }
 
   function secureState(request, previous, ownerId, outcome) {
@@ -803,7 +805,15 @@
     const carrier = playerFor(request, state.carrierId), currentAction = markAction(state, request.actionIntent, request.tick);
 
     if ([PHASES.TOUCH_PREPARATION, PHASES.SEPARATED_TOUCH, PHASES.CHASE_RECOVERY].includes(state.phase) && currentAction) {
-      state.bufferedAction = currentAction;
+      const prior = state.bufferedAction;
+      // One physical touch should preserve the decision already made over the
+      // ball, not let a CPU carrier reroll its pass target every six ticks as
+      // the lease progresses. A newly available shot may supersede a pass;
+      // explicit human input may supersede either. Both still wait for real
+      // resecure, and neither receives ownership from the buffer itself.
+      const explicitHumanUpdate = currentAction.source !== 'cpu-v2';
+      const shotUpgrade = currentAction.type === 'shot' && (!prior || prior.type !== 'shot');
+      if (!prior || explicitHumanUpdate || shotUpgrade) state.bufferedAction = currentAction;
     } else if ([PHASES.SECURED_CONTROL, PHASES.RESECURE, PHASES.SHIELD].includes(state.phase) && currentAction) {
       releasedAction = currentAction;
     }

@@ -37,7 +37,7 @@ const queueSource = sourceBetween(
 );
 const trajectorySource = sourceBetween(
   matchSource,
-  'function humanGroundPassTrajectory',
+  'function measureHumanGroundPassRendezvous',
   'function doPassForHuman'
 );
 
@@ -47,6 +47,7 @@ const context = vm.createContext({
   H,
   M,
   PITCH_UNITS_PER_METRE: Z_PER_METRE,
+  FootballLegacyBallEngineV2: Ball,
   worldDistanceMetres: (dx, dy) => Math.hypot(dx / X_PER_METRE, dy / Y_PER_METRE),
   liveV2Authority: {},
   liveV2CanStageProtectedLaunch: () => true,
@@ -89,7 +90,15 @@ function stageAndSimulate({ distanceMetres, power, angle }) {
       speedWorld,
       loftWorld: 0,
       spin: 0,
-      flightType: 'ground-pass'
+      flightType: 'ground-pass',
+      groundDampingModel: trajectory.groundDampingModel,
+      groundDampingInitialPerSecond: trajectory.groundDampingInitialPerSecond,
+      groundDampingRampScale: trajectory.groundDampingRampScale,
+      groundDampingRampExponent: trajectory.groundDampingRampExponent,
+      groundDampingReferenceDistanceMetres: trajectory.groundDampingReferenceDistanceMetres,
+      groundDampingMaximumProgress: trajectory.groundDampingMaximumProgress,
+      groundSkidFrictionScale: trajectory.groundSkidFrictionScale,
+      groundLinearDampingUntilSeconds: trajectory.groundLinearDampingUntilSeconds
     }
   );
   assert.ok(intent, 'production V2 queue rejected normal X');
@@ -111,7 +120,19 @@ function stageAndSimulate({ distanceMetres, power, angle }) {
     liftAngleDeg: intent.liftAngleDeg,
     sideSpinRpm: intent.sideSpinRpm,
     topSpinRpm: intent.topSpinRpm,
-    source: intent.source
+    source: intent.source,
+    metadata: {
+      groundDampingModel: intent.groundDampingModel,
+      groundDampingInitialPerSecond: intent.groundDampingInitialPerSecond,
+      groundDampingRampScale: intent.groundDampingRampScale,
+      groundDampingRampExponent: intent.groundDampingRampExponent,
+      groundDampingOriginX: metricOrigin.x,
+      groundDampingOriginY: metricOrigin.y,
+      groundDampingReferenceDistanceMetres: intent.groundDampingReferenceDistanceMetres,
+      groundDampingMaximumProgress: intent.groundDampingMaximumProgress,
+      groundSkidFrictionScale: intent.groundSkidFrictionScale,
+      groundLinearDampingUntilSeconds: intent.groundLinearDampingUntilSeconds
+    }
   });
   let state = launch.state;
   let simulationContext = Ball.createSimulationContext({ seed: 173 });
@@ -134,6 +155,8 @@ function stageAndSimulate({ distanceMetres, power, angle }) {
 
 test('production Ball V2 reaches the one authored normal-X meeting at its predicted ETA', () => {
   const matrix = [
+    { distanceMetres: 3.25, power: .05, angle: Math.PI / 7 },
+    { distanceMetres: 4.3, power: .07, angle: -Math.PI / 5 },
     { distanceMetres: 5, power: .07, angle: 0 },
     { distanceMetres: 8, power: .20, angle: Math.PI / 2 },
     { distanceMetres: 12, power: .35, angle: Math.PI / 4 },
@@ -157,11 +180,17 @@ test('production Ball V2 reaches the one authored normal-X meeting at its predic
     });
     if (result.intent.source !== 'ground-pass') violations.push(`not ground-pass: ${evidence}`);
     if (result.intent.liftAngleDeg !== 0) violations.push(`normal X acquired lift: ${evidence}`);
-    if (result.targetErrorMetres > 1) violations.push(`missed authored meeting at predicted ETA: ${evidence}`);
-    if (result.terminalPaceMps < 4.5 || result.terminalPaceMps > 12.5) {
+    if (result.targetErrorMetres > .75) violations.push(`missed authored meeting at predicted ETA: ${evidence}`);
+    // This is pace at the exact authored point. It must stay live enough for a
+    // physical cushion instead of collapsing into the old terminal brake.
+    // A deliberately over-powered short pass may arrive harder and continue
+    // farther after a miss; clamping every charge to one terminal ceiling was
+    // precisely what erased the player's requested high-power end roll.
+    const highPowerAllowance = 2 * clamp((scenario.power - .75) / .25, 0, 1);
+    if (result.terminalPaceMps < 5.8 || result.terminalPaceMps > 12.5 + highPowerAllowance) {
       violations.push(`terminal pace is not playable: ${evidence}`);
     }
-    if (Math.abs(result.terminalPaceMps - result.trajectory.terminalPaceMps) > 1.25) {
+    if (Math.abs(result.terminalPaceMps - result.trajectory.terminalPaceMps) > .8) {
       violations.push(`terminal pace prediction drifted: ${evidence}`);
     }
     if (!['skid', 'roll'].includes(result.state.regime)) {

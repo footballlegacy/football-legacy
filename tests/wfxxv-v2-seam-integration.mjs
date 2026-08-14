@@ -254,7 +254,7 @@ test('a grounded missed cross expires its adapter receiver route on the second c
 function knockOnSnapshot() {
   const snapshot = baseSnapshot(1);
   const carrier = snapshot.players.find(player => player.id === CARRIER_ID);
-  Object.assign(carrier, { x: 35, y: 0, fx: 1, fy: 0 });
+  Object.assign(carrier, { x: 35, y: 0, vx: 0, vy: 0, fx: 1, fy: 0 });
   carrier.control = { x: 0, y: 0, strength: 0, sprint: false, shield: false };
   snapshot.humanPlayerIds = [CARRIER_ID];
   const startX = 35.72;
@@ -272,7 +272,11 @@ function knockOnSnapshot() {
     nx: 1,
     ny: 0,
     distance,
-    maximumTravelDistance: distance + .25
+    reacquireMinimumDistance: distance * .55,
+    maximumTravelDistance: distance * 5,
+    startedAt: 1,
+    reacquireAfter: 8,
+    expiresAt: 181
   };
   Object.assign(snapshot.ball, {
     x: startX,
@@ -302,7 +306,7 @@ function knockOnSnapshot() {
   return { snapshot, contract };
 }
 
-function advanceKnockOnSnapshot(snapshot, frame, bounded) {
+function advanceKnockOnSnapshot(snapshot, frame, allowMeeting = true) {
   const next = structuredClone(snapshot);
   next.tick += 1;
   applyMovement(next, frame.hostProjection);
@@ -312,23 +316,41 @@ function advanceKnockOnSnapshot(snapshot, frame, bounded) {
   next.ball.targetId = CARRIER_ID;
   next.contact.intendedReceiverId = CARRIER_ID;
   const carrier = next.players.find(player => player.id === CARRIER_ID);
-  carrier.contactEligible = bounded;
-  carrier.control = bounded
+  const contract = next.dribbling.directionalKnockOnIntent;
+  const travelled = frame.hostProjection.ball
+    ? Math.hypot(frame.hostProjection.ball.x - contract.startX,
+      frame.hostProjection.ball.y - contract.startY)
+    : 0;
+  const physicalMeeting = allowMeeting && next.tick >= contract.reacquireAfter &&
+    travelled >= contract.distance * 1.8;
+  carrier.contactEligible = physicalMeeting;
+  if (physicalMeeting && frame.hostProjection.ball) {
+    // Move the test footballer into a real swept-contact meeting. The adapter
+    // must still let First Touch decide ownership; this fixture never moves or
+    // assigns the ball.
+    carrier.x = frame.hostProjection.ball.x - .54;
+    carrier.y = frame.hostProjection.ball.y;
+    carrier.vx = .12;
+    carrier.vy = 0;
+  }
+  carrier.control = physicalMeeting
     ? { x: 1, y: 0, strength: 1, sprint: true, shield: false }
     : { x: 0, y: 0, strength: 0, sprint: false, shield: false };
   return next;
 }
 
-function knockOnRun(seed) {
+function knockOnRun(seed, allowMeeting = true) {
   const harness = attachment(seed);
   const fixture = knockOnSnapshot();
   let snapshot = fixture.snapshot;
-  let bounded = false;
+  let safetyBounded = false;
   let ownerWasFabricated = false;
   let acquiredByFirstTouch = false;
   let lastBall = null;
+  let maximumTravel = 0;
+  let minimumCarrierGap = Infinity;
   let ticks = 0;
-  for (; ticks < 120; ticks += 1) {
+  for (; ticks < 180; ticks += 1) {
     const frame = commitTick(harness, snapshot);
     const directional = frame.hostProjection.dribbling.directionalKnockOn;
     assert.equal(frame.hostProjection.possession.inFlight, false,
@@ -337,8 +359,17 @@ function knockOnRun(seed) {
       'a knock-on must not install a reception route');
     assert.equal(frame.hostProjection.possession.reactionStimulus, null,
       'a knock-on must not open a teammate pass-reaction window');
-    if (frame.hostProjection.ball) lastBall = frame.hostProjection.ball;
-    if (directional?.bounded) bounded = true;
+    if (frame.hostProjection.ball) {
+      lastBall = frame.hostProjection.ball;
+      const liveCarrier = frame.hostProjection.movement.find(row => row.id === CARRIER_ID);
+      if (liveCarrier) minimumCarrierGap = Math.min(minimumCarrierGap,
+        Math.hypot(lastBall.x - liveCarrier.x, lastBall.y - liveCarrier.y));
+      maximumTravel = Math.max(maximumTravel, Math.hypot(
+        lastBall.x - fixture.contract.startX,
+        lastBall.y - fixture.contract.startY
+      ));
+    }
+    if (directional?.bounded) safetyBounded = true;
     const contactOwned = frame.hostProjection.contact?.ownedContact === true &&
       frame.hostProjection.contact?.ownerCandidateId === CARRIER_ID;
     if (frame.hostProjection.logicalBallOwnerId && !contactOwned) ownerWasFabricated = true;
@@ -346,9 +377,11 @@ function knockOnRun(seed) {
       acquiredByFirstTouch = true;
       break;
     }
-    snapshot = advanceKnockOnSnapshot(snapshot, frame, bounded);
+    snapshot = advanceKnockOnSnapshot(snapshot, frame, allowMeeting);
   }
-  return { bounded, ownerWasFabricated, acquiredByFirstTouch, ticks, lastBall, targetX: fixture.contract.targetX };
+  return { safetyBounded, ownerWasFabricated, acquiredByFirstTouch, ticks, lastBall,
+    maximumTravel, minimumCarrierGap, referenceDistance: fixture.contract.distance,
+    maximumTravelDistance: fixture.contract.maximumTravelDistance };
 }
 
 test('directional knock-on is a V2 True Feel/MR launch, never a self-pass, and only First Touch may restore ownership', () => {
@@ -360,12 +393,21 @@ test('directional knock-on is a V2 True Feel/MR launch, never a self-pass, and o
 
   const first = knockOnRun(515151);
   const second = knockOnRun(515151);
-  assert.equal(first.bounded, true, JSON.stringify(first));
+  const uncollected = knockOnRun(515151, false);
+  assert.equal(first.safetyBounded, false, JSON.stringify(first));
   assert.equal(first.ownerWasFabricated, false, JSON.stringify(first));
   assert.equal(first.acquiredByFirstTouch, true, JSON.stringify(first));
-  assert.ok(first.lastBall && Math.abs(first.lastBall.x - first.targetX) < 1e-9,
-    `MR knock-on did not stop at its authored 3.48m point: ${JSON.stringify(first)}`);
-  assert.deepEqual(first, second, 'knock-on launch, bound and reacquisition must be seed-deterministic');
+  assert.ok(first.maximumTravel > first.referenceDistance * 1.5,
+    `MR knock-on still died at its old 3.48m reference: ${JSON.stringify(first)}`);
+  assert.ok(first.maximumTravel < first.maximumTravelDistance,
+    `ordinary knock-on reached its emergency safety limit: ${JSON.stringify(first)}`);
+  assert.equal(uncollected.acquiredByFirstTouch, false, JSON.stringify(uncollected));
+  assert.equal(uncollected.safetyBounded, false, JSON.stringify(uncollected));
+  assert.ok(uncollected.maximumTravel >= uncollected.referenceDistance * 4.4,
+    `uncollected MR touch did not retain the V1.5 free-roll window: ${JSON.stringify(uncollected)}`);
+  assert.ok(uncollected.maximumTravel < uncollected.maximumTravelDistance,
+    `normal MR rollout relied on the emergency containment ceiling: ${JSON.stringify(uncollected)}`);
+  assert.deepEqual(first, second, 'knock-on free roll and physical reacquisition must be seed-deterministic');
 });
 
 test('the post-commit host reconciliation cannot synthesize a directional knock-on owner', () => {

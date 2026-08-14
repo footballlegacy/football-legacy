@@ -7,7 +7,7 @@ approved adapter/capture dependencies.
 
 ## Current reviewed bytes
 
-- `match-engine/match.html`: `f37e49a3ada723ece4f09e1641e84625fd5b26cd502d944e6e65609cbee825e8`
+- `match-engine/match.html`: `3349234405a5f9991b3190e482e7dceb74bf24e5cdba342726ad89aec7b820ec`
 - `match-engine/build173-live-shadow-hook-v2.js`: `61c4ab42563f3b4b8585371b37e8e2527073bdab4eb5598cb75b677fd1c12fca`
 - `match-engine/build173-live-shadow-adapter-v2.js`: `b7cbd0f9366c97b966962c2a2c26c16d592cdb46358c0a7eb9e25cd3e60600e5`
 - `match-engine/build173-shadow-host-capture-v2.js`: `c6556fafdb0caf1877e4b6b78f27bc4784d2dff5cfcee21b501849db96ea16c5`

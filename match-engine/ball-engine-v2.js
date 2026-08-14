@@ -677,20 +677,34 @@
         }
       }
 
-      if (config.knuckle.enabled && speed >= config.knuckle.minimumSpeed &&
-          magnitude(state.angularVelocity) <= config.knuckle.maximumSpin) {
+      const launchMetadata = state.metadata && state.metadata.launchMetadata;
+      const launchKnuckleEnabled = Boolean(launchMetadata && launchMetadata.knuckleEnabled);
+      const knuckleMinimumSpeed = launchKnuckleEnabled
+        ? clamp(finite(launchMetadata.knuckleMinimumSpeed, config.knuckle.minimumSpeed), 0, 80)
+        : config.knuckle.minimumSpeed;
+      const knuckleMaximumSpin = launchKnuckleEnabled
+        ? clamp(finite(launchMetadata.knuckleMaximumSpin, config.knuckle.maximumSpin), 0, 80)
+        : config.knuckle.maximumSpin;
+      const knuckleFrequency = launchKnuckleEnabled
+        ? clamp(finite(launchMetadata.knuckleOscillationFrequencyHz, config.knuckle.oscillationFrequencyHz), .1, 12)
+        : config.knuckle.oscillationFrequencyHz;
+      const knuckleStrength = launchKnuckleEnabled
+        ? clamp(finite(launchMetadata.knuckleAcceleration, config.knuckle.acceleration), 0, 3)
+        : config.knuckle.acceleration;
+      if ((config.knuckle.enabled || launchKnuckleEnabled) && speed >= knuckleMinimumSpeed &&
+          magnitude(state.angularVelocity) <= knuckleMaximumSpin) {
         if (!isSimulationContext(context)) {
           throw new TypeError('Knuckle forcing requires a complete deterministic simulation context');
         }
         const forward = normalise(relativeVelocity, { x: 1, y: 0, z: 0 });
         const lateral = normalise({ x: -forward.y, y: forward.x, z: 0 }, { x: 0, y: 1, z: 0 });
         const liftAxis = normalise(cross(forward, lateral), { x: 0, y: 0, z: 1 });
-        const phase = Math.PI * 2 * config.knuckle.oscillationFrequencyHz * state.simulationTime;
+        const phase = Math.PI * 2 * knuckleFrequency * state.simulationTime;
         const side = Math.sin(phase + seedPhase(context.seed, 0x9e3779b9));
         const lift = Math.sin(phase + seedPhase(context.seed, 0x85ebca6b));
         knuckleAcceleration = add(
-          scale(lateral, side * config.knuckle.acceleration),
-          scale(liftAxis, lift * config.knuckle.acceleration * 0.5)
+          scale(lateral, side * knuckleStrength),
+          scale(liftAxis, lift * knuckleStrength * 0.5)
         );
         acceleration = add(acceleration, knuckleAcceleration);
       }
@@ -1154,13 +1168,17 @@
     let slipSpeed = Math.hypot(contactSurfaceVelocity.x, contactSurfaceVelocity.y);
     let horizontalSpeed = Math.hypot(state.velocity.x, state.velocity.y);
     const gravityMagnitude = Math.max(0, -config.gravity.z);
+    const launchMetadata = state.metadata && state.metadata.launchMetadata;
     if (slipSpeed > config.ground.skidSlipSpeed) {
       // Coulomb friction acts through the contact point. Applying one shared
       // impulse to translation and rotation prevents the old solver from
       // creating spin energy independently of the ball's linear energy.
       const inverseEffectiveMass = 1 / state.mass + state.radius * state.radius / state.inertia;
       const requiredImpulse = slipSpeed / inverseEffectiveMass;
-      const maximumImpulse = config.ground.skidFriction * state.mass * gravityMagnitude * dt;
+      const openingSkidScale = launchMetadata && launchMetadata.groundDampingModel === 'progressive-ground-strike-v2'
+        ? clamp(finite(launchMetadata.groundSkidFrictionScale, 1), .1, 1)
+        : 1;
+      const maximumImpulse = config.ground.skidFriction * openingSkidScale * state.mass * gravityMagnitude * dt;
       const impulseMagnitude = Math.min(requiredImpulse, maximumImpulse);
       if (impulseMagnitude > 0) {
         const impulse = {
@@ -1216,6 +1234,63 @@
         state.velocity.y = 0;
         state.regime = REGIMES.ROLL;
       }
+    }
+
+    // A deliberately weighted ground strike can carry an additional,
+    // finite-duration turf-loss profile in its immutable launch metadata.
+    // This is passive damping only: it cannot accelerate, curve or retarget
+    // the ball, and launches without the exact model tag remain byte-for-byte
+    // on the shared grass coefficients above. Scaling linear and angular
+    // motion together preserves the skid/roll relationship established by
+    // the physical contact solver.
+    if (launchMetadata && launchMetadata.groundDampingModel === 'weighted-ground-strike-v1') {
+      const dampingPerSecond = clamp(finite(launchMetadata.groundLinearDampingPerSecond, 0), 0, 12);
+      const dampingUntilSeconds = clamp(finite(launchMetadata.groundLinearDampingUntilSeconds, 0), 0, 12);
+      const activeDuration = Math.max(0, Math.min(dt, dampingUntilSeconds - state.simulationTime));
+      if (dampingPerSecond > 0 && activeDuration > 0) {
+        const dampingFactor = Math.exp(-dampingPerSecond * activeDuration);
+        state.velocity.x *= dampingFactor;
+        state.velocity.y *= dampingFactor;
+        state.angularVelocity.x *= dampingFactor;
+        state.angularVelocity.y *= dampingFactor;
+        state.angularVelocity.z *= dampingFactor;
+      }
+    }
+    if (launchMetadata && launchMetadata.groundDampingModel === 'progressive-ground-strike-v2') {
+      // A driven pass does not meet a constant synthetic brake. Its initial
+      // foot impulse can skim across the surface, while continued contact
+      // raises turf loss non-linearly. The launch owns the calibrated curve;
+      // this engine merely applies it as passive energy loss. Ground-contact
+      // time is tracked separately from flight time so a small bounce cannot
+      // consume the progressive part of the pass before the grass does.
+      const initialPerSecond = clamp(finite(launchMetadata.groundDampingInitialPerSecond, 0), 0, 12);
+      const rampScale = clamp(finite(launchMetadata.groundDampingRampScale, 0), 0, 12);
+      const rampExponent = clamp(finite(launchMetadata.groundDampingRampExponent, 2), .1, 6);
+      const originX = finite(launchMetadata.groundDampingOriginX, state.position.x);
+      const originY = finite(launchMetadata.groundDampingOriginY, state.position.y);
+      const referenceDistance = clamp(finite(launchMetadata.groundDampingReferenceDistanceMetres, 0), .1, 80);
+      const maximumProgress = clamp(finite(launchMetadata.groundDampingMaximumProgress, 3), .25, 3);
+      const dampingUntilSeconds = clamp(finite(launchMetadata.groundLinearDampingUntilSeconds, 0), 0, 12);
+      const contactSeconds = clamp(finite(state.metadata.progressiveGroundContactSeconds, 0), 0, 12);
+      const activeDuration = Math.max(0, Math.min(dt, dampingUntilSeconds - contactSeconds));
+      if ((initialPerSecond > 0 || rampScale > 0) && activeDuration > 0) {
+        const travelled = Math.hypot(state.position.x - originX, state.position.y - originY);
+        // The synthetic rising-strike curve may deliberately stop steepening
+        // after its authored meeting. Natural rolling resistance still acts;
+        // only the extra exponential ramp is capped. Untagged and older
+        // launches retain the historical 3x path cap exactly.
+        const progress = clamp(travelled / referenceDistance, 0, maximumProgress);
+        const dampingRate = clamp(initialPerSecond + rampScale * Math.expm1(
+          clamp(rampExponent * progress, 0, 8)
+        ), 0, 12);
+        const dampingFactor = Math.exp(-dampingRate * activeDuration);
+        state.velocity.x *= dampingFactor;
+        state.velocity.y *= dampingFactor;
+        state.angularVelocity.x *= dampingFactor;
+        state.angularVelocity.y *= dampingFactor;
+        state.angularVelocity.z *= dampingFactor;
+      }
+      state.metadata.progressiveGroundContactSeconds = contactSeconds + activeDuration;
     }
 
     // Final invariant guard. Ground friction is passive, so the complete

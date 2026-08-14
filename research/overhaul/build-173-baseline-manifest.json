@@ -45,7 +45,7 @@
       "manualRuntimeControl": "window.FLLiveV2.stop",
       "queryContract": {
         "engine": "fl-v2",
-        "candidate": "4-cache-only",
+        "candidate": "5-cache-only",
         "simulationSeed": "one-positive-uint32-decimal",
         "autoplay": "exactly-one-value-1-for-cpu-versus-cpu-only"
       },
@@ -109,7 +109,7 @@
         "live-v2-match-control-composition.js",
         "live-v2-authority-adapter.js"
       ],
-      "scriptCacheVersion": "174-fl-v2-final-candidate-4",
+      "scriptCacheVersion": "174-fl-v2-final-candidate-5",
       "workflowRemovalAllowed": true
     },
     "liveShadowAttachment": {
@@ -170,7 +170,7 @@
       ],
       "onlinePolicy": "broadcast-camera-frozen",
       "regressionGate": "tests/live-offside-camera-policy.mjs",
-      "regressionGateSha256": "9c49345c55a7e72d5c4f7c848be65084d3813c1b1aab612826061c0b3d4cfb90",
+      "regressionGateSha256": "bd8cc1fa5e5ccc0d95b14bed76420dc7479f58c40e45303b148fe62cd1ff2ea2",
       "replayCleanupRegressionGate": "tests/free-kick-replay-queue-removal.mjs",
       "replayCleanupRegressionGateSha256": "0a99e9ca4297828aa009593cbe6c8bd60843655869251637784f179df3372f66"
     },
@@ -187,10 +187,10 @@
       "files": {
         "controller-ui.js": "77fe9dedac1b2d75a411bddf8e87aabf615d64f8ccd6839e8f1e3dff5edd9223",
         "online/app.js": "97039c202a04593c923f0b7bf497eec6ccc81ba30e8d0aa692bcbe17312c261f",
-        "online/index.html": "2a69791287542fecd17b936f744101973a14b35080ac01e442fab757d0f652d9"
+        "online/index.html": "84085c9fcedbd70964d8f8c7705752418fe8a73165c4220b86beeb01fc9e09dc"
       },
       "regressionGates": {
-        "tests/controller-reconnect-and-quick-play-launch.mjs": "1c3718687d188e9e791af71bdb21b7f172f41f71842716cae9d39c3d62293af1",
+        "tests/controller-reconnect-and-quick-play-launch.mjs": "70173eda77d86914ac38343db882740c783cf3233c536bc293d4065c7f5439a0",
         "tests/online-controller-hotfix.mjs": "542cc3005d0cb85ada5cde81859a4ea7197c55ec2bd52c7f3dd9ecb55280896c"
       }
     }
@@ -200,7 +200,7 @@
       "path": "index.html",
       "purpose": "main menu with V2-only playable match routes and unavailable multiplayer notices",
       "baselineSha256": "a86ce73e7221560c384ba3f87c6befff0e35b54edc838ce4a869c5c45e70c81b",
-      "candidateSha256": "879f9e28f5c864a73bf7c0c85337bcbe51ca4319e59cfea6ecdf0e1718348a75",
+      "candidateSha256": "cfb91a2c336eefa5a90d2cf25ed56096f7d33b451a4e75e0e20d9c2670af52fc",
       "expectedRelation": "v2-only-entry-routing-and-no-previous-engine-playpath"
     },
     {
@@ -235,7 +235,7 @@
       "path": "match-engine/match.html",
       "purpose": "V2-only playable host with exact three-workflow fail-closed preflight",
       "baselineSha256": "8380734db3a142293c5bca2a22f6b6cc9e6a0fa658f9f0c26cce8ad1801cf678",
-      "candidateSha256": "f37e49a3ada723ece4f09e1641e84625fd5b26cd502d944e6e65609cbee825e8",
+      "candidateSha256": "3349234405a5f9991b3190e482e7dceb74bf24e5cdba342726ad89aec7b820ec",
       "pinState": "frozen",
       "expectedRelation": "authoritative-v2-only-three-workflow-host-plus-nonplayable-compatibility-scaffold"
     },
@@ -250,49 +250,49 @@
       "path": "match-engine/index.html",
       "purpose": "retired direct setup redirecting to V2 Quick Play",
       "baselineSha256": "342b244903610b1475497252e1595fe2bdd5b52baf728205f9bcf146abe15b43",
-      "candidateSha256": "c4d1cfe418494852e4fe9782d57834776b3bfdb9f6dfa3d4aa51b5f1b3d125f5",
+      "candidateSha256": "ca35d6f816c652f569799072463c35563895573afd67122fc644d7688ad8cc61",
       "expectedRelation": "retired-direct-setup-v2-only-redirect"
     },
     {
       "path": "START-PS5-SINGLE-PLAYER.command",
       "purpose": "Mac single-player launcher routed through V2 Quick Play",
       "baselineSha256": "b0aa9be2fe30696501c52552e9cc377742d9aaee59dd0d3ede5a719096b00515",
-      "candidateSha256": "7a763691c5213d7cb0adbc42b906fe7f4312118b577c6d816a1572a83570978a",
+      "candidateSha256": "d59aff3e577a024b62312074c8e494a459472315182689c85c07b4fadb1ad646",
       "expectedRelation": "v2-only-single-player-launcher"
     },
     {
       "path": "START-PS5-TWO-PLAYER.command",
       "purpose": "Mac local-two-player unavailable notice with no previous-engine launch",
       "baselineSha256": "85bf946fbe69bcde6ca3433798f03a5e4ac4e473662a0ea1b0a8c0edc5a50593",
-      "candidateSha256": "e3fa1a33ddb37f3e307fb0632ee5207d88f94d848b82934bacf37d127ce5d908",
+      "candidateSha256": "197c31e8b0d106a703d280a1f69ea24a3ef2efe9e24014f0cf1fbdc90b8ded31",
       "expectedRelation": "v2-migration-pending-no-previous-engine-launch"
     },
     {
       "path": "match-engine/START-MATCH.command",
       "purpose": "Mac match launcher routed through V2 Quick Play",
       "baselineSha256": "4156f66d2a6faf0c6cf84dfc5ebe2f20c9f0b949c17827b98b4ac194541f3d5f",
-      "candidateSha256": "7114f4df2ef1ae28f192c95193a6205ebe1cfe92e20ba2919e71ad5e0be95a23",
+      "candidateSha256": "07eb402946e4bb84a15ec9f68277bcbcaec5ea2c9cef1b693cf5c533aa6c0816",
       "expectedRelation": "v2-only-quick-play-launcher"
     },
     {
       "path": "match-engine/START-MATCH.bat",
       "purpose": "Windows match launcher routed through V2 Quick Play",
       "baselineSha256": "c369a077a253e26e89b85071fb50bb426ab159e49027572d5f1f18497386f266",
-      "candidateSha256": "17ac3d04877672f52630facada4ea76a6ffc92760979681376242a49eb5b4121",
+      "candidateSha256": "3ef9935b551c261dfe266053a0eb7afb22519e70e152ed4680ca8529894de8da",
       "expectedRelation": "v2-only-quick-play-launcher"
     },
     {
       "path": "quick-play/index.html",
       "purpose": "Quick Play launcher with fixed FL V2 authority and unsupported multiplayer modes disabled",
       "baselineSha256": "6732f88581b00dfb5651d3bdfae4bc440b7891c3763b9b8e13e482a4fe04fef1",
-      "candidateSha256": "22ef3a563ae1015e2ab4a5a430b6d20254122bd9ed6024e3216c594a66666b1c",
+      "candidateSha256": "f354a4df924713a6709fbbba58e960820e5c0a8d8e9a606b3ee73f8afb0dbace",
       "expectedRelation": "v2-only-three-workflow-launcher-plus-controller-cache-bust"
     },
     {
       "path": "quick-play/app.js",
       "purpose": "Quick Play mode, controller, deterministic seed and exact V2-only payload routing",
       "baselineSha256": "ae18e09bb8fef49c3da25b5187cf26b9b2d7bbb91c46f51dd044a8e75fd44ac6",
-      "candidateSha256": "06090e804060265a6df5656e55242d3bc75cbe908664e05e92ce1ba9b1d8c537",
+      "candidateSha256": "097f9bc2475f89b8b6796a4e00cc9b869f143f423785d63fcf0cbdb2737b0bc5",
       "expectedRelation": "v2-only-three-workflow-engine-payload-routing"
     },
     {
@@ -320,7 +320,7 @@
       "path": "online/index.html",
       "purpose": "nonplayable Online V2 migration notice",
       "baselineSha256": "6bb25a5d49a25966e57853801d4d7d878d4c43d923c873eaeae15e8bc247d9d1",
-      "candidateSha256": "2a69791287542fecd17b936f744101973a14b35080ac01e442fab757d0f652d9",
+      "candidateSha256": "84085c9fcedbd70964d8f8c7705752418fe8a73165c4220b86beeb01fc9e09dc",
       "expectedRelation": "online-unavailable-until-v2-authority-no-playable-transport"
     },
     {
@@ -399,21 +399,21 @@
       "path": "match-engine/ball-engine-v2.js",
       "purpose": "deterministic Magnus Reynolds ball launch, flight, ground regimes and passive player-body deflections",
       "baselineAbsent": true,
-      "candidateSha256": "e5491486a7ccae8c8c2b748f42dba97160dffd8d9f52667927c56f3c6c6ecc70",
+      "candidateSha256": "e2b6776a12ebcf8353e322c181e2f38dbb18c1c41d10c1cebf134418a296a819",
       "authorityScope": ["single-player-quick-play", "cpu-versus-cpu", "set-piece-suite", "v2-shadow"]
     },
     {
       "path": "match-engine/dribbling-state-v2.js",
       "purpose": "deterministic physical touch separation, logical possession lease and buffered action authority",
       "baselineAbsent": true,
-      "candidateSha256": "fa1e9e2d4acb64f8f7028e2a21df2ab9e49bcf9c7f11eefaf6e3dfa402150eab",
+      "candidateSha256": "84ae72d02125b2bdf273dc838258ce6b26d9dfe59d52e568e262d1550ab72a42",
       "authorityScope": ["single-player-quick-play", "cpu-versus-cpu"]
     },
     {
       "path": "match-engine/movement-engine-v2.js",
       "purpose": "deterministic FL V2 locomotion and player collision authority",
       "baselineAbsent": true,
-      "candidateSha256": "0c64f95736de7658352bd76f1ebcb2b506cc881c2569ffc80cd1f86f6af2aa18",
+      "candidateSha256": "e5418910d2d5003fa302b6e3a26684b32efc31005c643b0dfb12a618aefdef86",
       "authorityScope": ["single-player-quick-play", "cpu-versus-cpu", "v2-shadow"]
     },
     {
@@ -497,7 +497,7 @@
       "path": "match-engine/live-v2-authority-adapter.js",
       "purpose": "outer offline normal-match gameplay transaction with rollback and host-level strict-stop enforcement",
       "baselineAbsent": true,
-      "candidateSha256": "185340bd57f0fc257ec29babc7cf02c78e23aa8b098d0f151c7a99691d97b3e6",
+      "candidateSha256": "293fa76c42a5798be627acbaca2fddf71e4553792cbdfc9f62d847d08f0dc13d",
       "pinState": "frozen",
       "authorityScope": ["single-player-quick-play", "cpu-versus-cpu"]
     },

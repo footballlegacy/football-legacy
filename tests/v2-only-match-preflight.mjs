@@ -48,7 +48,7 @@ function canonicalSearch(matchType = 'single-player') {
   const params = new URLSearchParams({
     quickPlay: '1',
     engine: 'fl-v2',
-    candidate: '4',
+    candidate: '5',
     simulationSeed: '1772652239',
   });
   if (matchType === 'spectator') params.set('autoplay', '1');
@@ -90,7 +90,7 @@ for (const [matchType, workflow] of [
     assert.equal(result.preflight.simulationSeed, 1772652239);
     assert.deepEqual([...result.preflight.urlMarkers], []);
     assert.ok(result.writes.length > 0, 'V2 modules load only after exact eligibility');
-    assert.ok(result.writes.every(row => row.includes('174-fl-v2-final-candidate-4')));
+    assert.ok(result.writes.every(row => row.includes('174-fl-v2-final-candidate-5')));
   });
 }
 
@@ -98,9 +98,9 @@ const rejectedCases = [
   ['raw direct match URL', { payload: null, search: '' }, 'not-requested'],
   ['missing engine query', { payload: canonicalPayload(), search: canonicalSearch().replace('&engine=fl-v2', '') }, 'engine-query-marker-missing'],
   ['legacy payload and query', { payload: { ...canonicalPayload(), engine: { requested: 'build-173', effective: 'build-173', version: '0.173', fallbackReason: null } }, search: canonicalSearch().replace('engine=fl-v2', 'engine=build-173') }, 'engine-query-marker-invalid'],
-  ['missing candidate', { payload: canonicalPayload(), search: canonicalSearch().replace('&candidate=4', '') }, 'candidate-query-marker-missing'],
-  ['stale candidate', { payload: canonicalPayload(), search: canonicalSearch().replace('candidate=4', 'candidate=3') }, 'candidate-query-marker-invalid'],
-  ['duplicate candidate', { payload: canonicalPayload(), search: `${canonicalSearch()}&candidate=4` }, 'duplicate-candidate-marker'],
+  ['missing candidate', { payload: canonicalPayload(), search: canonicalSearch().replace('&candidate=5', '') }, 'candidate-query-marker-missing'],
+  ['stale candidate', { payload: canonicalPayload(), search: canonicalSearch().replace('candidate=5', 'candidate=3') }, 'candidate-query-marker-invalid'],
+  ['duplicate candidate', { payload: canonicalPayload(), search: `${canonicalSearch()}&candidate=5` }, 'duplicate-candidate-marker'],
   ['missing Quick Play marker', { payload: canonicalPayload(), search: canonicalSearch().replace('quickPlay=1&', '') }, 'quick-play-query-marker-missing'],
   ['malformed payload', { search: canonicalSearch(), hash: '#flMatch=this-is-not-json' }, 'payload-invalid'],
   ['missing home team', { payload: { ...canonicalPayload(), homeTeam: null }, search: canonicalSearch() }, 'payload-home-team-missing'],

@@ -122,10 +122,10 @@ test('protected workflows remain and V2 authority loads only through the exact o
   }
   assert.match(source, /id="offlineLiveV2Preflight"/);
   assert.match(source, /matchType=String\(decoded&&decoded\.matchType\|\|''\),liveWorkflow=matchType==='single-player'\?'single-player':matchType==='spectator'\?'cpu-v-cpu':matchType==='free-kick-suite'\?'set-piece-suite':null/);
-  assert.match(source, /candidateValues\[0\]!=='4'/);
+  assert.match(source, /candidateValues\[0\]!=='5'/);
   assert.match(source, /quickPlayValues\[0\]!=='1'/);
   assert.match(source, /eligible=requested&&queryRequested&&payloadRequested&&!!decoded&&!!liveWorkflow&&unique\.length===0/);
-  assert.match(source, /174-fl-v2-final-candidate-4/);
+  assert.match(source, /174-fl-v2-final-candidate-5/);
   assert.match(source, /buildVersion:'0\.174'/);
   assert.match(source, /hostEngineVersion:'build-173-compatible-orchestrator'/);
 });

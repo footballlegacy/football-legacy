@@ -14,11 +14,11 @@ Co-op / Local 2P, same-team Home Co-op and Online Versus are unavailable until t
 
 FL V2 is fixed as the sole playable authority. Quick Play does not expose an engine selector, previous-build default or previous-build fallback.
 
-The launched package records `requested=effective=fl-v2`, the eligible runtime workflow, ownership data, a deterministic positive uint32 seed and the Candidate 4 cache marker. The match URL must agree exactly with that package. Missing, duplicate, contradictory, unsupported, online, shadow-only or seed-mismatched data fails closed before simulation.
+The launched package records `requested=effective=fl-v2`, the eligible runtime workflow, ownership data, a deterministic positive uint32 seed and the Candidate 5 cache marker. The match URL must agree exactly with that package. Missing, duplicate, contradictory, unsupported, online, shadow-only or seed-mismatched data fails closed before simulation.
 
 Once a V2 match launches, an authority fault restores the captured host state, rolls back the candidate tick and freezes the simulation behind an exportable diagnostic screen. It never continues on a previous engine.
 
-Candidate 4 uses the cache-only `candidate=4` marker and the `174-fl-v2-final-candidate-4` V2 module token. These isolate released bytes; they do not alter the deterministic seed or widen the three-workflow authority scope.
+Candidate 5 uses the cache-only `candidate=5` marker and the `174-fl-v2-final-candidate-5` V2 module token. These isolate released bytes; they do not alter the deterministic seed or widen the three-workflow authority scope.
 
 At free kicks, Cross/A is the grounded pass and stays inside the authored left-stick and power channel. Square/X supplies the aerial service, R1/RB + Square/X the lower, faster ball, and L1/LB + R1/RB + Square/X the driven ball. Corners and goal kicks use the directional Square/X service family; Circle/B remains the separate direct-free-kick shot route.
 

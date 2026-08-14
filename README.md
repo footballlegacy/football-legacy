@@ -1,4 +1,4 @@
-# Football Legacy — Build 174 Candidate 4
+# Football Legacy — Build 174 Candidate 5
 
 Football Legacy is a browser football game prototype with FL V2 Quick Play, historic teams, creation tools, Career Mode and Grassroots to Glory.
 
@@ -12,7 +12,7 @@ Open **[Football Legacy](https://footballlegacy.github.io/football-legacy/)**, c
 
 FL V2 is fixed as the sole playable match engine. There is no previous-build selector, default or fallback. Local two-player, same-team Home Co-op and Online Versus are unavailable until each has complete V2 authority; selecting or opening those routes cannot launch the previous engine.
 
-Candidate 4 keeps pass aim, power and timing player-authored while solving the receiver's meeting point against Ball V2. It also permits reaction-rated recontrol attempts after a loose aerial cushion, closes double-resolution paths around shots, keepers, knock-ons and aerial finishes, repairs free-kick staging and grounded delivery, grades slide cards from the physical challenge, and stops the CPU from recalculating the same rejected pass every frame.
+Candidate 5 completes the accepted normal-X and ground-Triangle weight calibration, restores direct rated turning, and gives the light, strong and double-flick sprint touches distinct physical gaps with progressive MR turf drag. The ball now skids, rolls and settles naturally instead of using the distant directional-touch safety ceiling as a brake. Pass aim, timing, physical interception, independent player reading and ownership remain player- and geometry-authored.
 
 The Invincibles, Conte Chelsea and Ancelotti's representative 2013/14 Real Madrid BBC squad remain available. Their ratings are Football Legacy playtest values, not official EA ratings.
 
@@ -22,7 +22,7 @@ A match launches only when its supported workflow, V2 query, V2 payload, ownersh
 
 If a live V2 authority transaction fails, the candidate tick is rolled back and the match stops behind an exportable diagnostic screen. It does not execute a previous-engine tick.
 
-Internal Build 173-named adapters, hashes, fixtures and tests may remain as non-playable provenance or host compatibility. They are not a hidden game option. The separate FL V1.5 forensic archive is untouched and is not bundled as a Candidate 4 fallback.
+Internal Build 173-named adapters, hashes, fixtures and tests may remain as non-playable provenance or host compatibility. They are not a hidden game option. The separate FL V1.5 forensic archive is untouched and is not bundled as a Candidate 5 fallback.
 
 Read `research/overhaul/fl-v2-only-playable-authority-2026-08-13.md` for the binding release contract.
 

@@ -134,8 +134,8 @@ function protectedBuild173Payload(seed = 173173, matchType = 'co-op') {
 }
 
 test('frozen promotion bytes and lower-engine contracts are exact', () => {
-  assert.equal(hash(adapterSource), '185340bd57f0fc257ec29babc7cf02c78e23aa8b098d0f151c7a99691d97b3e6');
-  assert.equal(hash(matchSource), 'f37e49a3ada723ece4f09e1641e84625fd5b26cd502d944e6e65609cbee825e8');
+  assert.equal(hash(adapterSource), '293fa76c42a5798be627acbaca2fddf71e4553792cbdfc9f62d847d08f0dc13d');
+  assert.equal(hash(matchSource), '3349234405a5f9991b3190e482e7dceb74bf24e5cdba342726ad89aec7b820ec');
   assert.equal(Adapter.VERSION, '1.0.0-offline-live-authority-playtest');
   assert.deepEqual([...Adapter.SUPPORTED_WORKFLOWS], ['single-player', 'cpu-v-cpu']);
   assert.equal(Ball.VERSION, Adapter.DEPENDENCY_CONTRACTS.ball.version);
@@ -327,16 +327,16 @@ test('deterministic replay, bounded finite telemetry and reset epoch re-arm at t
 });
 
 test('preflight loads only exact V2-only Single Player or all-CPU spectator contracts', () => {
-  const good = preflight('?quickPlay=1&engine=fl-v2&simulationSeed=173173&candidate=4', validPayload());
+  const good = preflight('?quickPlay=1&engine=fl-v2&simulationSeed=173173&candidate=5', validPayload());
   assert.equal(good.value.eligible, true);
   assert.equal(good.value.workflow, 'single-player');
   assert.equal(good.writes.length, 15);
-  const cpuGood = preflight('?quickPlay=1&engine=fl-v2&simulationSeed=173173&candidate=4&autoplay=1', cpuPayload());
+  const cpuGood = preflight('?quickPlay=1&engine=fl-v2&simulationSeed=173173&candidate=5&autoplay=1', cpuPayload());
   assert.equal(cpuGood.value.eligible, true);
   assert.equal(cpuGood.value.workflow, 'cpu-v-cpu');
   assert.equal(cpuGood.writes.length, 15);
   for (const mode of ['co-op', 'home-co-op']) {
-    const protectedFallback = preflight('?quickPlay=1&engine=build-173&simulationSeed=173173&candidate=4', protectedBuild173Payload(173173, mode));
+    const protectedFallback = preflight('?quickPlay=1&engine=build-173&simulationSeed=173173&candidate=5', protectedBuild173Payload(173173, mode));
     assert.equal(protectedFallback.value.requested, false, `${mode} must not arm V2`);
     assert.equal(protectedFallback.value.eligible, false, `${mode} has no playable prior-engine fallback`);
     assert.equal(protectedFallback.value.reason, 'not-requested', `${mode} preflight reason`);
